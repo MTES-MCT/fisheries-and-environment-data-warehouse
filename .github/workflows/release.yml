@@ -18,7 +18,7 @@ jobs:
       - name: Mirror + trigger CI
         uses: SvanBoxel/gitlab-mirror-and-ci-action@master
         with:
-          args: https://gitlab-sml.din.developpement-durable.gouv.fr/num3-exploitation/deploiement-continu/gitlab-ci/applications/monitorfish-datawarehouse/monitorfish-datawarehouse.git
+          args: https://gitlab-sml.din.developpement-durable.gouv.fr/num3-exploitation/deploiement-continu/gitlab-ci/applications/monitorfish-datawarehouse.git
         env:
           FOLLOW_TAGS: "true"
           FORCE_PUSH: "false"
