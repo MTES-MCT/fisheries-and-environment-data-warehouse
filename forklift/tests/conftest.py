@@ -36,7 +36,7 @@ def create_docker_client():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def wait_for_data_warehous_and_migrations(
+def wait_for_data_warehouse_and_migrations(
     set_environment_variables, create_docker_client
 ):
     client = create_docker_client
@@ -46,7 +46,7 @@ def wait_for_data_warehous_and_migrations(
     elapsed_time = 0
     migrations_in_progress = True
 
-    # Start data warehouse
+    # Wait for data warehouse to start
     while health != "healthy" and elapsed_time < timeout:
         print(f"Waiting for data warehouse to start ({elapsed_time}/{timeout})")
         sleep(stop_time)
@@ -58,7 +58,7 @@ def wait_for_data_warehous_and_migrations(
     else:
         raise RuntimeError("Could not start data warehouse.")
 
-    # Migrate test data
+    # Wait for test data migrations to run
     elapsed_time = 0
     while migrations_in_progress and elapsed_time < timeout:
         print(f"Waiting for test data migrations ({elapsed_time}/{timeout})")
@@ -91,3 +91,17 @@ def add_monitorfish_proxy_database():
     print("Dropping monitorfish database proxy")
     client = create_datawarehouse_client()
     client.command("DROP DATABASE monitorfish_proxy")
+
+
+@pytest.fixture
+def add_monitorenv_proxy_database():
+    print("Creating monitorenv database proxy")
+    create_proxy_pg_database.run(
+        database="monitorenv_remote",
+        schema="public",
+        database_name_in_dw="monitorenv_proxy",
+    )
+    yield
+    print("Dropping monitorenv database proxy")
+    client = create_datawarehouse_client()
+    client.command("DROP DATABASE monitorenv_proxy")
