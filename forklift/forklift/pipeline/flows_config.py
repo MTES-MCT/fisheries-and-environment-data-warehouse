@@ -38,6 +38,17 @@ sync_table.flow.schedule = Schedule(
                 "order_by": "year",
             },
         ),
+        clocks.CronClock(
+            "35 * * * *",
+            parameter_defaults={
+                "source_database": "monitorenv_proxy",
+                "source_table": "analytics_actions",
+                "destination_database": "monitorenv",
+                "destination_table": "analytics_actions",
+                "ddl_script_path": "monitorenv/create_analytics_actions.sql",
+                "order_by": None,
+            },
+        ),
     ]
 )
 
