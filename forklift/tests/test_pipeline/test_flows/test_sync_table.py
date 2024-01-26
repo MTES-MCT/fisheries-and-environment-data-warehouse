@@ -9,7 +9,11 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
 
 
 @pytest.mark.parametrize(
-    "source_database,source_table,destination_database,destination_table,ddl_script_path,order_by",
+    (
+        "source_database,source_table,"
+        "destination_database,destination_table,"
+        "ddl_script_path,order_by"
+    ),
     [
         (
             "monitorfish_proxy",
@@ -27,10 +31,19 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
             None,
             "year",
         ),
+        (
+            "monitorenv_proxy",
+            "analytics_actions",
+            "monitorenv",
+            "analytics_actions",
+            "monitorenv/create_analytics_actions.sql",
+            None,
+        ),
     ],
 )
 def test_sync_table(
     add_monitorfish_proxy_database,
+    add_monitorenv_proxy_database,
     source_database,
     source_table,
     destination_database,
