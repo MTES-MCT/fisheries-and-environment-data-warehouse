@@ -35,13 +35,13 @@ docker-run-data-warehouse:
 docker-test-forklift: docker-run-data-warehouse
 	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -u forklift:$(DOCKER_GROUP) --env-file forklift/.env.test forklift:$(VERSION) coverage run -m pytest --pdb tests
 docker-tag-forklift:
-	docker tag forklift:$(VERSION) ghcr.io/mtes-mct/monitorfish/forklift:$(VERSION)
+	docker tag forklift:$(VERSION) ghcr.io/mtes-mct/fisheries-and-environment-data-warehouse/forklift:$(VERSION)
 docker-push-forklift:
-	docker push ghcr.io/mtes-mct/monitorfish/forklift:$(VERSION)
+	docker push ghcr.io/mtes-mct/fisheries-and-environment-data-warehouse/forklift:$(VERSION)
 
 # RUN commands
 run-datawarehouse:
 	docker compose -f ./infra/data_warehouse/docker-compose.yml up -d
 register-forklift-flows:
-	docker pull ghcr.io/mtes-mct/monitorfish/forklift:$(FORKLIFT_VERSION) && \
+	docker pull ghcr.io/mtes-mct/fisheries-and-environment-data-warehouse/forklift:$(FORKLIFT_VERSION) && \
 	infra/forklift/register-flows.sh
