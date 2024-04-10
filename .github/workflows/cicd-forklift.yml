@@ -21,7 +21,7 @@ jobs:
           repository: mtes-mct/monitorfish
 
       - name: Set ENV_PROFILE as PROD when it is a release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v0') || startsWith(github.ref, 'refs/heads/v0') || startsWith(github.ref, 'refs/tags/v1') || startsWith(github.ref, 'refs/heads/v1') || startsWith(github.ref, 'refs/tags/v2') || startsWith(github.ref, 'refs/heads/v2')
         run: echo "ENV_PROFILE=prod" >> $GITHUB_ENV
 
       - name: Set VERSION
@@ -71,7 +71,7 @@ jobs:
         run: make docker-test-forklift
 
       - name: Push docker image to registry
-        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v1') || startsWith(github.ref, 'refs/heads/v1') || startsWith(github.ref, 'refs/tags/v2') || startsWith(github.ref, 'refs/heads/v2')
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v0') || startsWith(github.ref, 'refs/heads/v0') || startsWith(github.ref, 'refs/tags/v1') || startsWith(github.ref, 'refs/heads/v1') || startsWith(github.ref, 'refs/tags/v2') || startsWith(github.ref, 'refs/heads/v2')
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${GITHUB_ACTOR} --password-stdin
           make docker-tag-forklift
