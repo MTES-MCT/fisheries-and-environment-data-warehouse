@@ -9,6 +9,7 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     mission_type LowCardinality(String),
     action_type LowCardinality(String),
     mission_facade LowCardinality(String),
+    control_unit_id Int32,
     control_unit LowCardinality(String),
     administration LowCardinality(String),
     is_aff_mar UInt8,
