@@ -16,7 +16,7 @@ It is composed of 2 dockerized services :
     `sudo apt-get update`  
     `sudo apt-get install make`
 - Install pyenv : https://github.com/pyenv/pyenv-installer
-- Install buil-esential :  `apt-get install build-essential`
+- Install dependency : `apt install libssl-dev libffi-dev libncurses5-dev zlib1g zlib1g-dev libreadline-dev libbz2-dev libsqlite3-dev make gcc`
 - Install python : `pyenv install 3.12.3`
 - Copy the contents of the `infra/deployment` folder onto the host machine, in the `~` folder.
 - Create a virtual environment in the `~/prefect-agent` folder and install `prefect` in this virtual environment :
