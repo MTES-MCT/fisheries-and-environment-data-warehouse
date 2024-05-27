@@ -24,7 +24,7 @@ It is composed of 2 dockerized services :
   - `pyenv local 3.12.3`
   - `python -m venv .venv`
   - `source .venv/bin/activate`
-  - `pip install prefect=1.3.0`
+  - `pip install prefect==1.3.0`
   - Run `prefect backend server` to switch Prefect into server mode (as opposed to cloud mode, the default). A file `backend.toml` should appear at `~/.prefect/backend.toml` containing `backend = "server"`.
 - Define and start a Prefect agent service:
   - Fill in the placeholders in `.prefect-agent` and `prefectdockeragent.service`.
