@@ -1,1 +1,1 @@
-PREFECT_SERVER_URL= http://prefect-test.csam.e2.rie.gouv.fr/graphql
+PREFECT_SERVER_URL=<URL-TO-CHANGE>

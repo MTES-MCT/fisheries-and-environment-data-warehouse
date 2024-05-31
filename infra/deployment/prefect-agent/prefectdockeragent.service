@@ -5,7 +5,7 @@ Description=Prefect Docker Agent
 Type=simple
 
 User=<USER-TO-CHANGE>
-ExecStart=prefect-agent/prefectdockeragent.sh
+ExecStart=/home/<USER-TO-CHANGE>/prefect-agent/prefectdockeragent.sh
 Restart=always
 RestartSec=30
 

@@ -12,11 +12,25 @@ It is composed of 2 dockerized services :
 #### 2.1. Prerequisites
 
 - Install docker : https://docs.docker.com/engine/install/debian/#install-using-the-repository
+- Create a new user `adduser --disabled-password d_dawar`
+- Add user to sudoers : `echo 'd_dawar  ALL=(ALL) NOPASSWD:ALL' | EDITOR='tee -a' visudo`
+- Add user to docker group: `usermod -a -G docker d_dawar`
+- Switch to user : `su - d_dawar`
 - Install GNU make if not already installed :   
     `sudo apt-get update`  
     `sudo apt-get install make`
-- Install pyenv : https://github.com/pyenv/pyenv-installer
-- Install dependency : `apt install libssl-dev libffi-dev libncurses5-dev zlib1g zlib1g-dev libreadline-dev libbz2-dev libsqlite3-dev make gcc`
+- Create a `.add_proxies` file to easily add proxy environment variables by sourcing it when needed. The file should contain:
+    
+      export http_proxy=http://xxx.xx.xxx.xxxx:pppp
+      export https_proxy=http://xxx.xx.xxx.xxxx:pppp
+
+- Install py_env dependencies
+
+      sudo apt update;
+      sudo apt install build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev;
+
+- Install pyenv : `curl https://pyenv.run | bash`
+  See https://github.com/pyenv/pyenv-installer for more information.
 - Install python : `pyenv install 3.12.3`
 - Copy the contents of the `infra/deployment` folder onto the host machine, in the `~` folder.
 - Create a virtual environment in the `~/prefect-agent` folder and install `prefect` in this virtual environment :
