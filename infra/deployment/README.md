@@ -21,8 +21,9 @@ It is composed of 2 dockerized services :
     `sudo apt-get install make`
 - Create a `.add_proxies` file to easily add proxy environment variables by sourcing it when needed. The file should contain:
     
-      export http_proxy=http://xxx.xx.xxx.xxxx:pppp
-      export https_proxy=http://xxx.xx.xxx.xxxx:pppp
+      touch .add_proxies
+      export http_proxy=http://xxx.xx.xxx.xxxx:pppp >> .add_proxies
+      export https_proxy=http://xxx.xx.xxx.xxxx:pppp >> .add_proxies
 
 - Install py_env dependencies
 
@@ -42,7 +43,7 @@ It is composed of 2 dockerized services :
 
           # Log out and login for changes to take effect
           exit
-          su - d_dawar2
+          su - d_dawar
 
 
   See https://github.com/pyenv/pyenv-installer for more information.
@@ -52,18 +53,20 @@ It is composed of 2 dockerized services :
       # Clone repo (shallow copy)
       git clone --depth 1 --single-branch --branch main https://github.com/MTES-MCT/fisheries-and-environment-data-warehouse git-repo
 
-      # Take only the deployment directory
+      # Take only the infra/deployment directory from the git repo
       mv git-repo/infra/deployment/* ~
 
-      # Remove the other unneeded directories
+      # Delete the rest of the git repo
       rm -rf git-repo
 
 - Fill placeholders in `.prefect-agent` and `prefectdockeragent.service` :
 
+      # Ajouter l'url de l'orchestrateur Prefect avec /graphql à la fin
       export PREFECT_URL=
       sed -i 's/<USER-TO-CHANGE>/'$USER'/g' prefect-agent/prefectdockeragent.service
-      sed -i 's/<URL-TO-CHANGE>/'$PREFECT_URL'/g' prefect-agent/.prefect-agent
-
+      
+      # Le `sed` au milieu de la commande permet d'échapper les caractères `/` de l'url en `\/`
+      sed -i 's/<URL-TO-CHANGE>/'$(sed 's/\//\\\//g'<<< $PREFECT_URL)'/g' prefect-agent/.prefect-agent
 
 - Create a virtual environment in the `~/prefect-agent` folder and install `prefect` in this virtual environment :
   - `cd prefect-agent`
@@ -74,7 +77,7 @@ It is composed of 2 dockerized services :
   - Run `prefect backend server` to switch Prefect into server mode (as opposed to cloud mode, the default). A file `backend.toml` should appear at `~/.prefect/backend.toml` containing `backend = "server"`.
 - Define and start a Prefect agent service:
 
-      mv prefectdockeragent.service /etc/systemd/system
+      sudo mv prefectdockeragent.service /etc/systemd/system
       sudo systemctl enable prefectdockeragent.service
       sudo systemctl start prefectdockeragent.service
 - Run `systemctl status prefectdockeragent.service` to check the service is running.
