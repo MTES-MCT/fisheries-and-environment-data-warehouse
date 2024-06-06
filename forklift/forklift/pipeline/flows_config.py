@@ -32,7 +32,6 @@ def get_flows_to_register():
                     "destination_database": "monitorfish",
                     "destination_table": "analytics_controls_full_data",
                     "ddl_script_path": "monitorfish/create_analytics_controls_full_data.sql",
-                    "order_by": None,
                 },
             ),
             clocks.CronClock(
@@ -42,7 +41,6 @@ def get_flows_to_register():
                     "source_table": "control_objectives",
                     "destination_database": "monitorfish",
                     "destination_table": "control_objectives",
-                    "ddl_script_path": None,
                     "order_by": "year",
                 },
             ),
@@ -54,7 +52,6 @@ def get_flows_to_register():
                     "destination_database": "monitorenv",
                     "destination_table": "analytics_actions",
                     "ddl_script_path": "monitorenv/create_analytics_actions.sql",
-                    "order_by": None,
                 },
             ),
         ]
