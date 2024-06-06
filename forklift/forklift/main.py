@@ -1,7 +1,7 @@
 import prefect
 
 from forklift.config import PREFECT_SERVER_URL
-from forklift.pipeline.flows_config import flows_to_register
+from forklift.pipeline.flows_config import get_flows_to_register
 
 PROJECT_NAME = "Data Warehouse"
 
@@ -39,6 +39,6 @@ if __name__ == "__main__":
 
     # Register all flows
     print("Registering flows")
-    for flow in flows_to_register:
+    for flow in get_flows_to_register():
         print(f"Registering flow {flow.name}")
         client.register(flow, project_name=PROJECT_NAME, no_url=True)
