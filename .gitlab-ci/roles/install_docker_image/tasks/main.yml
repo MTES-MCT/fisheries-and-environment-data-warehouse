@@ -11,7 +11,7 @@
 - name: "Pull docker images"
   command: "docker pull {{ docker_image_path }}"
   args:
-    chdir: "{{ docker_compose_path }}"
+    chdir: "/home/d_dawar"
 
 - name: "Log out of any docker registry"
   command: docker logout {{ nexus_repo }}
@@ -20,16 +20,16 @@
 # Déploiement des fichiers de configuration de l'application
 - name: "Copy infra/deploiement"
   copy:
-    src: ../../../infra/deploiement/{{ item }}
-    dest: "{{ docker_compose_path }}/"
-  with_items:
-    - ".data-warehouse"
-    - "Makefile"
-    - "register-flows.sh"
-    - "prefect-agent"
+    src: ../infra/deployment/docker-compose.yml
+    dest: "/home/d_dawar/docker-compose.yml"
+    mode: 0755
 
 - name: "Creating new .env file"
   template:
-    src: "../../../infra/deploiement/{{ env }}.env.j2"
-    dest: "{{ docker_compose_path }}/{{ env }}.env"
-  ignore_errors: yes
+    src: "../.gitlab-ci/templates/{{ env }}.env.j2"
+    dest: "/home/d_dawar/.env"
+
+- name: "Creating new .env file"
+  template:
+    src: "../.gitlab-ci/templates/.data-warehouse.j2"
+    dest: "/home/d_dawar/.data-warehouse"

@@ -1,0 +1,4 @@
+export DATA_WAREHOUSE_USER=clickhouse_user
+export DATA_WAREHOUSE_PASSWORD=password123
+export FORKLIFT_VERSION={{ version_application }}
+export SACROIS_FILES_GID=$(getent group $(whoami) | cut -d: -f3)
