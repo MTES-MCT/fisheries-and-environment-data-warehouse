@@ -156,8 +156,8 @@ with Flow("Sync table") as flow:
         source_table = Parameter("source_table")
         destination_database = Parameter("destination_database")
         destination_table = Parameter("destination_table")
-        ddl_script_path = Parameter("ddl_script_path")
-        order_by = Parameter("order_by")
+        ddl_script_path = Parameter("ddl_script_path", default=None)
+        order_by = Parameter("order_by", default=None)
 
         ddl_script_given = ddl_script_is_given(ddl_script_path)
 
