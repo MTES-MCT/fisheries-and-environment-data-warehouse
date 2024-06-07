@@ -1,0 +1,22 @@
+---
+
+# Création du docker-compose.yml et démarrage des containers
+- name: "Creating new docker-compose file"
+  template:
+    src: "../../../infra/deploiement/docker-compose.yml"
+    dest: "{{ docker_compose_path }}/docker-compose.yml"
+    mode: 0755
+
+- name: "Log into nexus repository"
+  command: docker login {{ nexus_proxy }} -u {{ nexus_user }} -p {{ nexus_password }}
+  no_log: true
+
+- name: "Start docker-compose"
+  command: docker-compose up -d
+  args:
+    chdir: "{{ docker_compose_path }}"
+
+- name: "Log out of any docker registry"
+  command: docker logout {{ nexus_proxy }}
+  no_log: true
+

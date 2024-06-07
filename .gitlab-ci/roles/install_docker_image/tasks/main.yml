@@ -1,0 +1,35 @@
+---
+#------------------------------------------------------------------------
+#   Liste des taches d'installation/mise à jour d'une image Docker
+#------------------------------------------------------------------------
+
+# Connexion au repository Nexus/récupération de l'image/logout
+- name: "Log into nexus repository"
+  command: docker login {{ nexus_repo }} -u {{ nexus_user }} -p {{ nexus_password }}
+  no_log: true
+
+- name: "Pull docker images"
+  command: "docker pull {{ docker_image_path }}"
+  args:
+    chdir: "{{ docker_compose_path }}"
+
+- name: "Log out of any docker registry"
+  command: docker logout {{ nexus_repo }}
+  no_log: true
+
+# Déploiement des fichiers de configuration de l'application
+- name: "Copy infra/deploiement"
+  copy:
+    src: ../../../infra/deploiement/{{ item }}
+    dest: "{{ docker_compose_path }}/"
+  with_items:
+    - ".data-warehouse"
+    - "Makefile"
+    - "register-flows.sh"
+    - "prefect-agent"
+
+- name: "Creating new .env file"
+  template:
+    src: "../../../infra/deploiement/{{ env }}.env.j2"
+    dest: "{{ docker_compose_path }}/{{ env }}.env"
+  ignore_errors: yes
