@@ -15,7 +15,7 @@ if TEST_LOCAL:
     load_dotenv(ROOT_DIRECTORY / ".env.test")
 
 # Flow execution configuration
-DOCKER_IMAGE = "ghcr.io/mtes-mct/monitorfish/forklift"
+FORKLIFT_DOCKER_IMAGE = os.getenv("FORKLIFT_DOCKER_IMAGE")
 FORKLIFT_VERSION = os.getenv("FORKLIFT_VERSION")
 FLOWS_LOCATION = Path("forklift/pipeline/flows")  # relative to the WORKDIR in the image
 FLOWS_LABEL = "forklift"
