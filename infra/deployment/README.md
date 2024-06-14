@@ -91,6 +91,6 @@ It is composed of 2 dockerized services :
 
 #### 2.3. Running or updating `Forklift`
 
-- Update the `FORKLIFT_VERSION` variable in the `.data-warehouse` file.
+- Update the `FORKLIFT_VERSION` and `FORKLIFT_DOCKER_IMAGE` variables in the `.data-warehouse` file.
 - Run `source .data-warehouse`.
 - Run `make register-forklift-flows`.
