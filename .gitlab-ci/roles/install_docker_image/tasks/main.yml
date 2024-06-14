@@ -12,24 +12,52 @@
   command: docker logout {{ nexus_repo }}
   no_log: true
 
-# Déploiement des fichiers de configuration de l'application
-- name: "Copy infra/deploiement"
-  copy:
-    src: ../infra/deployment/docker-compose.yml
-    dest: "{{ path_file }}/docker-compose.yml"
-    mode: 0755
+- name: "Install intégration"
+  block:
+      # Déploiement des fichiers de configuration de l'application
+    - name: "Copy infra/deploiement"
+      copy:
+        src: ../infra/deployment/docker-compose.yml
+        dest: "/home/d_dawar/docker-compose.yml"
+        mode: 0755
 
-- name: "Creating new .env file"
-  template:
-    src: "../.gitlab-ci/templates/{{ env }}.env.j2"
-    dest: "{{ path_file }}/.env"
+    - name: "Creating new .env file"
+      template:
+        src: "../.gitlab-ci/templates/{{ env }}.env.j2"
+        dest: "home/d_dawar/.env"
 
-- name: "Creating new .env file"
-  template:
-    src: "../.gitlab-ci/templates/.data-warehouse.j2"
-    dest: "{{ path_file }}/.data-warehouse"
+    - name: "Creating new .data-warehouse file"
+      template:
+        src: "../.gitlab-ci/templates/.data-warehouse.j2"
+        dest: "home/d_dawar/.data-warehouse"
 
-- name: "Pull docker images"
-  command: "docker pull {{ docker_image_path }}"
-  args:
-    chdir: "{{ path_file }}"
+    - name: "Pull docker images"
+      command: "docker pull {{ docker_image_path }}"
+      args:
+        chdir: "home/d_dawar"
+  when: env==int
+
+- name: "Install intégration"
+  block:
+      # Déploiement des fichiers de configuration de l'application
+    - name: "Copy infra/deploiement"
+      copy:
+        src: ../infra/deployment/docker-compose.yml
+        dest: "/opt/docker/datawarehouse/docker-compose.yml"
+        mode: 0755
+
+    - name: "Creating new .env file"
+      template:
+        src: "../.gitlab-ci/templates/{{ env }}.env.j2"
+        dest: "/opt/docker/datawarehouse/.env"
+
+    - name: "Creating new .data-warehouse file"
+      template:
+        src: "../.gitlab-ci/templates/.data-warehouse.j2"
+        dest: "/opt/docker/datawarehouse/.data-warehouse"
+
+    - name: "Pull docker images"
+      command: "docker pull {{ docker_image_path }}"
+      args:
+        chdir: "/opt/docker/datawarehouse"
+  when: env==prod
