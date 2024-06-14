@@ -17,7 +17,6 @@
 - name: "Start docker-compose"
   become_user: d_dawar
   shell: source .data-warehouse && make register-forklift-flows
-    executable: /bin/bash
   args:
     executable: /bin/bash
     chdir: "/opt/docker/datawarehouse"
