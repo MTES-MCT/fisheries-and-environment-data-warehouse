@@ -7,7 +7,11 @@
   no_log: true
 
 - name: "Start docker-compose"
-  command: cd /home/d_dawar && source .data-warehouse && make register-forklift-flows
+  become_user: d_dawar
+  command: 
+    cmd: source .data-warehouse && make register-forklift-flows
+  args:
+    chdir: "{{ path_file }}"
 
 - name: "Log out of any docker registry"
   command: docker logout {{ nexus_docker }}

@@ -8,11 +8,6 @@
   command: docker login {{ nexus_repo }} -u {{ nexus_user }} -p {{ nexus_password }}
   no_log: true
 
-- name: "Pull docker images"
-  command: "docker pull {{ docker_image_path }}"
-  args:
-    chdir: "/home/d_dawar"
-
 - name: "Log out of any docker registry"
   command: docker logout {{ nexus_repo }}
   no_log: true
@@ -21,15 +16,20 @@
 - name: "Copy infra/deploiement"
   copy:
     src: ../infra/deployment/docker-compose.yml
-    dest: "/home/d_dawar/docker-compose.yml"
+    dest: "{{ path_file }}/docker-compose.yml"
     mode: 0755
 
 - name: "Creating new .env file"
   template:
     src: "../.gitlab-ci/templates/{{ env }}.env.j2"
-    dest: "/home/d_dawar/.env"
+    dest: "{{ path_file }}/.env"
 
 - name: "Creating new .env file"
   template:
     src: "../.gitlab-ci/templates/.data-warehouse.j2"
-    dest: "/home/d_dawar/.data-warehouse"
+    dest: "{{ path_file }}/.data-warehouse"
+
+- name: "Pull docker images"
+  command: "docker pull {{ docker_image_path }}"
+  args:
+    chdir: "{{ path_file }}"
