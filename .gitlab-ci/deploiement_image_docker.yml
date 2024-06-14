@@ -2,4 +2,4 @@
   roles:
     - install_docker_image
     - start_docker_containers
-    - clean_docker_images
+    #- clean_docker_images
