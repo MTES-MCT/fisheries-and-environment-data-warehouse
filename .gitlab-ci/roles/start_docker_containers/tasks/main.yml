@@ -8,16 +8,14 @@
 
 - name: "Start docker-compose"
   become_user: d_dawar
-  command: 
-    cmd: . .data-warehouse && make register-forklift-flows
+  shell: source .data-warehouse && make register-forklift-flows
   args:
     chdir: "/home/d_dawar"
   when: env == "int"
 
 - name: "Start docker-compose"
   become_user: d_dawar
-  command: 
-    cmd: source .data-warehouse && make register-forklift-flows
+  shell: source .data-warehouse && make register-forklift-flows
   args:
     chdir: "/opt/docker/datawarehouse"
   when: env == "prod"
