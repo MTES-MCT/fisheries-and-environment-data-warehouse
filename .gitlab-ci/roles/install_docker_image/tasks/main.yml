@@ -24,17 +24,17 @@
     - name: "Creating new .env file"
       template:
         src: "../.gitlab-ci/templates/{{ env }}.env.j2"
-        dest: "home/d_dawar/.env"
+        dest: "/home/d_dawar/.env"
 
     - name: "Creating new .data-warehouse file"
       template:
         src: "../.gitlab-ci/templates/.data-warehouse.j2"
-        dest: "home/d_dawar/.data-warehouse"
+        dest: "/home/d_dawar/.data-warehouse"
 
     - name: "Pull docker images"
       command: "docker pull {{ docker_image_path }}"
       args:
-        chdir: "home/d_dawar"
+        chdir: "/home/d_dawar"
   when: env == "int"
 
 - name: "Install intégration"

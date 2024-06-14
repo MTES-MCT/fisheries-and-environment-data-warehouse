@@ -5,14 +5,7 @@
 - name: "Log into nexus repository"
   command: docker login {{ nexus_docker }} -u {{ nexus_user }} -p {{ nexus_password }}
   no_log: true
-
-- name: "Start docker-compose"
-  become_user: d_dawar
-  command: 
-    cmd: source .data-warehouse && make register-forklift-flows
-  args:
-    chdir: "{{ path_file }}"
-
+  
 - name: "Start docker-compose"
   become_user: d_dawar
   command: 
