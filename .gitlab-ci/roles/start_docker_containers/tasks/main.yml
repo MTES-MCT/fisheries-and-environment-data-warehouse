@@ -19,7 +19,7 @@
     cmd: source .data-warehouse && make register-forklift-flows
   args:
     chdir: "/home/d_dawar"
-  when: env==int
+  when: env == "int"
 
 - name: "Start docker-compose"
   become_user: d_dawar
@@ -27,7 +27,7 @@
     cmd: source .data-warehouse && make register-forklift-flows
   args:
     chdir: "/opt/docker/datawarehouse"
-  when: env==prod
+  when: env == "prod"
 
 - name: "Log out of any docker registry"
   command: docker logout {{ nexus_docker }}

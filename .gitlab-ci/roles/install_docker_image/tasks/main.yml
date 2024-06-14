@@ -35,7 +35,7 @@
       command: "docker pull {{ docker_image_path }}"
       args:
         chdir: "home/d_dawar"
-  when: env==int
+  when: env == "int"
 
 - name: "Install intégration"
   block:
@@ -60,4 +60,4 @@
       command: "docker pull {{ docker_image_path }}"
       args:
         chdir: "/opt/docker/datawarehouse"
-  when: env==prod
+  when: env == "prod"
