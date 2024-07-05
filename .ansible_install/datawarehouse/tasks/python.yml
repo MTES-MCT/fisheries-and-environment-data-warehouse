@@ -1,0 +1,43 @@
+- name: Install dependency packages
+  apt:
+    name: "{{ item }}"
+    state: latest
+  loop: "{{ packages }}"
+
+- name: Download Python source archive
+  get_url:
+    dest: "{{ python_src_dir }}"
+    url: "{{ python_url }}"
+  environment:
+    http_proxy: "{{ proxy }}"
+    https_proxy: "{{ proxy }}"
+
+- name: Extract archive
+  unarchive:
+    src: "{{ python_src_dir }}/{{ python_archive }}"
+    dest: "{{ python_src_dir }}"
+    remote_src: true
+
+- name: Run ./configure
+  command:
+    cmd: ./configure --enable-optimizations --prefix=/usr/local --enable-shared LDFLAGS="-Wl,-rpath /usr/local/lib"
+    chdir: "{{ python_src_dir }}/Python-{{ python_release }}"
+    creates: "{{ python_src_dir }}/Python-{{ python_release }}/config.log"
+
+- name: Run make to build python
+  community.general.make:
+    chdir: "{{ python_src_dir }}/Python-{{ python_release }}"
+  register: make_result
+
+- name: Run make install
+  community.general.make:
+    chdir: "{{ python_src_dir }}/Python-{{ python_release }}"
+    target: install
+  register: install_result
+  when: make_result is not skipped
+
+- name: Edit command python to python3
+  file:
+    src: /usr/local/bin/python3
+    dest: /usr/local/bin/python
+    state: link

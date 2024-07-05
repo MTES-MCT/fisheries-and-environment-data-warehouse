@@ -1,0 +1,93 @@
+- name: update apt cache
+  become: yes
+  apt:
+    update_cache: yes
+
+- name: install make
+  apt:
+    name: make
+    state: present
+
+- name: update apt cache
+  become: yes
+  apt:
+    update_cache: yes
+
+# - name: Install python 3.12.3
+#   include: python.yml
+
+- name: "Apply {{ user_application }} user directory"
+  file:
+    path: "/opt/docker/{{ application }}"
+    owner: "{{ user_application }}"
+    group: "{{ user_application }}"
+    recurse: yes
+
+- name: Copy datawarehouse.zip
+  copy:
+    src: datawarehouse.zip
+    dest: /opt/docker/{{ application }}/datawarehouse.zip
+
+- name: Unzip datawarehouse archive
+  unarchive:
+    src: "/opt/docker/{{ application }}/datawarehouse.zip"
+    dest: "/opt/docker/{{ application }}/"
+    remote_src: yes
+
+- name: rm datawarehouse.zip
+  file:
+    path: "/opt/docker/{{ application }}/datawarehouse.zip"
+    state: absent
+
+- name: Install prefectdockeragent.service
+  template:
+    src: prefectdockeragent.service.j2
+    dest: /etc/systemd/system/prefectdockeragent.service
+
+- name: edit .prefect-agent
+  template:
+    src: .prefect-agent.j2
+    dest: /opt/docker/{{ application }}/prefect-agent/.prefect-agent
+
+- name: Enable service prefectdockeragent.service
+  service:
+    name: prefectdockeragent.service
+    enabled: yes
+
+- name: Start service prefectdockeragent.service
+  service:
+    name: prefectdockeragent.service
+    state: started
+
+- name: Copy docker-compose.yml
+  copy:
+    src: docker-compose.yml
+    dest: /opt/docker/{{ application }}/docker-compose.yml
+
+- name: Copy .env
+  copy:
+    src: prod.env
+    dest: /opt/docker/{{ application }}/.env
+
+- name: Edite .data-warehouse
+  template:
+    src: .data-warehouse.j2
+    dest: /opt/docker/{{ application }}/.data-warehouse
+
+- name: Right on prefect-agent
+  file:
+    path: "/opt/docker/{{ application }}/prefect-agent"
+    owner: "{{ user_application }}"
+    group: "{{ user_application }}"
+    recurse: yes
+
+- name: Mod register-flows.sh
+  file:
+    path: "/opt/docker/{{ application }}/register-flows.sh"
+    mode: 0755
+
+- name: Mod docker-compose.yml
+  file:
+    path: "/opt/docker/{{ application }}/docker-compose.yml"
+    mode: 0755
+

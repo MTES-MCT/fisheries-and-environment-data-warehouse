@@ -1,0 +1,6 @@
+# File to fill and place in ~ folder of the server
+export DATA_WAREHOUSE_USER=clickhouse_user
+export DATA_WAREHOUSE_PASSWORD=MEoTv6IpQPk0DyKG2JUc
+export FORKLIFT_VERSION={{ version_application }}
+export FORKLIFT_DOCKER_IMAGE={{ nexus_repo }}/datawarehouse
+export SACROIS_FILES_GID=$(getent group $(whoami) | cut -d: -f3)

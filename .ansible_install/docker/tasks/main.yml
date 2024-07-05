@@ -1,0 +1,55 @@
+- name: install docker
+  apt:
+    name: 
+      - docker.io
+      - docker-compose
+      - sshpass
+    state: present
+
+- name: create docker.service.d path
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+
+- name: copy http-proxy.conf
+  copy:
+    src: http-proxy.conf
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+
+- name: copy daemon.json
+  copy:
+    src: daemon.json
+    dest: /etc/docker/daemon.json
+
+- name: Stop docker
+  systemd:
+    state: stopped
+    name: docker
+
+- name: Stop docker socket
+  command:
+    cmd: systemctl stop docker.socket
+
+- name: copy docker.service
+  copy:
+    src: docker.service
+    dest: /lib/systemd/system/docker.service
+
+- name: create /opt/lib/docker path
+  file:
+    path: /opt/lib/docker
+    state: directory
+
+- name: synchronize on new docker directory
+  synchronize:
+    src: "/var/lib/docker/"
+    dest: "/opt/lib/docker"
+    recursive: yes
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: start docker
+  systemd:
+    state: started
+    daemon_reload: true
+    name: docker
+

@@ -1,0 +1,39 @@
+- name: "Install Datawarehouse"
+  hosts: datawarehouse
+  vars:
+    - application: "datawarehouse"
+    - user_application: "d_dawar"
+    - proxy: "http://172.27.229.197:8090"
+    - prefect_server_url: http://prefect.csam.e2.rie.gouv.fr/graphql
+    - version_application: 1.0
+
+#### Python varible ####
+    - python_release: 3.12.3 
+    - python_src_dir: /opt
+    - python_archive: Python-{{ python_release }}.tgz
+    - python_url: "https://www.python.org/ftp/python/{{ python_release }}/{{ python_archive }}"
+    - packages:
+      - git
+      - gcc
+      - make
+      - tar
+      - vim
+      - wget
+      - libncursesw5-dev
+      - libssl-dev
+      - libsqlite3-dev
+      - tk-dev
+      - libgdbm-dev
+      - libc6-dev
+      - libbz2-dev
+      - libffi-dev
+      - zlib1g-dev
+      - build-essential
+      - liblzma-dev
+      - tcl-dev
+
+  roles:
+  #  - role: docker
+    - role: datawarehouse
+
+  

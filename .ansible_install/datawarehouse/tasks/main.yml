@@ -1,0 +1,5 @@
+# - name: Add user
+#   include: adduser.yml
+
+- name: Install datawarehouse
+  include: datawarehouse.yml

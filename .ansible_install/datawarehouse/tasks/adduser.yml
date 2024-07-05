@@ -1,0 +1,36 @@
+- name: install sudo
+  apt:
+    name: sudo
+    state: present
+
+- name: "Creating group {{ user_application }}"
+  group:
+    name: "{{ user_application }}"
+    state: present
+    system: yes
+
+- name: "Creating user {{ user_application }}"
+  user:
+    name: "{{ user_application }}"
+    group: "{{ user_application }}"
+    shell: /bin/bash
+    create_home: yes
+    home: /opt/docker/{{ application }}
+    groups: docker
+    state: present
+    system: yes
+    append: yes
+
+- name: "Apply {{ user_application }} user directory"
+  file:
+    path: "/opt/docker/{{ application }}"
+    owner: "{{ user_application }}"
+    group: "{{ user_application }}"
+
+- name: Allow '{{ user_application }}' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%{{ user_application }}'
+    line: '%{{ user_application }} ALL=(ALL) NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
