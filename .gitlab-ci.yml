@@ -20,8 +20,6 @@ variables:
   SERVER_ENV_PROD:
     value: "prod-monitorfish-datawarehouse01"
     description: "Serveur cible de production"
-  PROXY_HOST: "172.27.229.197"
-  PROXY_PORT: "8090"
   TAG_VERSION: $NEXUS_DOCKER_REPO/$PROJECT_NAME:$PROJECT_VERSION
 
   #Anlayse Trivy

@@ -1,5 +1,5 @@
-export DATA_WAREHOUSE_USER=clickhouse_user
-export DATA_WAREHOUSE_PASSWORD=password123
+export DATA_WAREHOUSE_USER={{ data_warehouse_user }}
+export DATA_WAREHOUSE_PASSWORD={{ int_data_warehouse_pwd }}
 export FORKLIFT_VERSION={{ version_application }}
 export FORKLIFT_DOCKER_IMAGE={{ nexus_docker }}/{{ project_name }}
 export SACROIS_FILES_GID=$(getent group $(whoami) | cut -d: -f3)
