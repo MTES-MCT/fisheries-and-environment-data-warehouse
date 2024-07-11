@@ -20,7 +20,7 @@ dev-stop-metabase:
 	docker compose -f ./infra/testing/docker-compose-dev-metabase.yml down
 
 dev-erase-data-warehouse-databases:
-	docker volume rm data_warehouse_data-warehouse-db data_warehouse_data-warehouse-logs data_warehouse_monitorfish-db-data data_warehouse_monitorenv-db-data || exit 0
+	docker volume rm deployment_data-warehouse-db deployment_data-warehouse-logs deployment_monitorfish-db-data deployment_monitorenv-db-data || exit 0
 
 dev-test-forklift: dev-stop-data-warehouse dev-erase-data-warehouse-databases dev-run-data-warehouse
 	cd forklift && export TEST_LOCAL=True && poetry run coverage run -m pytest --pdb --ignore=tests/test_data/external tests/ && poetry run coverage report && poetry run coverage html
