@@ -22,13 +22,15 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     vessel_targeted Nullable(UInt8),
     infraction UInt8,
     fishing_infraction UInt8,
+    infraction_report UInt8,
     infraction_categories Array(String),
     infraction_natinfs Array(String),
     seizure_and_diversion UInt8,
     species Array(String),
     gears Array(String),
     fao_areas Array(String),
-    segment LowCardinality(String)
+    segment LowCardinality(String),
+    comments Nullable(String)
 )
 ENGINE MergeTree
 ORDER BY control_datetime_utc

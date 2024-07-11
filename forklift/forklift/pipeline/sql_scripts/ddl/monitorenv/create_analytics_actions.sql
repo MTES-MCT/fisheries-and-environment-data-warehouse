@@ -19,11 +19,15 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     action_department LowCardinality(String),
     theme_level_1 LowCardinality(String),
     theme_level_2 LowCardinality(String),
-    longitude Float64,
-    latitude Float64,
-    infraction UInt8,
-    number_of_controls Float64,
-    surveillance_duration Float64,
+    plan LowCardinality(String),
+    longitude Nullable(Float64),
+    latitude Nullable(Float64),
+    infraction Nullable(UInt8),
+    number_of_controls Nullable(Float64),
+    infraction_id Nullable(String),
+    natinf Array(String),
+    infraction_type LowCardinality(Nullable(String)),
+    surveillance_duration Nullable(Float64),
     observations_cacem Nullable(String)
 )
 ENGINE MergeTree
