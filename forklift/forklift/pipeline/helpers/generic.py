@@ -83,6 +83,19 @@ def extract(
     return res
 
 
+def load_to_data_warehouse(
+    df: Union[pd.DataFrame, gpd.GeoDataFrame],
+    *,
+    table_name: str,
+    database: str,
+    logger: logging.Logger,
+):
+    client = create_datawarehouse_client()
+
+    logger.info(f"Loading into data warehouse {database}.{table_name} table.")
+    client.insert_df(table=table_name, df=df, database=database)
+
+
 def load(
     df: Union[pd.DataFrame, gpd.GeoDataFrame],
     *,

@@ -1,8 +1,10 @@
 from pathlib import Path
+from typing import Optional
 
 import prefect
 from prefect import Flow, Parameter, case, task
 
+from forklift.config import QUERIES_LOCATION
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
@@ -72,6 +74,7 @@ def insert_data_from_source_to_destination(
     destination_table: str,
     create_table: bool,
     order_by: str,
+    query_filepath: Optional[Path] = None,
 ):
     logger = prefect.context.get("logger")
     client = create_datawarehouse_client()
@@ -119,23 +122,32 @@ def insert_data_from_source_to_destination(
         logger.info(
             (
                 f"Creating table {destination_database}.{destination_table} "
-                "and inserting data from SELECT query."
+                "from SELECT query."
             )
         )
+
+        assert destination_database is not None
+        assert destination_table is not None
+        assert order_by is not None
+
         sql = """
         CREATE TABLE {destination_database:Identifier}.{destination_table:Identifier}
         ENGINE MergeTree
         ORDER BY {order_by:Identifier}
-        AS SELECT *
-        FROM {source_database:Identifier}.{source_table:Identifier}
-        """
+        AS """
     else:
         logger.info(f"Inserting data into {destination_database}.{destination_table}.")
-        sql = """
-        INSERT INTO {destination_database:Identifier}.{destination_table:Identifier}
-        SELECT *
-        FROM {source_database:Identifier}.{source_table:Identifier}
-        """
+        sql = (
+            "INSERT INTO "
+            "{destination_database:Identifier}.{destination_table:Identifier} "
+        )
+
+    if query_filepath:
+        with open(QUERIES_LOCATION / query_filepath, "r") as f:
+            query = f.read()
+        sql += query
+    else:
+        sql += "SELECT * FROM {source_database:Identifier}.{source_table:Identifier}"
 
     run_sql_script(
         sql=sql,
@@ -153,7 +165,8 @@ with Flow("Sync table") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         source_database = Parameter("source_database")
-        source_table = Parameter("source_table")
+        source_table = Parameter("source_table", default=None)
+        query_filepath = Parameter("query_filepath", default=None)
         destination_database = Parameter("destination_database")
         destination_table = Parameter("destination_table")
         ddl_script_path = Parameter("ddl_script_path", default=None)
@@ -171,6 +184,7 @@ with Flow("Sync table") as flow:
                 destination_table,
                 create_table=True,
                 order_by=order_by,
+                query_filepath=query_filepath,
             )
 
         with case(ddl_script_given, True):
@@ -193,6 +207,7 @@ with Flow("Sync table") as flow:
                 upstream_tasks=[created_table],
                 create_table=False,
                 order_by=order_by,
+                query_filepath=query_filepath,
             )
 
 

@@ -2,7 +2,7 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     id UUID,
     mission_id Int32,
     action_start_datetime_utc DateTime,
-    action_end_datetime_utc DateTime,
+    action_end_datetime_utc Nullable(DateTime),
     year Int32,
     mission_start_datetime_utc DateTime,
     mission_end_datetime_utc DateTime,
