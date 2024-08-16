@@ -11,7 +11,7 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
     "source_database,proxy_db_name,test_table,expected_len",
     [
         ("monitorfish_remote", "monitorfish_proxy", "analytics_controls_full_data", 26),
-        ("monitorenv_remote", "monitorenv_proxy", "analytics_actions", 7),
+        ("monitorenv_remote", "monitorenv_proxy", "analytics_actions", 9),
     ],
 )
 def test_proxy_pg_database(source_database, proxy_db_name, test_table, expected_len):
