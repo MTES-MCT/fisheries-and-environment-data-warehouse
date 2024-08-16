@@ -20,15 +20,6 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
     [
         (
             "monitorfish_proxy",
-            "analytics_controls_full_data",
-            None,
-            "monitorfish",
-            "analytics_controls_full_data",
-            "monitorfish/create_analytics_controls_full_data.sql",
-            None,
-        ),
-        (
-            "monitorfish_proxy",
             "control_objectives",
             None,
             "monitorfish",

@@ -2,6 +2,7 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     id Int32,
     vessel_id Int32,
     mission_id Int32,
+    control_unit_id Int32,
     control_type LowCardinality(String),
     control_datetime_utc DateTime,
     control_year Int32,
@@ -30,7 +31,9 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     gears Array(String),
     fao_areas Array(String),
     segment LowCardinality(String),
-    comments Nullable(String)
+    comments Nullable(String),
+    number_of_vessels_flown_over Nullable(Int32),
+    flight_goals Array(String)
 )
 ENGINE MergeTree
 ORDER BY control_datetime_utc

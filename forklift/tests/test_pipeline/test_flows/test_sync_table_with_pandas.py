@@ -23,6 +23,13 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
             "analytics_actions",
             "monitorenv/create_analytics_actions.sql",
         ),
+        (
+            "monitorfish_remote",
+            "monitorfish_remote/analytics_controls_full_data.sql",
+            "monitorfish",
+            "analytics_controls_full_data",
+            "monitorfish/create_analytics_controls_full_data.sql",
+        ),
     ],
 )
 def test_sync_table(
