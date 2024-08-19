@@ -3,7 +3,7 @@ import logging
 import re
 from functools import partial
 from io import StringIO
-from typing import Any, Hashable, List, Union
+from typing import Any, Hashable, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -132,7 +132,7 @@ def coalesce(df: pd.DataFrame) -> pd.Series:
 
 
 def get_first_non_null_column_name(
-    df: pd.DataFrame, result_labels: Union[None, dict] = None
+    df: pd.DataFrame, result_labels: Optional[dict] = None
 ) -> pd.Series:
     """
     Returns a Series with the same index as the input DataFrame, whose values are
@@ -223,7 +223,7 @@ def df_to_dict_series(
 
     Args:
         df (pd.DataFrame): input DataFrame
-        result_colname (Union[str, None]): optionnal, name of result Series
+        result_colname (str): name of result Series
         remove_nulls (bool): if set to ``True``, ``null`` values are recursively
           removed from the dictionaries
 
@@ -242,9 +242,7 @@ def df_to_dict_series(
     return res
 
 
-def zeros_ones_to_bools(
-    x: Union[pd.Series, pd.DataFrame]
-) -> Union[pd.Series, pd.DataFrame]:
+def zeros_ones_to_bools(x: pd.Series | pd.DataFrame) -> pd.Series | pd.DataFrame:
     """
     Converts a pandas DataFrame or Series containing `str`, `int` or `float` values,
     possibly including null (`None` and `np.nan`) values to a DataFrame with False,
@@ -265,10 +263,10 @@ def zeros_ones_to_bools(
 
 
 def to_pgarr(
-    x: Union[list, set, np.ndarray],
+    x: list | set | np.ndarray,
     handle_errors: bool = False,
-    value_on_error: Union[str, None] = None,
-) -> Union[str, None]:
+    value_on_error: Optional[str] = None,
+) -> str | None:
     """
     Converts a python `list`, `set` or `numpy.ndarray` to a string with Postgresql
     array syntax.
@@ -285,7 +283,7 @@ def to_pgarr(
         x (list, set or numpy.ndarray) : iterable to serialize as Postgres array
         handle_errors (bool): if ``True``, returns ``value_on_error`` instead of raising
           ``ValueError`` when the input is of an unexpected type
-        value_on_error (str or None): value to return on errors, if ``handle_errors``
+        value_on_error (Optional[str]): value to return on errors, if ``handle_errors``
           is ``True``
 
     Returns:
@@ -320,7 +318,7 @@ def to_pgarr(
 def df_values_to_psql_arrays(
     df: pd.DataFrame,
     handle_errors: bool = False,
-    value_on_error: Union[str, None] = None,
+    value_on_error: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Returns a `pandas.DataFrame` with all values serialized as strings

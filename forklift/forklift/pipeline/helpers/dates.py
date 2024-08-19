@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Union
+from typing import List, Optional
 
 import pandas as pd
 
@@ -15,7 +15,7 @@ def make_periods(
     start_datetime_utc: datetime,
     end_datetime_utc: datetime,
     period_duration: timedelta,
-    overlap: Union[None, timedelta] = None,
+    overlap: Optional[timedelta] = None,
 ) -> List[Period]:
     """
     Returns a list of `Period` of duration `period_duration` covering the time range
@@ -37,7 +37,7 @@ def make_periods(
         end_datetime_utc (datetime): end of the period to cover
         period_duration (timedelta): duration of the individual
           periods returned
-        overlap (Union[None, timedelta]): overlap between successive
+        overlap (Optional[timedelta]): overlap between successive
           periods, if specified. Defaults to `None`.
     """
 
@@ -77,7 +77,7 @@ def make_periods(
 
 
 def get_datetime_intervals(
-    s: pd.Series, unit: str = None, how: str = "backward"
+    s: pd.Series, unit: Optional[str] = None, how: str = "backward"
 ) -> pd.Series:
     """
     Takes a pandas Series with datetime dtype. Return a pandas Series with the same
@@ -86,7 +86,7 @@ def get_datetime_intervals(
 
     Args:
         s (Series): pandas Series with datetime dtype
-        unit (Union[str, None]):
+        unit (Optional[str]):
 
           - if `None`, returns values as pandas `Timedelta`
           - if provided, must be one of 's', 'min' or 'h', in which case values

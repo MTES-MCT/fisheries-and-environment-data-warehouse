@@ -1,7 +1,7 @@
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Union
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -14,13 +14,13 @@ from forklift.pipeline.shared_tasks.datagouv import update_resource
 
 def mock_extract_side_effect(
     db_name: str,
-    query_filepath: Union[Path, str],
-    dtypes: Union[None, dict] = None,
-    parse_dates: Union[list, dict, None] = None,
-    params: Union[dict, None] = None,
+    query_filepath: Path | str,
+    dtypes: Optional[dict] = None,
+    parse_dates: Optional[list | dict] = None,
+    params: Optional[dict] = None,
     backend: str = "pandas",
     geom_col: str = "geom",
-    crs: Union[int, None] = None,
+    crs: Optional[int] = None,
 ):
     @patch("forklift.read_query.pd")
     @patch("forklift.read_query.create_engine")

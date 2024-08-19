@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional
 
 import geopandas as gpd
 import pandas as pd
@@ -17,14 +17,14 @@ from forklift.pipeline.utils import get_table, psql_insert_copy
 
 def extract(
     db_name: str,
-    query_filepath: Union[Path, str],
-    dtypes: Union[None, dict] = None,
-    parse_dates: Union[list, dict, None] = None,
-    params=None,
+    query_filepath: Path | str,
+    dtypes: Optional[dict] = None,
+    parse_dates: Optional[list | dict] = None,
+    params: Optional[dict] = None,
     backend: str = "pandas",
     geom_col: str = "geom",
-    crs: Union[int, None] = None,
-) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
+    crs: Optional[int] = None,
+) -> pd.DataFrame | gpd.GeoDataFrame:
     """Run SQL query against the indicated database and return the result as a
     `pandas.DataFrame`.
 
@@ -32,13 +32,13 @@ def extract(
         db_name (str): name of the database to extract from : 'ocan', 'fmc',
           'monitorfish_remote', 'monitorenv_remote', 'monitorfish_local',
           'cacem_local', 'data_warehouse'.
-        query_filepath (Union[Path, str]): path to .sql file, starting from the saved
+        query_filepath (Path | str): path to .sql file, starting from the saved
             queries folder. example : "ocan/nav_fr_peche.sql"
-        dtypes (Union[None, dict], optional): If specified, use {col: dtype, …}, where
+        dtypes (Optional[dict], optional): If specified, use {col: dtype, …}, where
             col is a column label and dtype is a numpy.dtype or Python type to cast
             one or more of the DataFrame’s columns to column-specific types.
             Defaults to None.
-        parse_dates (Union[list, dict, None], optional):
+        parse_dates (Optional[list | dict], optional):
 
           - List of column names to parse as dates.
           - Dict of ``{column_name: format string}`` where format string is
@@ -48,7 +48,7 @@ def extract(
             to the keyword arguments of :func:`pandas.to_datetime`
 
           Defaults to None.
-        params (Union[dict, None], optional): Parameters to pass to execute method.
+        params (Optional[dict], optional): Parameters to pass to execute method.
           Defaults to None. Ignored for `data_warehouse` database.
         backend (str, optional) : 'pandas' to run a SQL query and return a
           `pandas.DataFrame` or 'geopandas' to run a PostGIS query and return a
@@ -57,14 +57,14 @@ def extract(
         geom_col (str, optional): column name to convert to shapely geometries when
           `backend` is 'geopandas'. Ignored when `backend` is 'pandas'. Defaults to
           'geom'. Ignored for `data_warehouse` database.
-        crs (Union[None, str], optional) : CRS to use for the returned GeoDataFrame;
+        crs (Optional[str], optional) : CRS to use for the returned GeoDataFrame;
           if not set, tries to determine CRS from the SRID associated with the first
           geometry in the database, and assigns that to all geometries. Ignored when
           `backend` is 'pandas'. Defaults to None. Ignored for `data_warehouse`
           database.
 
     Returns:
-        Union[pd.DataFrame, gpd.GeoDataFrame]: Query results
+        pd.DataFrame | gpd.GeoDataFrame: Query results
     """
 
     res = read_saved_query(
@@ -84,7 +84,7 @@ def extract(
 
 
 def load_to_data_warehouse(
-    df: Union[pd.DataFrame, gpd.GeoDataFrame],
+    df: pd.DataFrame | gpd.GeoDataFrame,
     *,
     table_name: str,
     database: str,
@@ -97,7 +97,7 @@ def load_to_data_warehouse(
 
 
 def load(
-    df: Union[pd.DataFrame, gpd.GeoDataFrame],
+    df: pd.DataFrame | gpd.GeoDataFrame,
     *,
     table_name: str,
     schema: str,
@@ -122,7 +122,7 @@ def load(
     must already exist in the database.
 
     Args:
-        df (Union[pd.DataFrame, gpd.GeoDataFrame]): data to load
+        df (pd.DataFrame | gpd.GeoDataFrame): data to load
         table_name (str): name of the table
         schema (str): database schema of the table
         logger (logging.Logger): logger instance
@@ -215,15 +215,15 @@ def load(
 
 
 def load_with_connection(
-    df: Union[pd.DataFrame, gpd.GeoDataFrame],
+    df: pd.DataFrame | gpd.GeoDataFrame,
     *,
     connection: Connection,
     table_name: str,
     schema: str,
     logger: logging.Logger,
     how: str = "replace",
-    table_id_column: Union[None, str] = None,
-    df_id_column: Union[None, str] = None,
+    table_id_column: Optional[str] = None,
+    df_id_column: Optional[str] = None,
     init_ddls: List[DDL] = None,
     end_ddls: List[DDL] = None,
 ):
@@ -387,18 +387,18 @@ def run_sql_script(
 
 
 def read_saved_query(
-    sql_filepath: Union[str, Path],
+    sql_filepath: str | Path,
     *,
     db: str = None,
-    con: Union[Connection, Engine, HttpClient] = None,
-    chunksize: Union[None, str] = None,
-    params: Union[dict, None] = None,
+    con: Optional[Connection | Engine | HttpClient] = None,
+    chunksize: Optional[str] = None,
+    params: Optional[dict] = None,
     backend: str = "pandas",
     geom_col: str = "geom",
-    crs: Union[int, None] = None,
-    parse_dates: Union[list, dict, None] = None,
+    crs: Optional[int] = None,
+    parse_dates: Optional[list | dict] = None,
     **kwargs,
-) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
+) -> pd.DataFrame | gpd.GeoDataFrame:
     """Run saved SQLquery on a database. Supported databases :
 
       - 'ocan' : OCAN database
@@ -417,14 +417,14 @@ def read_saved_query(
         db (str, optional): Database name. Possible values :
           'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote', 'monitorfish_local',
           'cacem_local', 'data_warehouse'. If `db` is None, `con` must be passed.
-        con (Union[Connection, Engine, HttpClient], optional) :
+        con (Optional[Connection | Engine | HttpClient], optional) :
           `sqlalchemy.engine.Connection` or `sqlalchemy.engine.Engine` or
           `clickhouse_connect.driver.httpclient.HttpClient` object. Mandatory if no
           `db` is given. Ignored if `db` is given.
-        chunksize (Union[None, str], optional): If specified, return an iterator where
+        chunksize (Optional[str], optional): If specified, return an iterator where
           `chunksize` is the number of rows to include in each chunk. Defaults to
           None.
-        params (Union[dict, None], optional): Parameters to pass to execute method.
+        params (Optional[dict], optional): Parameters to pass to execute method.
           Defaults to None. Ignored for `data_warehouse` database.
         backend (str, optional) : 'pandas' to run a SQL query and return a
           `pandas.DataFrame` or 'geopandas' to run a PostGIS query and return a
@@ -433,12 +433,12 @@ def read_saved_query(
         geom_col (str, optional): column name to convert to shapely geometries when
           `backend` is 'geopandas'. Ignored when `backend` is 'pandas'. Defaults to
           'geom'. Ignored for `data_warehouse` database.
-        crs (Union[None, str], optional) : CRS to use for the returned GeoDataFrame;
+        crs (Optional[str], optional) : CRS to use for the returned GeoDataFrame;
           if not set, tries to determine CRS from the SRID associated with the first
           geometry in the database, and assigns that to all geometries. Ignored when
           `backend` is 'pandas'. Defaults to None. Ignored for `data_warehouse`
           database.
-        parse_dates (Union[list, dict, None], optional):
+        parse_dates (Optional[list | dict], optional):
 
           - List of column names to parse as dates.
           - Dict of ``{column_name: format string}`` where format string is
@@ -452,7 +452,7 @@ def read_saved_query(
           database.
 
     Returns:
-        Union[pd.DataFrame, gpd.DataFrame]: Query results
+        pd.DataFrame | gpd.GeoDataFrame: Query results
     """
     sql_filepath = QUERIES_LOCATION / sql_filepath
     with open(sql_filepath, "r") as sql_file:
@@ -476,15 +476,15 @@ def read_query(
     query,
     *,
     db: str = None,
-    con: Union[Connection, Engine, HttpClient] = None,
-    chunksize: Union[None, str] = None,
-    params: Union[dict, None] = None,
+    con: Optional[Connection | Engine | HttpClient] = None,
+    chunksize: Optional[str] = None,
+    params: Optional[dict] = None,
     backend: str = "pandas",
     geom_col: str = "geom",
-    crs: Union[int, None] = None,
-    parse_dates: Union[list, dict, None] = None,
+    crs: Optional[int] = None,
+    parse_dates: Optional[list | dict] = None,
     **kwargs,
-) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
+) -> pd.DataFrame | gpd.GeoDataFrame:
     """Run SQLquery on a database. Supported databases :
 
       - 'ocan' : OCAN database
@@ -503,14 +503,14 @@ def read_query(
           'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote',
           'monitorfish_local', 'monitorenv_local', 'data_warehouse'. If `db` is None,
           `con` must be passed.
-        con (Union[Connection, Engine, HttpClient], optional) :
+        con (Optional[Connection | Engine | HttpClient], optional) :
           `sqlalchemy.engine.Connection` or `sqlalchemy.engine.Engine` or
           `clickhouse_connect.driver.httpclient.HttpClient` object. Mandatory if no
           `db` is given. Ignored if `db` is given.
-        chunksize (Union[None, str], optional): If specified, return an iterator where
+        chunksize (Optional[str], optional): If specified, return an iterator where
           `chunksize` is the number of rows to include in each chunk. Defaults to
           None.
-        params (Union[dict, None], optional): Parameters to pass to execute method.
+        params (Optional[dict], optional): Parameters to pass to execute method.
           Defaults to None. Ignored for `data_warehouse` database.
         backend (str, optional) : 'pandas' to run a SQL query and return a
           `pandas.DataFrame` or 'geopandas' to run a PostGIS query and return a
@@ -519,12 +519,12 @@ def read_query(
         geom_col (str, optional): column name to convert to shapely geometries when
           `backend` is 'geopandas'. Ignored when `backend` is 'pandas'. Defaults to
           'geom'. Ignored for `data_warehouse` database.
-        crs (Union[None, str], optional) : CRS to use for the returned GeoDataFrame;
+        crs (Optional[str], optional) : CRS to use for the returned GeoDataFrame;
           if not set, tries to determine CRS from the SRID associated with the first
           geometry in the database, and assigns that to all geometries. Ignored when
           `backend` is 'pandas'. Defaults to None. Ignored for `data_warehouse`
           database.
-        parse_dates (Union[list, dict, None], optional):
+        parse_dates (Optional[list | dict], optional):
 
           - List of column names to parse as dates.
           - Dict of ``{column_name: format string}`` where format string is
@@ -538,7 +538,7 @@ def read_query(
           database.
 
     Returns:
-        Union[pd.DataFrame, gpd.DataFrame]: Query results
+        pd.DataFrame | gpd.GeoDataFrame: Query results
     """
     if db == "data_warehouse":
         client = create_datawarehouse_client()
