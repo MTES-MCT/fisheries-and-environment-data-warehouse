@@ -28,7 +28,7 @@ variables:
     description: "Détermine la commande à passer à Trivy pour bloquer ou non le job. --severity CRITICAL fait échouer le job si Trivy remonte des anomalies critiques."
   
   FAIL_TRIVY_CONDITION_OS:
-    value: "--severity HIGH,CRITICAL --"
+    value: "--severity HIGH,CRITICAL"
     description: "Détermine la commande à passer à Trivy pour bloquer ou non le job. --severity CRITICAL fait échouer le job si Trivy remonte des anomalies critiques."
 
   #Analyse Sonar
@@ -38,6 +38,7 @@ variables:
 
 
 include:
+  - "/.gitlab-ci/.trivyignore"
   - "/.gitlab-ci/jobs/construction_image.yml"
   - project: 'num3-exploitation/chaine-ci/template-analyse-deploiement'
     ref: main
