@@ -49,7 +49,3 @@ include:
   # - project: 'num3-exploitation/chaine-ci/template-analyse-deploiement'
   #   ref: main
   #   file: '/jobs/deploiement_image_prod.yml'
-
-container_scanning:
-  variables:
-    GIT_STRATEGY: fetch
