@@ -38,6 +38,7 @@ variables:
 
 
 include:
+  - "/.gitlab-ci/vulnerability-allowlist.yml"
   - "/.gitlab-ci/jobs/construction_image.yml"
   - project: 'num3-exploitation/chaine-ci/template-analyse-deploiement'
     ref: main
