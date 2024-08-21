@@ -40,9 +40,10 @@ variables:
 
 include:
   - "/.gitlab-ci/jobs/construction_image.yml"
-  - project: 'num3-exploitation/chaine-ci/template-analyse-deploiement'
-    ref: main
-    file: '/jobs/analyse_trivy.yml'
+  - "/.gitlab-ci/jobs/analyse_trivy.yml"
+  # - project: 'num3-exploitation/chaine-ci/template-analyse-deploiement'
+  #   ref: main
+  #   file: '/jobs/analyse_trivy.yml'
   - project: 'num3-exploitation/chaine-ci/template-analyse-deploiement'
     ref: main
     file: '/jobs/analyse_sonar.yml'
