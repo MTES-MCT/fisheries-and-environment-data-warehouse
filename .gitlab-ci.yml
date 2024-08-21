@@ -29,7 +29,7 @@ variables:
     description: "Détermine la commande à passer à Trivy pour bloquer ou non le job. --severity CRITICAL fait échouer le job si Trivy remonte des anomalies critiques."
   
   FAIL_TRIVY_CONDITION_OS:
-    value: "--severity HIGH,CRITICAL  --ignorefile ./.trivyignore.yml"
+    value: "--severity HIGH,CRITICAL"
     description: "Détermine la commande à passer à Trivy pour bloquer ou non le job. --severity CRITICAL fait échouer le job si Trivy remonte des anomalies critiques."
 
   #Analyse Sonar
