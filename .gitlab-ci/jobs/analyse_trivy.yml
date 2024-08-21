@@ -22,8 +22,8 @@ analyse_trivy:
       for IMAGE in $TAG_VERSION
         do
         export NAME_APP=$(echo $IMAGE | tr "/" - | tr ":" _)
-        time trivy image -d --server $TRIVY_SERVER $IMAGE --timeout 120m --cache-dir .trivycache/ --format template --template "@/contrib/html.tpl" --vuln-type library --output "$NAME_APP-library-scanning-report.html" --ignorefile .trivyignore
-        time trivy image -d --server $TRIVY_SERVER $IMAGE --timeout 120m --cache-dir .trivycache/ --format template --template "@/contrib/html.tpl" --vuln-type os --output "$NAME_APP-os-scanning-report.html" --ignorefile .trivyignore
+        time trivy image -d --server $TRIVY_SERVER $IMAGE --timeout 120m --cache-dir .trivycache/ --format template --template "@/contrib/html.tpl" --vuln-type library --output "$NAME_APP-library-scanning-report.html"
+        time trivy image -d --server $TRIVY_SERVER $IMAGE --timeout 120m --cache-dir .trivycache/ --format template --template "@/contrib/html.tpl" --vuln-type os --output "$NAME_APP-os-scanning-report.html"
       done
       for IMAGE in $TAG_VERSION
         do
