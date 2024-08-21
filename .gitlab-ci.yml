@@ -21,6 +21,7 @@ variables:
     value: "prod-monitorfish-datawarehouse01"
     description: "Serveur cible de production"
   TAG_VERSION: $NEXUS_DOCKER_REPO/$PROJECT_NAME:$PROJECT_VERSION
+  GIT_STRATEGY: fetch
 
   #Anlayse Trivy
   FAIL_TRIVY_CONDITION_LIBRARY:
