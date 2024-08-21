@@ -18,6 +18,9 @@ analyse_trivy:
     # cache cleanup is needed when scanning images with the same tags, it does not remove the database
     - |
       echo "$PROJECT_VERSION"
+      echo "$FAIL_TRIVY_CONDITION_LIBRARY"
+      echo "$FAIL_TRIVY_CONDITION_LIBRARY"
+
       for IMAGE in $TAG_VERSION
         do
         export NAME_APP=$(echo $IMAGE | tr "/" - | tr ":" _)
