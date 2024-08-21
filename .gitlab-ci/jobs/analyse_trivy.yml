@@ -17,9 +17,7 @@ analyse_trivy:
   script:
     # cache cleanup is needed when scanning images with the same tags, it does not remove the database
     - |
-      echo "$PROJECT_VERSION"
-      echo "$FAIL_TRIVY_CONDITION_LIBRARY"
-      echo "$FAIL_TRIVY_CONDITION_LIBRARY"
+      cat .trivyignore.yml
 
       for IMAGE in $TAG_VERSION
         do
