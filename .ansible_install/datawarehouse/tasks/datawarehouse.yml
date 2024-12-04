@@ -21,6 +21,7 @@
     path: "/opt/docker/{{ application }}"
     owner: "{{ user_application }}"
     group: "{{ user_application }}"
+    state: directory
     recurse: yes
 
 - name: Copy datawarehouse.zip
