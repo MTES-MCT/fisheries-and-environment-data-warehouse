@@ -23,12 +23,12 @@
 
     - name: "Creating new .env file"
       template:
-        src: "../.gitlab-ci/templates/{{ env }}.env.j2"
+        src: "../.gitlab-ci/templates/.env.j2"
         dest: "/home/d_dawar/.env"
 
     - name: "Creating new .data-warehouse file"
       template:
-        src: "../.gitlab-ci/templates/.data-warehouse_{{ env }}.j2"
+        src: "../.gitlab-ci/templates/.data-warehouse.j2"
         dest: "/home/d_dawar/.data-warehouse"
 
     - name: "Pull docker images"
@@ -48,12 +48,12 @@
 
     - name: "Creating new .env file"
       template:
-        src: "../.gitlab-ci/templates/{{ env }}.env.j2"
+        src: "../.gitlab-ci/templates/.env.j2"
         dest: "/opt/docker/datawarehouse/.env"
 
     - name: "Creating new .data-warehouse file"
       template:
-        src: "../.gitlab-ci/templates/.data-warehouse_{{ env }}.j2"
+        src: "../.gitlab-ci/templates/.data-warehouse.j2"
         dest: "/opt/docker/datawarehouse/.data-warehouse"
 
     - name: "Pull docker images"

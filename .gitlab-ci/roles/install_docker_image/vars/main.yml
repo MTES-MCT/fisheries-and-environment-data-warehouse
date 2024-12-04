@@ -10,18 +10,14 @@ port_proxy: "{{ lookup('env', 'PROXY_PORT') }}"
 postgresql_port: "{{ lookup('env', 'POSTGRES_PORT') }}"
 
 ####################MONITORFISH_REMOTE########################
-prod_monitorfish_remote_pwd : "{{ lookup('env', 'PROD_MONITORFISH_REMOTE_PWD') }}"
-prod_monitorfish_remote_ip: "{{ lookup('env', 'PROD_MONITORFISH_REMOTE_IP') }}"
-int_monitorfish_remote_pwd : "{{ lookup('env', 'INT_MONITORFISH_REMOTE_PWD') }}"
-int_monitorfish_remote_ip: "{{ lookup('env', 'INT_MONITORFISH_REMOTE_IP') }}"
+monitorfish_remote_pwd : "{{ lookup('env', 'MONITORFISH_REMOTE_PWD') }}"
+monitorfish_remote_ip: "{{ lookup('env', 'MONITORFISH_REMOTE_IP') }}"
 monitorfish_remote_db: "{{ lookup('env', 'MONITORFISH_REMOTE_DB') }}"
 monitorfish_remote_user: "{{ lookup('env', 'POSTGRES_USER') }}"
 
 ###################MONITORENV_REMOTE#########################
-prod_monitorenv_remote_pwd: "{{ lookup('env', 'PROD_MONITORENV_REMOTE_PWD') }}"
-prod_monitorenv_remote_ip: "{{ lookup('env', 'PROD_MONITORENV_REMOTE_IP') }}"
-int_monitorenv_remote_pwd: "{{ lookup('env', 'INT_MONITORENV_REMOTE_PWD') }}"
-int_monitorenv_remote_ip: "{{ lookup('env', 'INT_MONITORENV_REMOTE_IP') }}"
+monitorenv_remote_pwd: "{{ lookup('env', 'MONITORENV_REMOTE_PWD') }}"
+monitorenv_remote_ip: "{{ lookup('env', 'MONITORENV_REMOTE_IP') }}"
 monitorenv_remote_db: "{{ lookup('env', 'MONITORENV_REMOTE_DB') }}"
 monitorenv_remote_user: "{{ lookup('env', 'POSTGRES_USER') }}"
 
@@ -38,12 +34,13 @@ cacem_local_user: "{{ lookup('env', 'USER_CROSS') }}"
 cacem_local_pwd: "{{ lookup('env', 'MONITORFISH_LOCAL_PWD') }}"
 
 ####################DATA_WAREHOUSE###########################
-prod_data_warehouse_ip: "{{ lookup('env', 'DATA_WAREHOUSE_IP_PROD') }}"
-int_data_warehouse_ip: "{{ lookup('env', 'DATA_WAREHOUSE_IP_INT') }}"
+data_warehouse_ip: "{{ lookup('env', 'DATA_WAREHOUSE_IP') }}"
 data_warehouse_port: "{{ lookup('env', 'DATA_WAREHOUSE_PORT') }}"
 data_warehouse_user: "{{ lookup('env', 'DATA_WAREHOUSE_USER') }}"
-prod_data_warehouse_pwd: "{{ lookup('env', 'DATA_WAREHOUSE_PWD_PROD') }}"
-int_data_warehouse_pwd: "{{ lookup('env', 'DATA_WAREHOUSE_PWD_INT') }}"
+data_warehouse_pwd: "{{ lookup('env', 'DATA_WAREHOUSE_PWD') }}"
+
 
 ###########################API_KEY###########################
 api_key_datagouv: "{{ lookup('env', 'DATAGOUV_API_KEY') }}"
+
+prefect_server_url: "{{ lookup('env', 'PREFECT_SERVER_URL') }}"
