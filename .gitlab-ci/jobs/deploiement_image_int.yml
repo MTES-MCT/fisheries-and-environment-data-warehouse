@@ -27,3 +27,4 @@ deploiement_image_int:
     #- git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/num3-exploitation/chaine-ci/template-analyse-deploiement
   script:
     - cd .gitlab-ci && ansible-playbook -i ../inventory.ini deploiement_image_docker.yml --extra-vars "env=int inventory_hostname=$SERVER_ENV_INT"
+  environment: integration
