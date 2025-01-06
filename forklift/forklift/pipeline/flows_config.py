@@ -25,7 +25,7 @@ def get_flows_to_register():
     sync_table_flow.schedule = Schedule(
         clocks=[
             clocks.CronClock(
-                "30 4 * * *",
+                "25 4 * * *",
                 parameter_defaults={
                     "source_database": "monitorfish_proxy",
                     "source_table": "analytics_controls_full_data",
