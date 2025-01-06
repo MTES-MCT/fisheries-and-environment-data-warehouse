@@ -8,7 +8,7 @@ from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 
 
 @task(checkpoint=False)
-def create_proxy_pg_database(database: str, schema: str, database_name_in_dw: str):
+def reset_proxy_pg_database(database: str, schema: str, database_name_in_dw: str):
     """
     Creates a PostgreSQL engine database in Clickhouse proxying a remote Postgres
     database.
@@ -52,8 +52,10 @@ def create_proxy_pg_database(database: str, schema: str, database_name_in_dw: st
             "Database connection credentials not found in environment: ", e.args
         )
 
+    client.command(f"DROP DATABASE IF EXISTS {database_name_in_dw}")
+
     sql = f"""
-        CREATE DATABASE IF NOT EXISTS {database_name_in_dw}
+        CREATE DATABASE {database_name_in_dw}
         ENGINE = PostgreSQL(
             '{host}:{port}',
             '{sid}',
@@ -66,13 +68,13 @@ def create_proxy_pg_database(database: str, schema: str, database_name_in_dw: st
     client.command(sql)
 
 
-with Flow("Proxy PostgreSQL database") as flow:
+with Flow("Reset proxy PostgreSQL database") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         database = Parameter("database")
         schema = Parameter("schema")
         database_name_in_dw = Parameter("database_name_in_dw")
-        create_proxy_pg_database(
+        reset_proxy_pg_database(
             database=database, schema=schema, database_name_in_dw=database_name_in_dw
         )
 

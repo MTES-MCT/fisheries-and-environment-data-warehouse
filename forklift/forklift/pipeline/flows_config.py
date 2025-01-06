@@ -12,13 +12,13 @@ from forklift.config import (
     FORKLIFT_VERSION,
     ROOT_DIRECTORY,
 )
-from forklift.pipeline.flows import clean_flow_runs, proxy_pg_database, sync_table
+from forklift.pipeline.flows import clean_flow_runs, reset_proxy_pg_database, sync_table
 
 
 ################################ Define flow schedules ################################
 def get_flows_to_register():
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
-    proxy_pg_database_flow = deepcopy(proxy_pg_database.flow)
+    reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     sync_table_flow = deepcopy(sync_table.flow)
 
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
@@ -60,7 +60,7 @@ def get_flows_to_register():
     #################### List flows to register with prefect server ###################
     flows_to_register = [
         clean_flow_runs_flow,
-        proxy_pg_database_flow,
+        reset_proxy_pg_database_flow,
         sync_table_flow,
     ]
 

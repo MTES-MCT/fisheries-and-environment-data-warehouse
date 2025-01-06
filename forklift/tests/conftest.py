@@ -9,7 +9,7 @@ from pytest import MonkeyPatch
 
 from forklift.config import ROOT_DIRECTORY
 from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.flows.proxy_pg_database import create_proxy_pg_database
+from forklift.pipeline.flows.reset_proxy_pg_database import reset_proxy_pg_database
 
 
 ################################# Start test database #################################
@@ -82,7 +82,7 @@ def wait_for_data_warehouse_and_migrations(
 @pytest.fixture
 def add_monitorfish_proxy_database():
     print("Creating monitorfish database proxy")
-    create_proxy_pg_database.run(
+    reset_proxy_pg_database.run(
         database="monitorfish_remote",
         schema="public",
         database_name_in_dw="monitorfish_proxy",
@@ -96,7 +96,7 @@ def add_monitorfish_proxy_database():
 @pytest.fixture
 def add_monitorenv_proxy_database():
     print("Creating monitorenv database proxy")
-    create_proxy_pg_database.run(
+    reset_proxy_pg_database.run(
         database="monitorenv_remote",
         schema="public",
         database_name_in_dw="monitorenv_proxy",
