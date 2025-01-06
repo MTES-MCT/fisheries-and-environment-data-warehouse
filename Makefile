@@ -25,6 +25,10 @@ dev-erase-data-warehouse-databases:
 dev-test-forklift: dev-stop-data-warehouse dev-erase-data-warehouse-databases dev-run-data-warehouse
 	cd forklift && export TEST_LOCAL=True && poetry run coverage run -m pytest --pdb --ignore=tests/test_data/external tests/ && poetry run coverage report && poetry run coverage html
 
+dev-erase-external-data:
+	rm -rf forklift/tests/test_data/external/monitorenv
+	rm -rf forklift/tests/test_data/external/monitorfish
+
 # CI commands - Forklift
 docker-build-forklift:
 	docker build -f "infra/docker/Dockerfile.Forklift" . -t forklift:$(VERSION)
