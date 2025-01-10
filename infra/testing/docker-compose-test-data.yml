@@ -4,7 +4,7 @@ services:
     network_mode : host
 
   monitorfish-db:
-    image: timescale/timescaledb-postgis:1.7.4-pg11
+    image: ghcr.io/mtes-mct/monitorfish/monitorfish-database:pg16-ts2.14.2-postgis3.5.1
     container_name: monitorfish_database
     environment:
       - POSTGRES_USER=postgres
