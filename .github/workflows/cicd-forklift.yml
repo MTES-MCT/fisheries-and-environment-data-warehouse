@@ -2,8 +2,6 @@ name: CI/CD Forklift
 
 on:
   push:
-  schedule:
-    - cron: "38 11 */3 * *"
   workflow_dispatch:
 
 jobs:
