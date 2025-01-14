@@ -8,35 +8,11 @@ from forklift.config import QUERIES_LOCATION
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
-
-
-@task(checkpoint=False)
-def create_database_if_not_exists(database: str):
-    """
-    Creates a database in Clickhouse with the default database engine (Atomic) if it
-    does not exist.
-
-    If it already exists, does nothing.
-
-    Args:
-        database (str): Name of the database to create in Clickhouse.
-    """
-    sql = "CREATE DATABASE IF NOT EXISTS {database:Identifier}"
-    run_sql_script(sql=sql, parameters={"database": database})
-
-
-@task(checkpoint=False)
-def drop_table_if_exists(database: str, table: str):
-    """
-    Drops designated table from data_warehouse if it exists.
-    If the table does not exist, does nothing.
-
-    Args:
-        database (str): Database name in data_warehouse.
-        table (str): Name of the table to drop.
-    """
-    sql = "DROP TABLE IF EXISTS  {database:Identifier}.{table:Identifier}"
-    run_sql_script(sql=sql, parameters={"database": database, "table": table})
+from forklift.pipeline.shared_tasks.generic import (
+    create_database_if_not_exists,
+    create_table_from_ddl_script,
+    drop_table_if_exists,
+)
 
 
 @task(checkpoint=False)
@@ -45,25 +21,6 @@ def ddl_script_is_given(ddl_script_path: str):
         return True
     else:
         return False
-
-
-@task(checkpoint=False)
-def create_table_from_ddl_script(ddl_script_path: str, database: str, table: str):
-    """
-    Runs DDL script at designated location with `database`  and `table` parameters.
-
-    Args:
-        ddl_script_path (str): DDL script location, relative to ddl directory
-        database (str): database name, passed as `database` parameter to the client
-        table (str): table name, passed as `table` parameter to the client
-    """
-    run_sql_script(
-        sql_script_filepath=Path("ddl") / ddl_script_path,
-        parameters={
-            "database": database,
-            "table": table,
-        },
-    )
 
 
 @task(checkpoint=False)
