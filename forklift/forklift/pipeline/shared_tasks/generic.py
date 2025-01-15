@@ -4,11 +4,12 @@ import pandas as pd
 import prefect
 from prefect import task
 
+from forklift.pipeline.entities.databases import Database
 from forklift.pipeline.helpers.generic import load_to_data_warehouse, run_sql_script
 
 
 @task(checkpoint=False)
-def create_database_if_not_exists(database: str):
+def create_database_if_not_exists(database: Database):
     """
     Creates a database in Clickhouse with the default database engine (Atomic) if it
     does not exist.
@@ -16,10 +17,11 @@ def create_database_if_not_exists(database: str):
     If it already exists, does nothing.
 
     Args:
-        database (str): Name of the database to create in Clickhouse.
+        database (Database): Database to create in the data warehouse.
     """
+    assert isinstance(database, Database)
     sql = "CREATE DATABASE IF NOT EXISTS {database:Identifier}"
-    run_sql_script(sql=sql, parameters={"database": database})
+    run_sql_script(sql=sql, parameters={"database": database.value})
 
 
 @task(checkpoint=False)
