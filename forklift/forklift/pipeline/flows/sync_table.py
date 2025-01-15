@@ -11,8 +11,8 @@ from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
-    create_table_from_ddl_script,
     drop_table_if_exists,
+    run_ddl_script,
 )
 
 
@@ -151,7 +151,7 @@ with Flow("Sync table") as flow:
                 destination_table,
                 upstream_tasks=[create_database],
             )
-            created_table = create_table_from_ddl_script(
+            created_table = run_ddl_script(
                 ddl_script_path,
                 database=destination_database,
                 table=destination_table,

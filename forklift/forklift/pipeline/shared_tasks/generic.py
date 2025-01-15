@@ -25,7 +25,7 @@ def create_database_if_not_exists(database: Database):
 
 
 @task(checkpoint=False)
-def create_table_from_ddl_script(ddl_script_path: str, database: str, table: str):
+def run_ddl_script(ddl_script_path: str, database: str, table: str):
     """
     Runs DDL script at designated location with `database`  and `table` parameters.
 
