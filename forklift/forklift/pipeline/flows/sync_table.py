@@ -135,6 +135,11 @@ with Flow("Sync table") as flow:
         create_database = create_database_if_not_exists(Database(destination_database))
 
         with case(ddl_script_given, False):
+            drop_table = drop_table_if_exists(
+                destination_database,
+                destination_table,
+                upstream_tasks=[create_database],
+            )
             insert_data_from_source_to_destination(
                 source_database,
                 source_table,
@@ -143,6 +148,7 @@ with Flow("Sync table") as flow:
                 create_table=True,
                 order_by=order_by,
                 query_filepath=query_filepath,
+                upstream_tasks=[drop_table],
             )
 
         with case(ddl_script_given, True):
