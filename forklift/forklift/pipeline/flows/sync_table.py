@@ -6,7 +6,6 @@ from prefect import Flow, Parameter, case, task
 
 from forklift.config import QUERIES_LOCATION
 from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.entities.databases import Database
 from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import (
@@ -132,7 +131,7 @@ with Flow("Sync table") as flow:
 
         ddl_script_given = ddl_script_is_given(ddl_script_path)
 
-        create_database = create_database_if_not_exists(Database(destination_database))
+        create_database = create_database_if_not_exists(destination_database)
 
         with case(ddl_script_given, False):
             drop_table = drop_table_if_exists(

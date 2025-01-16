@@ -9,7 +9,7 @@ from forklift.pipeline.helpers.generic import load_to_data_warehouse, run_sql_sc
 
 
 @task(checkpoint=False)
-def create_database_if_not_exists(database: Database):
+def create_database_if_not_exists(database: str):
     """
     Creates a database in Clickhouse with the default database engine (Atomic) if it
     does not exist.
@@ -17,29 +17,26 @@ def create_database_if_not_exists(database: Database):
     If it already exists, does nothing.
 
     Args:
-        database (Database): Database to create in the data warehouse.
+        database (str): Database to create in the data warehouse. Possible value are
+          `monitorfish`, `monitorenv`
     """
-    assert isinstance(database, Database)
+    db = Database(database)
     sql = "CREATE DATABASE IF NOT EXISTS {database:Identifier}"
-    run_sql_script(sql=sql, parameters={"database": database.value})
+    run_sql_script(sql=sql, parameters={"database": db.value})
 
 
 @task(checkpoint=False)
-def run_ddl_script(ddl_script_path: str, database: str, table: str):
+def run_ddl_script(ddl_script_path: str, **parameters):
     """
     Runs DDL script at designated location with `database`  and `table` parameters.
 
     Args:
         ddl_script_path (str): DDL script location, relative to ddl directory
-        database (str): database name, passed as `database` parameter to the client
-        table (str): table name, passed as `table` parameter to the client
+        parameters (dict, optionnal): pamaters to pass to `run_sql_script`
     """
     run_sql_script(
         sql_script_filepath=Path("ddl") / ddl_script_path,
-        parameters={
-            "database": database,
-            "table": table,
-        },
+        parameters=parameters,
     )
 
 

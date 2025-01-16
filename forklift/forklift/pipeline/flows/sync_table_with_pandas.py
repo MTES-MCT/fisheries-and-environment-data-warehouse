@@ -3,7 +3,6 @@ from pathlib import Path
 import pandas as pd
 from prefect import Flow, Parameter, case, task
 
-from forklift.pipeline.entities.databases import Database
 from forklift.pipeline.helpers.generic import extract
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import (
@@ -33,7 +32,7 @@ with Flow("Sync table with pandas") as flow:
             query_filepath=query_filepath,
         )
 
-        create_database = create_database_if_not_exists(Database(destination_database))
+        create_database = create_database_if_not_exists(destination_database)
 
         drop_table = drop_table_if_exists(
             destination_database,
