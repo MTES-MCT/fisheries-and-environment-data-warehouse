@@ -28,7 +28,7 @@ def create_database_if_not_exists(database: str):
 @task(checkpoint=False)
 def run_ddl_script(ddl_script_path: str, **parameters):
     """
-    Runs DDL script at designated location with `database`  and `table` parameters.
+    Runs DDL script at designated location, passing kwargs to `run_sql_script`.
 
     Args:
         ddl_script_path (str): DDL script location, relative to ddl directory
@@ -36,6 +36,22 @@ def run_ddl_script(ddl_script_path: str, **parameters):
     """
     run_sql_script(
         sql_script_filepath=Path("ddl") / ddl_script_path,
+        parameters=parameters,
+    )
+
+
+@task(checkpoint=False)
+def run_data_flow_script(data_flow_script_path: str, **parameters):
+    """
+    Runs data flow script at designated location, passing kwargs to `run_sql_script`.
+
+    Args:
+        data_flow_script_path (str): data flow script location, relative to the
+          `data_flows` directory
+        parameters (dict, optionnal): pamaters to pass to `run_sql_script`
+    """
+    run_sql_script(
+        sql_script_filepath=Path("data_flows") / data_flow_script_path,
         parameters=parameters,
     )
 
