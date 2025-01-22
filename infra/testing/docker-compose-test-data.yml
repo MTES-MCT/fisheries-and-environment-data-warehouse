@@ -56,6 +56,7 @@ services:
     volumes:
       - ../../forklift/tests/test_data/external/monitorenv/backend/src/main/resources/db/migration:/flyway/sql/schema
       - ../../forklift/tests/test_data/external/monitorenv/datascience/tests/test_data/remote_database/:/flyway/sql/test_data
+      - ../../forklift/tests/test_data/monitorenv/remote_database/:/flyway/sql/extra_test_data
     depends_on:
       monitorenv-db:
         condition: service_healthy
