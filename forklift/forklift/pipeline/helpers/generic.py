@@ -90,8 +90,13 @@ def load_to_data_warehouse(
     database: str,
     logger: logging.Logger,
 ):
-    client = create_datawarehouse_client()
+    if isinstance(df, gpd.GeoDataFrame):
+        logger.info(
+            "GeoDataFrame detected. Converting geometry to text representation."
+        )
+        df = df.to_wkt()
 
+    client = create_datawarehouse_client()
     logger.info(f"Loading into data warehouse {database}.{table_name} table.")
     client.insert_df(table=table_name, df=df, database=database)
 
@@ -456,7 +461,7 @@ def read_saved_query(
     """
     sql_filepath = QUERIES_LOCATION / sql_filepath
     with open(sql_filepath, "r") as sql_file:
-        query = text(sql_file.read())
+        query = sql_file.read()
 
     return read_query(
         query,
@@ -473,7 +478,7 @@ def read_saved_query(
 
 
 def read_query(
-    query,
+    query: str,
     *,
     db: str = None,
     con: Optional[Connection | Engine | HttpClient] = None,
@@ -498,7 +503,7 @@ def read_query(
     Database credentials must be present in the environement.
 
     Args:
-        query (str): Query string or SQLAlchemy Selectable
+        query (str): Query string to run
         db (str, optional): Database name. Possible values :
           'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote',
           'monitorfish_local', 'monitorenv_local', 'data_warehouse'. If `db` is None,
@@ -542,7 +547,9 @@ def read_query(
     """
     if db == "data_warehouse":
         client = create_datawarehouse_client()
-        return client.query_df(query)
+        return client.query_df(query, parameters=params)
+    else:
+        query = text(query)
 
     if db:
         con = create_engine(db=db, execution_options=dict(stream_results=True))
@@ -575,7 +582,14 @@ def read_query(
         raise ValueError(f"backend must be 'pandas' or 'geopandas', got {backend}")
 
 
-def read_table(db: str, schema: str, table_name: str):
+def read_table(
+    db: str,
+    schema: str,
+    table_name: str,
+    backend: str = "pandas",
+    geom_col: str = "geom",
+    crs: Optional[int] = None,
+):
     """Loads database table into pandas Dataframe. Supported databases :
 
       - 'ocan' : OCAN database
@@ -595,4 +609,17 @@ def read_table(db: str, schema: str, table_name: str):
         pd.DataFrame: Dataframe containing the entire table
     """
     engine = create_engine(db=db)
-    return pd.read_sql_table(table_name, engine, schema=schema)
+
+    if backend == "pandas":
+        return pd.read_sql_table(table_name, engine, schema=schema)
+    elif backend == "geopandas":
+        return gpd.read_postgis(
+            sql=f'SELECT * FROM "{ schema }"."{ table_name }"',
+            con=engine,
+            geom_col=geom_col,
+            crs=crs,
+        )
+    else:
+        raise ValueError(
+            f"`backend` must be 'pandas' or 'geopandas', got '{ backend }'."
+        )
