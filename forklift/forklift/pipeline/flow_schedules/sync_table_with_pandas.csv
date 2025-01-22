@@ -1,0 +1,4 @@
+"source_database","query_filepath","schema","table_name","backend","geom_col","destination_database","destination_table","ddl_script_path","post_processing_script_path","final_table","cron_string"
+"monitorenv_remote",,"public","amp_cacem","geopandas","geom","monitorenv","amp_cacem_tmp","monitorenv/create_amp_cacem_tmp.sql","post_process_amp_cacem.sql","amp_cacem",
+"monitorenv_remote","monitorenv_remote/analytics_actions.sql",,,"pandas","geom","monitorenv","analytics_actions","monitorenv/create_analytics_actions.sql",,,
+"monitorfish_remote","monitorfish_remote/analytics_controls_full_data.sql",,,"pandas","geom","monitorfish","analytics_controls_full_data","monitorfish/create_analytics_controls_full_data.sql",,,
