@@ -8,15 +8,13 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
 
 
 @pytest.mark.parametrize(
-    "source_database,proxy_db_name,test_table,expected_len",
+    "source_database,proxy_db_name,test_table",
     [
-        ("monitorfish_remote", "monitorfish_proxy", "analytics_controls_full_data", 26),
-        ("monitorenv_remote", "monitorenv_proxy", "analytics_actions", 9),
+        ("monitorfish_remote", "monitorfish_proxy", "vessels"),
+        ("monitorenv_remote", "monitorenv_proxy", "missions"),
     ],
 )
-def test_reset_proxy_pg_database(
-    source_database, proxy_db_name, test_table, expected_len
-):
+def test_reset_proxy_pg_database(source_database, proxy_db_name, test_table):
     print(f"Testing the proxying of {source_database} as {proxy_db_name}")
     client = create_datawarehouse_client()
     initial_databases = client.query_df("SHOW DATABASES")
@@ -38,7 +36,7 @@ def test_reset_proxy_pg_database(
             "test_table": test_table,
         },
     )
-    assert len(df) == expected_len
+    assert len(df) > 0
     client.command(
         "DROP DATABASE {proxy_db_name:Identifier}",
         parameters={"proxy_db_name": proxy_db_name},

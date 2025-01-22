@@ -105,7 +105,7 @@ with Flow("Sync table with pandas") as flow:
 
         create_database = create_database_if_not_exists(destination_database)
 
-        drop_intermediate_table = drop_table_if_exists(
+        drop_table = drop_table_if_exists(
             destination_database,
             destination_table,
             upstream_tasks=[create_database],
@@ -114,7 +114,7 @@ with Flow("Sync table with pandas") as flow:
             ddl_script_path,
             database=destination_database,
             table=destination_table,
-            upstream_tasks=[drop_intermediate_table],
+            upstream_tasks=[drop_table],
         )
         loaded_df = load_df_to_data_warehouse(
             df,
@@ -127,7 +127,9 @@ with Flow("Sync table with pandas") as flow:
 
         with case(post_processing_needed, True):
             drop_final_table = drop_table_if_exists(
-                database=destination_database, table=final_table
+                database=destination_database,
+                table=final_table,
+                upstream_tasks=[loaded_df],
             )
             post_processing = run_data_flow_script(
                 post_processing_script_path, upstream_tasks=[drop_final_table]

@@ -41,9 +41,6 @@ def test_sync_table_with_pandas(
     post_processing_script_path,
     final_table,
 ):
-    print(
-        f"Testing syncing of {destination_database}.{destination_table} from {source_database}."
-    )
     client = create_datawarehouse_client()
 
     state = flow.run(
