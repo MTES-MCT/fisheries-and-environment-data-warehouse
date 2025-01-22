@@ -1,6 +1,6 @@
 from datetime import datetime, tzinfo
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import prefect
 from prefect import task
@@ -186,3 +186,12 @@ def filter_results(task_results) -> List:
         ]
     elif task_results is None:
         raise SKIP
+
+
+@task(checkpoint=False)
+def parameter_is_given(parameter: Any, expected_type: Any) -> bool:
+    if parameter is not None:
+        assert isinstance(parameter, expected_type)
+        return True
+    else:
+        return False
