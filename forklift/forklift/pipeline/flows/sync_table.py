@@ -7,20 +7,15 @@ from prefect import Flow, Parameter, case, task
 from forklift.config import QUERIES_LOCATION
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.helpers.generic import run_sql_script
-from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
+from forklift.pipeline.shared_tasks.control_flow import (
+    check_flow_not_running,
+    parameter_is_given,
+)
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
     drop_table_if_exists,
     run_ddl_script,
 )
-
-
-@task(checkpoint=False)
-def ddl_script_is_given(ddl_script_path: str):
-    if isinstance(ddl_script_path, str) and len(ddl_script_path) > 0:
-        return True
-    else:
-        return False
 
 
 @task(checkpoint=False)
@@ -129,7 +124,7 @@ with Flow("Sync table") as flow:
         ddl_script_path = Parameter("ddl_script_path", default=None)
         order_by = Parameter("order_by", default=None)
 
-        ddl_script_given = ddl_script_is_given(ddl_script_path)
+        ddl_script_given = parameter_is_given(ddl_script_path, str)
 
         create_database = create_database_if_not_exists(destination_database)
 
