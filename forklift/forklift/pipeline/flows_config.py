@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import pandas as pd
 from dotenv import dotenv_values
 from prefect.run_configs.docker import DockerRun
 from prefect.schedules import CronSchedule, Schedule, clocks
@@ -10,9 +11,21 @@ from forklift.config import (
     FLOWS_LOCATION,
     FORKLIFT_DOCKER_IMAGE,
     FORKLIFT_VERSION,
+    LIBRARY_LOCATION,
     ROOT_DIRECTORY,
 )
-from forklift.pipeline.flows import clean_flow_runs, reset_proxy_pg_database, sync_table
+from forklift.pipeline.flows import (
+    clean_flow_runs,
+    reset_proxy_pg_database,
+    sync_table,
+    sync_table_with_pandas,
+)
+
+
+def make_cron_clock_from_run_param_series(s: pd.Series) -> clocks.CronClock:
+    d = s.dropna().to_dict()
+    cron_string = d.pop("cron_string")
+    return clocks.CronClock(cron=cron_string, parameter_defaults=d)
 
 
 ################################ Define flow schedules ################################
@@ -20,20 +33,11 @@ def get_flows_to_register():
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     sync_table_flow = deepcopy(sync_table.flow)
+    sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
 
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
     sync_table_flow.schedule = Schedule(
         clocks=[
-            clocks.CronClock(
-                "25 4 * * *",
-                parameter_defaults={
-                    "source_database": "monitorfish_proxy",
-                    "source_table": "analytics_controls_full_data",
-                    "destination_database": "monitorfish",
-                    "destination_table": "analytics_controls_full_data",
-                    "ddl_script_path": "monitorfish/create_analytics_controls_full_data.sql",
-                },
-            ),
             clocks.CronClock(
                 "30 4 * * *",
                 parameter_defaults={
@@ -44,16 +48,16 @@ def get_flows_to_register():
                     "order_by": "year",
                 },
             ),
-            clocks.CronClock(
-                "35 * * * *",
-                parameter_defaults={
-                    "source_database": "monitorenv_proxy",
-                    "source_table": "analytics_actions",
-                    "destination_database": "monitorenv",
-                    "destination_table": "analytics_actions",
-                    "ddl_script_path": "monitorenv/create_analytics_actions.sql",
-                },
-            ),
+        ]
+    )
+
+    scheduled_runs = pd.read_csv(
+        LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_with_pandas.csv"
+    )
+    sync_table_with_pandas_flow.schedule = Schedule(
+        clocks=[
+            make_cron_clock_from_run_param_series(s=run[1])
+            for run in scheduled_runs.iterrows()
         ]
     )
 
@@ -62,6 +66,7 @@ def get_flows_to_register():
         clean_flow_runs_flow,
         reset_proxy_pg_database_flow,
         sync_table_flow,
+        sync_table_with_pandas_flow,
     ]
 
     ############################## Define flows' storage ##############################
