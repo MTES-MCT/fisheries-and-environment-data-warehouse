@@ -49,6 +49,6 @@ include:
   #   ref: main
   #   file: '/jobs/deploiement_image_prod.yml'
 
-analyse_trivy:
-  variables:
-    GIT_STRATEGY: fetch
+# analyse_trivy:
+#   variables:
+#     GIT_STRATEGY: fetch
