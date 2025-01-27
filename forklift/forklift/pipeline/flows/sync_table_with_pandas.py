@@ -134,10 +134,11 @@ with Flow("Sync table with pandas") as flow:
             post_processing = run_data_flow_script(
                 post_processing_script_path, upstream_tasks=[drop_final_table]
             )
-            drop_table_if_exists(
+            final_drop_table = drop_table_if_exists(
                 database=destination_database,
                 table=destination_table,
                 upstream_tasks=[post_processing],
             )
 
+flow.set_reference_tasks(loaded_df, final_drop_table)
 flow.file_name = Path(__file__).name
