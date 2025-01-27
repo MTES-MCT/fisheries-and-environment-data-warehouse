@@ -140,5 +140,5 @@ with Flow("Sync table with pandas") as flow:
                 upstream_tasks=[post_processing],
             )
 
-flow.set_reference_tasks(loaded_df, final_drop_table)
+flow.set_reference_tasks([loaded_df, final_drop_table])
 flow.file_name = Path(__file__).name
