@@ -24,9 +24,6 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     latitude Nullable(Float64),
     infraction Nullable(UInt8),
     number_of_controls Nullable(Float64),
-    infraction_id Nullable(String),
-    natinf Array(String),
-    infraction_type LowCardinality(Nullable(String)),
     surveillance_duration Nullable(Float64),
     observations_cacem Nullable(String)
 )
