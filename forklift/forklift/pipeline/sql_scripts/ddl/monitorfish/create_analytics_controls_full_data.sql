@@ -20,7 +20,7 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     port_locode Nullable(String),
     port_department Nullable(String),
     port_name Nullable(String),
-    vessel_targeted Nullable(UInt8),
+    vessel_targeted Nullable(String),
     infraction UInt8,
     fishing_infraction UInt8,
     infraction_report UInt8,
