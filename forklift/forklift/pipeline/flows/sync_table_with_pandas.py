@@ -91,7 +91,7 @@ with Flow("Sync table with pandas") as flow:
         post_processing_script_path = Parameter(
             "post_processing_script_path", default=None
         )
-        final_table = Parameter("final_table")
+        final_table = Parameter("final_table", default=None)
 
         df = extract_df(
             source_database=source_database,
