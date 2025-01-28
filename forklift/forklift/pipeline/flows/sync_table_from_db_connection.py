@@ -113,7 +113,7 @@ def insert_data_from_source_to_destination(
     )
 
 
-with Flow("Sync table") as flow:
+with Flow("Sync table from database connection") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         source_database = Parameter("source_database")

@@ -1,7 +1,7 @@
 import pytest
 
 from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.flows.sync_table import flow
+from forklift.pipeline.flows.sync_table_from_db_connection import flow
 from tests.mocks import mock_check_flow_not_running
 
 flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
@@ -29,7 +29,7 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
         ),
     ],
 )
-def test_sync_table(
+def test_sync_table_from_db_connection(
     add_monitorfish_proxy_database,
     add_monitorenv_proxy_database,
     source_database,
