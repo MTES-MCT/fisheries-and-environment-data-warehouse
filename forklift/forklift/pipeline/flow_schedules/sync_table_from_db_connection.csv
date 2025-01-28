@@ -1,0 +1,2 @@
+"source_database","source_table","query_filepath","destination_database","destination_table","ddl_script_path","order_by","cron_string"
+"monitorfish_proxy","control_objectives",,"monitorfish","control_objectives",,"year","30 4 * * *"

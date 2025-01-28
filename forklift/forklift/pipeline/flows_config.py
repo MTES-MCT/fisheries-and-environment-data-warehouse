@@ -36,18 +36,14 @@ def get_flows_to_register():
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
 
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
+
+    scheduled_runs = pd.read_csv(
+        LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_from_db_connection.csv"
+    )
     sync_table_from_db_connection_flow.schedule = Schedule(
         clocks=[
-            clocks.CronClock(
-                "30 4 * * *",
-                parameter_defaults={
-                    "source_database": "monitorfish_proxy",
-                    "source_table": "control_objectives",
-                    "destination_database": "monitorfish",
-                    "destination_table": "control_objectives",
-                    "order_by": "year",
-                },
-            ),
+            make_cron_clock_from_run_param_series(s=run[1])
+            for run in scheduled_runs.iterrows()
         ]
     )
 
