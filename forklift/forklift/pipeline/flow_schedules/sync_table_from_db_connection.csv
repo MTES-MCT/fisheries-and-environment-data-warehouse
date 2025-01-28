@@ -1,3 +1,7 @@
 "source_database","source_table","query_filepath","destination_database","destination_table","ddl_script_path","order_by","cron_string"
 "monitorfish_proxy","control_objectives",,"monitorfish","control_objectives",,"year","30 4 * * *"
 "monitorfish_proxy","fleet_segments",,"monitorfish","fleet_segments",,"year","32 4 * * *"
+"monitorfish_proxy","ports",,"monitorfish","ports",,"locode","34 4 * * *"
+"monitorfish_proxy","species",,"monitorfish","species",,"species_code","36 4 * * *"
+"monitorfish_proxy","vessels",,"monitorfish","vessels",,"id","40 4 * * *"
+"monitorfish_proxy","infractions",,"monitorfish","infractions",,"natinf_code","42 4 * * *"

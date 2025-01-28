@@ -45,6 +45,7 @@ services:
     volumes:
       - ../../forklift/tests/test_data/external/monitorfish/backend/src/main/resources/db/migration:/flyway/sql/schema
       - ../../forklift/tests/test_data/external/monitorfish/datascience/tests/test_data/remote_database/:/flyway/sql/test_data
+      - ../../forklift/tests/test_data/monitorfish/remote_database/:/flyway/sql/extra_test_data
     depends_on:
       monitorfish-db:
         condition: service_healthy

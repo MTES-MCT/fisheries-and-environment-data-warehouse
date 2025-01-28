@@ -2,3 +2,7 @@
 "monitorenv_remote",,"public","amp_cacem","geopandas","geom","monitorenv","amp_cacem_tmp","monitorenv/create_amp_cacem_tmp.sql","post_process_amp_cacem.sql","amp_cacem","31 1 * * *"
 "monitorenv_remote","monitorenv_remote/analytics_actions.sql",,,"pandas","geom","monitorenv","analytics_actions","monitorenv/create_analytics_actions.sql",,,"30 * * * *"
 "monitorfish_remote","monitorfish_remote/analytics_controls_full_data.sql",,,"pandas","geom","monitorfish","analytics_controls_full_data","monitorfish/create_analytics_controls_full_data.sql",,,"32 1 * * *"
+"monitorfish_remote",,"public","fao_areas","geopandas","wkb_geometry","monitorfish","fao_areas_tmp","monitorfish/create_fao_areas_tmp.sql","post_process_fao_areas.sql","fao_areas","34 1 * * *"
+"monitorfish_remote",,"public","rectangles_stat_areas","geopandas","wkb_geometry","monitorfish","rectangles_stat_areas_tmp","monitorfish/create_rectangles_stat_areas_tmp.sql","post_process_rectangles_stat_areas.sql","rectangles_stat_areas","36 1 * * *"
+"monitorfish_remote","monitorfish_remote/facade_areas_subdivided.sql",,,"geopandas","geometry","monitorfish","facade_areas_subdivided_tmp","monitorfish/create_facade_areas_subdivided_tmp.sql","post_process_facade_areas_subdivided.sql","facade_areas_subdivided","38 1 * * *"
+"monitorfish_remote","monitorfish_remote/eez_areas.sql",,,"geopandas","wkb_geometry","monitorfish","eez_areas_tmp","monitorfish/create_eez_areas_tmp.sql","post_process_eez_areas.sql","eez_areas","40 1 * * *"
