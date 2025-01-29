@@ -81,7 +81,6 @@ def test_sync_table_with_pandas(
     )
 
     assert len(df) > 0
-    breakpoint()
 
     client.command(
         ("DROP TABLE " "{database:Identifier}.{table:Identifier}"),
