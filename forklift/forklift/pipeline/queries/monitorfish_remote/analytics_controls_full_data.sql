@@ -106,8 +106,8 @@ SELECT
     COALESCE(infraction_categories, '{Aucune infraction}'::VARCHAR[]) AS infraction_categories,
     COALESCE(infraction_natinfs, '{Aucune infraction}'::VARCHAR[]) AS infraction_natinfs,
     COALESCE(seizure_and_diversion, false) AS seizure_and_diversion,
-    species,
-    gears, 
+    COALESCE(species, '{Aucune espèce}'::VARCHAR[]) AS species,
+    COALESCE(gears, '{Aucun engin}'::VARCHAR[]) AS gears,
     CASE WHEN a.fao_areas = '{}' THEN '{Aucune zone FAO}' ELSE a.fao_areas END AS fao_areas, 
     COALESCE(segment->>'segment', 'Hors segment') AS segment,
     NULLIF(
