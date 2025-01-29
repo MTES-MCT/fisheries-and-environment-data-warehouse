@@ -21,11 +21,11 @@ from forklift.pipeline.shared_tasks.generic import (
 @task(checkpoint=False)
 def insert_data_from_source_to_destination(
     source_database: str,
-    source_table: str,
     destination_database: str,
     destination_table: str,
     create_table: bool,
     order_by: str,
+    source_table: str = None,
     query_filepath: Optional[Path] = None,
 ):
     logger = prefect.context.get("logger")
@@ -136,11 +136,11 @@ with Flow("Sync table from database connection") as flow:
             )
             insert_data_from_source_to_destination(
                 source_database,
-                source_table,
                 destination_database,
                 destination_table,
                 create_table=True,
                 order_by=order_by,
+                source_table=source_table,
                 query_filepath=query_filepath,
                 upstream_tasks=[drop_table],
             )
@@ -159,13 +159,13 @@ with Flow("Sync table from database connection") as flow:
             )
             insert_data_from_source_to_destination(
                 source_database,
-                source_table,
                 destination_database,
                 destination_table,
-                upstream_tasks=[created_table],
                 create_table=False,
                 order_by=order_by,
+                source_table=source_table,
                 query_filepath=query_filepath,
+                upstream_tasks=[created_table],
             )
 
 
