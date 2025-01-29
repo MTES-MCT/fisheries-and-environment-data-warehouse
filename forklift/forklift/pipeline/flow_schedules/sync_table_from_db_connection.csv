@@ -3,5 +3,5 @@
 "monitorfish_proxy","fleet_segments",,"monitorfish","fleet_segments",,"year","32 4 * * *"
 "monitorfish_proxy","ports",,"monitorfish","ports",,"locode","34 4 * * *"
 "monitorfish_proxy","species",,"monitorfish","species",,"species_code","36 4 * * *"
-"monitorfish_proxy","vessels",,"monitorfish","vessels",,"id","40 4 * * *"
+monitorfish_proxy,,monitorfish_proxy/vessels.sql,monitorfish,vessels,,id,40 4 * * *
 "monitorfish_proxy","infractions",,"monitorfish","infractions",,"natinf_code","42 4 * * *"

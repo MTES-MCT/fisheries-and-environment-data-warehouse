@@ -1,0 +1,27 @@
+SELECT
+    id,
+    cfr,
+    external_immatriculation,
+    imo,
+    mmsi,
+    ircs,
+    vessel_name,
+    flag_state,
+    width,
+    length,
+    district,
+    district_code,
+    gauge,
+    registry_port,
+    power,
+    vessel_type,
+    sailing_category,
+    sailing_type,
+    declared_fishing_gears,
+    nav_licence_expiration_date,
+    logbook_equipment_status,
+    has_esacapt,
+    nav_licence_status,
+    nav_licence_extension_date
+FROM monitorfish_proxy.vessels
+ORDER BY id
