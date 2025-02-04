@@ -72,7 +72,6 @@ def get_flows_to_register():
     flows_to_register += [
         clean_flow_runs_flow,
         reset_proxy_pg_database_flow,
-        sync_table_from_db_connection_flow,
     ]
 
     ############################## Define flows' storage ##############################
