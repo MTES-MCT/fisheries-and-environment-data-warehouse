@@ -6,6 +6,7 @@ from forklift.pipeline.flows_config import get_flows_to_register
 def test_flows_registration():
     for flow in get_flows_to_register():
         # Check that the flow and its params can be serialized and deserialized
+        print(f"Testing { flow.name }")
         serialized_flow = flow.serialize()
         prefect.serialization.flow.FlowSchema().load(serialized_flow)
 
@@ -14,6 +15,7 @@ def test_flows_registration():
         if flow.schedule is not None and required_parameters:
             required_names = {p.name for p in required_parameters}
             for c in flow.schedule.clocks:
+                print(c.cron)
                 try:
                     assert required_names <= set(c.parameter_defaults.keys())
                 except AssertionError:
