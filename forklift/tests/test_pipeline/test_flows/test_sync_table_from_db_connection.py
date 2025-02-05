@@ -11,7 +11,7 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
 
 scheduled_runs = pd.read_csv(
     LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_from_db_connection.csv"
-).drop(columns=["cron_string", "flow_name"])
+).drop(columns=["cron_string"])
 parameters = ",".join(scheduled_runs.columns)
 try:
     assert parameters == (

@@ -30,7 +30,6 @@ def make_cron_clock_from_run_param_series(s: pd.Series) -> clocks.CronClock:
 
 ################################ Define flow schedules ################################
 def get_flows_to_register():
-    flows_to_register = []
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
@@ -41,38 +40,29 @@ def get_flows_to_register():
     scheduled_runs = pd.read_csv(
         LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_from_db_connection.csv"
     )
-    for scheduled_run in scheduled_runs.iterrows():
-        flow = sync_table_from_db_connection_flow.copy()
-        flow.name = scheduled_run[1].loc["flow_name"]
-        flow.schedule = Schedule(
-            clocks=[
-                make_cron_clock_from_run_param_series(
-                    s=scheduled_run[1].drop("flow_name")
-                )
-            ]
-        )
-        flows_to_register.append(flow)
+    sync_table_from_db_connection_flow.schedule = Schedule(
+        clocks=[
+            make_cron_clock_from_run_param_series(s=run[1])
+            for run in scheduled_runs.iterrows()
+        ]
+    )
 
     scheduled_runs = pd.read_csv(
         LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_with_pandas.csv"
     )
-    for scheduled_run in scheduled_runs.iterrows():
-        flow = sync_table_with_pandas_flow.copy()
-        flow.name = scheduled_run[1].loc["flow_name"]
-        flow.schedule = Schedule(
-            clocks=[
-                make_cron_clock_from_run_param_series(
-                    s=scheduled_run[1].drop("flow_name")
-                )
-            ]
-        )
-        flows_to_register.append(flow)
+    sync_table_with_pandas_flow.schedule = Schedule(
+        clocks=[
+            make_cron_clock_from_run_param_series(s=run[1])
+            for run in scheduled_runs.iterrows()
+        ]
+    )
 
     #################### List flows to register with prefect server ###################
-    flows_to_register += [
+    flows_to_register = [
         clean_flow_runs_flow,
         reset_proxy_pg_database_flow,
         sync_table_from_db_connection_flow,
+        sync_table_with_pandas_flow,
     ]
 
     ############################## Define flows' storage ##############################
