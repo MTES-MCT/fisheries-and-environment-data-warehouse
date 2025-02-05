@@ -47,6 +47,6 @@ include:
   - "/.gitlab-ci/jobs/deploiement_image_int.yml"
   - "/.gitlab-ci/jobs/deploiement_image_prod.yml"
 
-# analyse_trivy:
-#   variables:
-#     GIT_STRATEGY: fetch
+analyse_trivy:
+  variables:
+    GIT_STRATEGY: fetch
