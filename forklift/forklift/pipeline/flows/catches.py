@@ -66,7 +66,6 @@ def load_catches(catches: pd.DataFrame, month_start: date):
 with Flow("Catches") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
-        drop_table = Parameter("drop_table", default=False)
         start_months_ago = Parameter("start_months_ago", default=0)
         end_months_ago = Parameter("end_months_ago", default=0)
 

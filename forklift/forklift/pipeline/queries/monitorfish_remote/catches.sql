@@ -111,4 +111,9 @@ WHERE
         SELECT referenced_report_id FROM acknowledged_cors_targeting_fars
         UNION ALL
         SELECT referenced_report_id FROM acknowledged_dels_targeting_fars
-    )
+    ) AND
+    gear IS NOT NULL AND
+    weight IS NOT NULL AND
+    species IS NOT NULL AND
+    trip_number IS NOT NULL AND
+    fao_area IS NOT NULL

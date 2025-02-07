@@ -8,12 +8,12 @@ CREATE TABLE IF NOT EXISTS monitorfish.catches (
     operation_datetime_utc DateTime,
     far_datetime_utc DateTime,
     fao_area LowCardinality(String),
-    statistical_rectangle LowCardinality(String),
-    economic_zone LowCardinality(String),
+    statistical_rectangle LowCardinality(Nullable(String)),
+    economic_zone LowCardinality(Nullable(String)),
     gear LowCardinality(String),
     mesh Nullable(Float64),
     species LowCardinality(String),
-    weight Nullable(Float64)
+    weight Float64
 )
 ENGINE MergeTree()
 PARTITION BY toYYYYMM(operation_datetime_utc)
