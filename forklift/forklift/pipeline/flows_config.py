@@ -15,6 +15,7 @@ from forklift.config import (
     ROOT_DIRECTORY,
 )
 from forklift.pipeline.flows import (
+    catches,
     clean_flow_runs,
     reset_proxy_pg_database,
     sync_table_from_db_connection,
@@ -30,11 +31,13 @@ def make_cron_clock_from_run_param_series(s: pd.Series) -> clocks.CronClock:
 
 ################################ Define flow schedules ################################
 def get_flows_to_register():
+    catches_flow = deepcopy(catches.flow)
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
 
+    catches_flow.schedule = CronSchedule("44 4 * * *")
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
 
     scheduled_runs = pd.read_csv(
@@ -59,6 +62,7 @@ def get_flows_to_register():
 
     #################### List flows to register with prefect server ###################
     flows_to_register = [
+        catches_flow,
         clean_flow_runs_flow,
         reset_proxy_pg_database_flow,
         sync_table_from_db_connection_flow,
