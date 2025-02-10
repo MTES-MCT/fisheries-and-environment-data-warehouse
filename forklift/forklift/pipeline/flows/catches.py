@@ -48,6 +48,18 @@ def extract_catches(month_start: date) -> pd.DataFrame:
 
 
 @task(checkpoint=False)
+def extract_bft_catches(month_start: date) -> pd.DataFrame:
+    min_date = month_start
+    max_date = month_start + relativedelta(months=1)
+
+    return extract(
+        db_name="monitorfish_remote",
+        query_filepath="monitorfish_remote/bft_catches.sql",
+        params={"min_date": min_date, "max_date": max_date},
+    )
+
+
+@task(checkpoint=False)
 def load_catches(catches: pd.DataFrame, month_start: date):
     logger = prefect.context.get("logger")
     partition = f"{month_start.year}{month_start.month:0>2}"
@@ -61,6 +73,11 @@ def load_catches(catches: pd.DataFrame, month_start: date):
         f"Loading { len(catches) } catches of month { month_start } data warehouse."
     )
     client.insert_df(table="catches", df=catches, database="monitorfish")
+
+
+@task(checkpoint=False)
+def concat(catches: pd.DataFrame, bft_catches: pd.DataFrame) -> pd.DataFrame:
+    return pd.concat([catches, bft_catches])
 
 
 with Flow("Catches") as flow:
@@ -83,8 +100,10 @@ with Flow("Catches") as flow:
         )
 
         catches = extract_catches.map(months_starts)
+        bft_catches = extract_bft_catches.map(months_starts)
+        all_catches = concat.map(catches, bft_catches)
         load_catches.map(
-            catches, months_starts, upstream_tasks=[unmapped(created_table)]
+            all_catches, months_starts, upstream_tasks=[unmapped(created_table)]
         )
 
 flow.file_name = Path(__file__).name
