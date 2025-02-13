@@ -1,9 +1,12 @@
+DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(shell pwd)/forklift/tests/test_data/data_warehouse_mounted_volume
+
 # DEV commands
 dev-run-data-warehouse:
 	git clone --depth=1 --branch=master https://github.com/MTES-MCT/monitorfish.git ./forklift/tests/test_data/external/monitorfish || echo "Monitorfish repository already present - skipping git clone" && \
 	git clone --depth=1 --branch=main https://github.com/MTES-MCT/monitorenv.git ./forklift/tests/test_data/external/monitorenv || echo "Monitorenv repository already present - skipping git clone" && \
 	export DATA_WAREHOUSE_PASSWORD=password && \
 	export DATA_WAREHOUSE_USER=clickhouse_user && \
+	export DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(DATA_WAREHOUSE_INPUT_DATA_FOLDER) && \
 	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml up -d --remove-orphans
 
 dev-run-metabase:
@@ -14,6 +17,7 @@ dev-run-metabase:
 dev-stop-data-warehouse:
 	export DATA_WAREHOUSE_PASSWORD=password && \
 	export DATA_WAREHOUSE_USER=clickhouse_user && \
+	export DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(DATA_WAREHOUSE_INPUT_DATA_FOLDER) && \
 	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml down
 
 dev-stop-metabase:
