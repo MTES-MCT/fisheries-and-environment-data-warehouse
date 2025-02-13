@@ -6,3 +6,4 @@ class Database(Enum):
     MONITORENV_PROXY = "monitorenv_proxy"
     MONITORFISH = "monitorfish"
     MONITORENV = "monitorenv"
+    SACROIS = "sacrois"
