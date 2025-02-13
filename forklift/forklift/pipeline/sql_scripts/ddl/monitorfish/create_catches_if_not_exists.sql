@@ -18,4 +18,4 @@ CREATE TABLE IF NOT EXISTS monitorfish.catches (
 ENGINE MergeTree()
 PARTITION BY toYYYYMM(operation_datetime_utc)
 PRIMARY KEY (toYear(far_datetime_utc), cfr)
-ORDER BY (toYear(far_datetime_utc), cfr, far_datetime_utc, )
+ORDER BY (toYear(far_datetime_utc), cfr, far_datetime_utc)
