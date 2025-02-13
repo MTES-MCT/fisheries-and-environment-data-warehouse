@@ -1,4 +1,4 @@
-DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(shell pwd)/forklift/tests/test_data/data_warehouse_mounted_volume
+DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(shell pwd)/forklift/tests/test_data/clickhouse_user_files
 
 # DEV commands
 dev-run-data-warehouse:
