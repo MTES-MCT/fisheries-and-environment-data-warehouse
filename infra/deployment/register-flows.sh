@@ -7,6 +7,5 @@ docker run -t --rm --network=host --name forklift-register-flows \
         --env-file .env \
         -e FORKLIFT_VERSION \
         -e FORKLIFT_DOCKER_IMAGE \
-        -e SACROIS_FILES_GID \
         $FORKLIFT_DOCKER_IMAGE:$FORKLIFT_VERSION \
         python forklift/main.py
