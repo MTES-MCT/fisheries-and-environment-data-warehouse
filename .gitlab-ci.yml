@@ -12,7 +12,7 @@ variables:
     value: datawarehouse
     description: "Nom du projet à déployer"
   PROJECT_VERSION:
-    value: "1.0"
+    value: "1.1"
     description: "Version du projet à déployer"
   SERVER_ENV_INT:
     value: "int-monitorfish-datawarehouse01"
