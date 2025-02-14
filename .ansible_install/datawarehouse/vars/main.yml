@@ -32,7 +32,6 @@ data_warehouse_ip: "{{ lookup('env', 'DATA_WAREHOUSE_IP') }}"
 data_warehouse_port: "{{ lookup('env', 'DATA_WAREHOUSE_PORT') }}"
 data_warehouse_user: "{{ lookup('env', 'DATA_WAREHOUSE_USER') }}"
 data_warehouse_pwd: "{{ lookup('env', 'DATA_WAREHOUSE_PWD') }}"
-data_warehouse_input_data_folder: "{{ lookup('env', 'DATA_WAREHOUSE_INPUT_DATA_FOLDER') }}"
 
 ###########################API_KEY###########################
 api_key_datagouv: "{{ lookup('env', 'DATAGOUV_API_KEY') }}"
