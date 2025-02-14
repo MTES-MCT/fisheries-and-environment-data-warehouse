@@ -37,7 +37,7 @@ def get_flows_to_register():
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     drop_table_flow = deepcopy(drop_table.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
-    sacrois_flow = deepcopy(sacrois.flow.name)
+    sacrois_flow = deepcopy(sacrois.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
 
