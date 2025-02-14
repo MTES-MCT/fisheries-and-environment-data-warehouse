@@ -8,7 +8,7 @@
 
 - name: "Start docker-compose"
   become_user: d_dawar
-  shell: source .data-warehouse && make register-forklift-flows
+  shell: source .data-warehouse && run-datawarehouse && make register-forklift-flows
   args:
     chdir: "/home/d_dawar"
     executable: /bin/bash
@@ -16,7 +16,7 @@
 
 - name: "Start docker-compose"
   become_user: d_dawar
-  shell: source .data-warehouse && make register-forklift-flows
+  shell: source .data-warehouse && run-datawarehouse && make register-forklift-flows
   args:
     executable: /bin/bash
     chdir: "/opt/docker/datawarehouse"
