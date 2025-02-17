@@ -43,6 +43,7 @@ docker-run-data-warehouse:
 	git clone --depth=1 --branch=main https://github.com/MTES-MCT/monitorenv.git ./forklift/tests/test_data/external/monitorenv || echo "Monitorenv repository already present - skipping git clone" && \
 	export DATA_WAREHOUSE_PASSWORD=password && \
 	export DATA_WAREHOUSE_USER=clickhouse_user && \
+	export DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(DATA_WAREHOUSE_INPUT_DATA_FOLDER) && \
 	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml up -d --remove-orphans
 docker-test-forklift: docker-run-data-warehouse
 	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -u forklift:$(DOCKER_GROUP) --env-file forklift/.env.test forklift:$(VERSION) coverage run -m pytest --pdb tests
