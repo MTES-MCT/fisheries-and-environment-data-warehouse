@@ -6,22 +6,13 @@
   command: docker login {{ nexus_docker }} -u {{ nexus_user }} -p {{ nexus_password }}
   no_log: true
 
-
 - name: Capture docker information
   shell: docker --version
   register: docker_version
 
-- name: Capture docker compose information
-  shell: docker compose version
-  register: docker_compose_version
-
 - name: Print docker information
   debug:
     var: docker_version.stdout
-
-- name: Print docker compose information
-  debug:
-    var: docker_compose_version.stdout
 
 - name: "Start docker-compose"
   become_user: d_dawar
