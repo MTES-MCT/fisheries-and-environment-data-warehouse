@@ -21,6 +21,11 @@
         dest: "/home/d_dawar/docker-compose.yml"
         mode: 0755
 
+    - name: "Copy Markefile"
+      copy:
+        src: ../infra/deployment/Makefile
+        dest: "/home/d_dawar/Makefile"
+
     - name: "Creating new .env file"
       template:
         src: "../.gitlab-ci/templates/.env.j2"
@@ -45,6 +50,11 @@
         src: ../infra/deployment/docker-compose.yml
         dest: "/opt/docker/datawarehouse/docker-compose.yml"
         mode: 0755
+
+    - name: "Copy Markefile"
+      copy:
+        src: ../infra/deployment/Makefile
+        dest: "/home/d_dawar/Makefile"
 
     - name: "Creating new .env file"
       template:
