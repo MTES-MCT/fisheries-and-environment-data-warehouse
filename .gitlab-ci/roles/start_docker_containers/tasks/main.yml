@@ -6,6 +6,9 @@
   command: docker login {{ nexus_docker }} -u {{ nexus_user }} -p {{ nexus_password }}
   no_log: true
 
+- name: "Debug - print docker and docker compose version"
+  command: docker --version && docker compose version
+
 - name: "Start docker-compose"
   become_user: d_dawar
   shell: source .data-warehouse && make run-datawarehouse && make register-forklift-flows
