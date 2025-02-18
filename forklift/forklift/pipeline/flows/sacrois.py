@@ -101,13 +101,11 @@ with Flow("Import SACROIS") as flow:
 
         ddl_script_path = get_ddl_script_path(file_type)
 
-        navires_mois_marees_jour_table = run_ddl_script(
+        created_table = run_ddl_script(
             ddl_script_path,
             upstream_tasks=[create_database],
         )
 
-        load_sacrois_data(
-            import_spec=import_spec, upstream_tasks=[navires_mois_marees_jour_table]
-        )
+        load_sacrois_data(import_spec=import_spec, upstream_tasks=[created_table])
 
 flow.file_name = Path(__file__).name
