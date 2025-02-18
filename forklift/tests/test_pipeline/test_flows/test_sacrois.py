@@ -73,11 +73,14 @@ def test_get_sacrois_file_import_spec_raises_if_month_is_incorrect():
 
 
 @pytest.mark.parametrize(
-    "sacrois_file_type_flow_parameter,table_name",
-    [("NAVIRES_MOIS_MAREES_JOUR", "navires_mois_marees_jour")],
+    "sacrois_file_type_flow_parameter,table_name,lines_run_1,lines_run_2",
+    [
+        ("NAVIRES_MOIS_MAREES_JOUR", "navires_mois_marees_jour", 10, 15),
+        ("FISHING_ACTIVITY", "fishing_activity", 14, 14),
+    ],
 )
 def test_sacrois_navires_mois_marees_jours(
-    drop_sacrois, sacrois_file_type_flow_parameter, table_name
+    drop_sacrois, sacrois_file_type_flow_parameter, table_name, lines_run_1, lines_run_2
 ):
     client = drop_sacrois
 
@@ -119,5 +122,5 @@ def test_sacrois_navires_mois_marees_jours(
 
     data_after_run_2 = client.query_df(query)
 
-    assert len(data_after_run_1) == len(data_after_run_1_bis) == 10
-    assert len(data_after_run_2) == 25
+    assert len(data_after_run_1) == len(data_after_run_1_bis) == lines_run_1
+    assert len(data_after_run_2) == lines_run_1 + lines_run_2

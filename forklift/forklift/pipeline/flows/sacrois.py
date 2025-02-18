@@ -23,7 +23,10 @@ def get_ddl_script_path(file_type: SacroisFileType) -> Path:
     file_type_ddl_map = {
         SacroisFileType.NAVIRES_MOIS_MAREES_JOUR: Path(
             "sacrois/create_navires_mois_marees_jour_if_not_exists.sql"
-        )
+        ),
+        SacroisFileType.FISHING_ACTIVITY: Path(
+            "sacrois/create_fishing_activity_if_not_exists.sql"
+        ),
     }
     return file_type_ddl_map[file_type]
 
@@ -42,6 +45,7 @@ def get_sacrois_file_import_spec(
         SacroisFileType.BMS: "BMS_{partition}.parquet",
         SacroisFileType.REJETS: "REJETS_{partition}.parquet",
         SacroisFileType.NAVIRES_MOIS_MAREES_JOUR: "NAVIRES_MOIS_MAREES_JOUR_{partition}.parquet",
+        SacroisFileType.FISHING_ACTIVITY: "FISHING_ACTIVITY_{partition}.parquet",
     }
 
     filename = filename_templates[file_type].format(partition=partition)

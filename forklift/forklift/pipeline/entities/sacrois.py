@@ -7,6 +7,7 @@ class SacroisFileType(Enum):
     NAVIRES_MOIS_MAREES_JOUR = "NAVIRES_MOIS_MAREES_JOUR"
     REJETS = "REJETS"
     BMS = "BMS"
+    FISHING_ACTIVITY = "FISHING_ACTIVITY"
 
     def to_table_name(self):
         return self.value.lower()
