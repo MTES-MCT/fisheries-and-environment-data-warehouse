@@ -18,8 +18,8 @@ from forklift.pipeline.flows import (
     catches,
     clean_flow_runs,
     drop_table,
+    import_sacrois_data,
     reset_proxy_pg_database,
-    sacrois,
     sync_table_from_db_connection,
     sync_table_with_pandas,
 )
@@ -37,7 +37,7 @@ def get_flows_to_register():
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     drop_table_flow = deepcopy(drop_table.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
-    sacrois_flow = deepcopy(sacrois.flow)
+    import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
 
@@ -70,7 +70,7 @@ def get_flows_to_register():
         clean_flow_runs_flow,
         drop_table_flow,
         reset_proxy_pg_database_flow,
-        sacrois_flow,
+        import_sacrois_data_flow,
         sync_table_from_db_connection_flow,
         sync_table_with_pandas_flow,
     ]

@@ -87,7 +87,7 @@ def load_sacrois_data(import_spec: SacroisFileImportSpec):
     )
 
 
-with Flow("Import SACROIS") as flow:
+with Flow("Import SACROIS data") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         year = Parameter("year")

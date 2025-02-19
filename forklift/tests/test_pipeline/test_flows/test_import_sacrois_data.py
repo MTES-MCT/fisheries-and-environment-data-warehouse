@@ -5,7 +5,7 @@ from pytest import fixture
 
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.entities.sacrois import SacroisFileImportSpec, SacroisFileType
-from forklift.pipeline.flows.sacrois import (
+from forklift.pipeline.flows.import_sacrois_data import (
     flow,
     get_file_type,
     get_sacrois_file_import_spec,

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS sacrois.fishing_activity (
-    date_traitement_sacrois DateTime,
+    PROCESSING_DATETIME DateTime,
     ID Int64,
     VESSEL_ID LowCardinality(String),
     TRIP_ID Integer,
@@ -20,6 +20,6 @@ CREATE TABLE IF NOT EXISTS sacrois.fishing_activity (
     CATEGORY LowCardinality(String),
 )
 ENGINE MergeTree()
-PARTITION BY toYYYYMM(date_traitement_sacrois)
+PARTITION BY toYYYYMM(PROCESSING_DATETIME)
 PRIMARY KEY (toStartOfMonth(CATCH_DATE), VESSEL_ID)
 ORDER BY (toStartOfMonth(CATCH_DATE), VESSEL_ID, CATCH_DATE, GEAR)

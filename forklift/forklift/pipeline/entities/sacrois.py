@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
@@ -20,3 +21,15 @@ class SacroisFileImportSpec:
     month: int
     partition: str
     filepath: Path
+
+
+@dataclass
+class SacroisPartition:
+    name: str
+    processing_datetime: datetime
+
+
+@dataclass
+class IdRange:
+    id_min: int
+    id_max: int
