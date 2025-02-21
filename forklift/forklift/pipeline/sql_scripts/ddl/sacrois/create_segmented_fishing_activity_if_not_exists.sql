@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS sacrois.fishing_activity (
+CREATE TABLE IF NOT EXISTS sacrois.segmented_fishing_activity (
     PROCESSING_DATE Date,
     ID Int64,
     VESSEL_ID LowCardinality(String),
@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS sacrois.fishing_activity (
     LANDING_PORT LowCardinality(Nullable(String)),
     QUANTITY DOUBLE,
     CATEGORY LowCardinality(String),
+    SEGMENT LowCardinality(String)
 )
 ENGINE MergeTree()
 PARTITION BY toYYYYMM(PROCESSING_DATE)

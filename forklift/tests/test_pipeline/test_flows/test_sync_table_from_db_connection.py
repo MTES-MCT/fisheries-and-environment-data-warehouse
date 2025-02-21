@@ -6,7 +6,10 @@ from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.sync_table_from_db_connection import flow
 from tests.mocks import mock_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+if flow.get_tasks("check_flow_not_running"):
+    flow.replace(
+        flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running
+    )
 
 
 scheduled_runs = pd.read_csv(

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 # Package structure
 ROOT_DIRECTORY = Path(__file__).parent.parent
+TEST_DATA_LOCATION = ROOT_DIRECTORY / "tests/test_data"
 LIBRARY_LOCATION = ROOT_DIRECTORY / Path("forklift")
 QUERIES_LOCATION = LIBRARY_LOCATION / Path("pipeline/queries")
 SQL_SCRIPTS_LOCATION = LIBRARY_LOCATION / Path("pipeline/sql_scripts")

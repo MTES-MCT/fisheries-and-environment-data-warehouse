@@ -26,7 +26,7 @@ class SacroisFileImportSpec:
 @dataclass
 class SacroisPartition:
     name: str
-    processing_datetime: datetime
+    processing_date: datetime
 
 
 @dataclass

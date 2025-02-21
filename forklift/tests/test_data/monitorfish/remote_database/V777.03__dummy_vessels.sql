@@ -80,4 +80,13 @@ INSERT INTO public.vessels (
     '{}', '{}', NULL, '{}', '{}', 'Thonier', '{0001112223}',
     false,
     null, null, null, null, null, 'jfo@bft', 'Equipé'
+),
+(
+    9,
+    'CFR000888888', 'AA8888888', NULL, 'BBBB', 'THONIER CONGELATEUR', 'FR', 3.4, 59.58,
+    'Brest', 'BR', 5.7, 'Brest', 895, 'Chalutier pêche arrière congélateur', '4ème', 'Grande pêche',
+    '{OTB}', NULL,
+    '{}', '{}', NULL, '{}', '{}', 'Thonier', '{0001112223}',
+    false,
+    null, null, null, null, null, 'jfo@bft', 'Equipé'
 );

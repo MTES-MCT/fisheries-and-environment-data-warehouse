@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS sacrois.navires_mois_marees_jour (
-    date_traitement_sacrois DateTime,
+    date_traitement_sacrois Date,
     datetime_ref DateTime,
     cfr_cod LowCardinality(String),
     maree_id INTEGER,

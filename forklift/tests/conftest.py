@@ -81,27 +81,27 @@ def wait_for_data_warehouse_and_migrations(
 
 @pytest.fixture
 def add_monitorfish_proxy_database():
-    print("Creating monitorfish database proxy")
+    print("Creating monitorfish database proxy database")
     reset_proxy_pg_database.run(
         database="monitorfish_remote",
         schema="public",
         database_name_in_dw="monitorfish_proxy",
     )
     yield
-    print("Dropping monitorfish database proxy")
+    print("Dropping monitorfish database proxy database")
     client = create_datawarehouse_client()
     client.command("DROP DATABASE monitorfish_proxy")
 
 
 @pytest.fixture
 def add_monitorenv_proxy_database():
-    print("Creating monitorenv database proxy")
+    print("Creating monitorenv database proxy database")
     reset_proxy_pg_database.run(
         database="monitorenv_remote",
         schema="public",
         database_name_in_dw="monitorenv_proxy",
     )
     yield
-    print("Dropping monitorenv database proxy")
+    print("Dropping monitorenv database proxy database")
     client = create_datawarehouse_client()
     client.command("DROP DATABASE monitorenv_proxy")
