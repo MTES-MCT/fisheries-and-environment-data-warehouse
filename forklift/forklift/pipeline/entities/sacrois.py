@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 from enum import Enum
 from pathlib import Path
 
@@ -26,7 +26,7 @@ class SacroisFileImportSpec:
 @dataclass
 class SacroisPartition:
     name: str
-    processing_date: datetime
+    processing_date: date
 
 
 @dataclass
