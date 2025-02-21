@@ -17,6 +17,7 @@ from forklift.config import (
 from forklift.pipeline.flows import (
     catches,
     clean_flow_runs,
+    compute_sacrois_segments,
     drop_table,
     import_sacrois_data,
     reset_proxy_pg_database,
@@ -35,6 +36,7 @@ def make_cron_clock_from_run_param_series(s: pd.Series) -> clocks.CronClock:
 def get_flows_to_register():
     catches_flow = deepcopy(catches.flow)
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
+    compute_sacrois_segments_flow = deepcopy(compute_sacrois_segments.flow)
     drop_table_flow = deepcopy(drop_table.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
@@ -68,6 +70,7 @@ def get_flows_to_register():
     flows_to_register = [
         catches_flow,
         clean_flow_runs_flow,
+        compute_sacrois_segments_flow,
         drop_table_flow,
         reset_proxy_pg_database_flow,
         import_sacrois_data_flow,
