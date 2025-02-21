@@ -54,7 +54,7 @@
     - name: "Copy Markefile"
       copy:
         src: ../infra/deployment/Makefile
-        dest: "/opt/docker/Makefile"
+        dest: "/opt/docker/datawarehouse/Makefile"
 
     - name: "Creating new .env file"
       template:
