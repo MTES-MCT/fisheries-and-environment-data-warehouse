@@ -54,7 +54,7 @@
     - name: "Copy Markefile"
       copy:
         src: ../infra/deployment/Makefile
-        dest: "/home/d_dawar/Makefile"
+        dest: "/opt/docker/Makefile"
 
     - name: "Creating new .env file"
       template:
