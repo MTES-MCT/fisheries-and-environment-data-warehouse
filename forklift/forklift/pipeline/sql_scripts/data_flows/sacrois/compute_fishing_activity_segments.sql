@@ -94,6 +94,7 @@ catches_top_priority_segment AS (
 
 SELECT
     c.* EXCEPT (VESSEL_TYPE, MAIN_SCIP_SPECIES_TYPE),
+    MAIN_SCIP_SPECIES_TYPE AS TRIP_MAIN_CATCH_TYPE,
     COALESCE(s.segment, 'NO_SEGMENT') AS FLEET
 FROM catches_main_type c
 LEFT JOIN catches_top_priority_segment s

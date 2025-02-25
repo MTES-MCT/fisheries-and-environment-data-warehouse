@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS sacrois.segmented_fishing_activity (
     LANDING_PORT LowCardinality(Nullable(String)),
     QUANTITY DOUBLE,
     CATEGORY LowCardinality(String),
+    TRIP_MAIN_CATCH_TYPE Enum('DEMERSAL' = 1, 'PELAGIC' = 2),
     FLEET LowCardinality(String)
 )
 ENGINE MergeTree()
