@@ -222,7 +222,7 @@ def test_compute_fleet_segments(
     )
     assert state.is_successful()
 
-    query = "SELECT ID, SEGMENT FROM sacrois.segmented_fishing_activity ORDER BY ID"
+    query = "SELECT ID, FLEET FROM sacrois.segmented_fishing_activity ORDER BY ID"
 
     batches = state.result[flow.get_tasks("get_trip_id_ranges")[0]].result
     assert batches == [
@@ -232,7 +232,7 @@ def test_compute_fleet_segments(
     ]
 
     segmented_fishing_activity_first_run = (
-        client.query_df(query).set_index("ID")["SEGMENT"].to_dict()
+        client.query_df(query).set_index("ID")["FLEET"].to_dict()
     )
     assert segmented_fishing_activity_first_run == expected_segmented_fishing_activity
 
@@ -248,6 +248,6 @@ def test_compute_fleet_segments(
     assert batches == [IdRange(id_min=1, id_max=8)]
 
     segmented_fishing_activity_second_run = (
-        client.query_df(query).set_index("ID")["SEGMENT"].to_dict()
+        client.query_df(query).set_index("ID")["FLEET"].to_dict()
     )
     assert segmented_fishing_activity_second_run == expected_segmented_fishing_activity
