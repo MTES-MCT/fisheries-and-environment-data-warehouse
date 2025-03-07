@@ -1,7 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import List
 
+import pandas as pd
+import prefect
 import pytz
+from dateutil.relativedelta import relativedelta
 from prefect import task
 
 from forklift.pipeline.helpers import dates
@@ -60,3 +63,35 @@ def make_periods(
         period_duration=timedelta(minutes=minutes_per_chunk),
         overlap=timedelta(minutes=chunk_overlap_minutes),
     )
+
+
+@task(checkpoint=False)
+def get_months_starts(
+    now: datetime, start_months_ago: int, end_months_ago: int
+) -> List[date]:
+    """
+    Returns a list of dates corresponding to the first days of the months between
+    the month `start_months_ago months` months before `now` and
+    the month `end_months_ago months` months before `now`.
+
+    Args:
+        now (datetime): Base date from which to compute the date range
+        start_months_ago (int): Number of months before `now` to start the date range
+        end_months_ago (int): Number of months before `now` to end the date range
+
+    Returns:
+        List[date]: List of dates corresponding to the first days of the months in the
+        designated date range.
+    """
+    assert start_months_ago >= end_months_ago
+    start_date = now.date().replace(day=1) - relativedelta(months=start_months_ago)
+    end_date = now.date() - relativedelta(months=end_months_ago)
+    months_starts = (
+        pd.date_range(start=start_date, end=end_date, freq="MS")
+        .to_pydatetime()
+        .tolist()
+    )
+    logger = prefect.context.get("logger")
+    months_list = ", ".join(m.strftime("%Y-%m") for m in months_starts)
+    logger.info(f"Catches will be synced for months { months_list }.")
+    return months_starts

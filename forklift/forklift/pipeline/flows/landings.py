@@ -17,51 +17,34 @@ from forklift.pipeline.shared_tasks.generic import (
 
 
 @task(checkpoint=False)
-def extract_catches(month_start: date) -> pd.DataFrame:
+def extract_landings(month_start: date) -> pd.DataFrame:
     min_date = month_start
     max_date = month_start + relativedelta(months=1)
 
     return extract(
         db_name="monitorfish_remote",
-        query_filepath="monitorfish_remote/catches.sql",
+        query_filepath="monitorfish_remote/landings.sql",
         params={"min_date": min_date, "max_date": max_date},
     )
 
 
 @task(checkpoint=False)
-def extract_bft_catches(month_start: date) -> pd.DataFrame:
-    min_date = month_start
-    max_date = month_start + relativedelta(months=1)
-
-    return extract(
-        db_name="monitorfish_remote",
-        query_filepath="monitorfish_remote/bft_catches.sql",
-        params={"min_date": min_date, "max_date": max_date},
-    )
-
-
-@task(checkpoint=False)
-def load_catches(catches: pd.DataFrame, month_start: date):
+def load_landings(landings: pd.DataFrame, month_start: date):
     logger = prefect.context.get("logger")
     partition = f"{month_start.year}{month_start.month:0>2}"
     client = create_datawarehouse_client()
-    logger.info(f"Droppping catches partition '{ partition }' data warehouse.")
+    logger.info(f"Droppping landings partition '{ partition }' data warehouse.")
     client.command(
-        "ALTER TABLE monitorfish.catches DROP PARTITION {partition:String}",
+        "ALTER TABLE monitorfish.landings DROP PARTITION {partition:String}",
         parameters={"partition": partition},
     )
     logger.info(
-        f"Loading { len(catches) } catches of month { month_start } data warehouse."
+        f"Loading { len(landings) } landings of month { month_start } data warehouse."
     )
-    client.insert_df(table="catches", df=catches, database="monitorfish")
+    client.insert_df(table="landings", df=landings, database="monitorfish")
 
 
-@task(checkpoint=False)
-def concat(catches: pd.DataFrame, bft_catches: pd.DataFrame) -> pd.DataFrame:
-    return pd.concat([catches, bft_catches])
-
-
-with Flow("Catches") as flow:
+with Flow("Landings") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         start_months_ago = Parameter("start_months_ago", default=0)
@@ -76,15 +59,13 @@ with Flow("Catches") as flow:
 
         create_database = create_database_if_not_exists("monitorfish")
         created_table = run_ddl_script(
-            "monitorfish/create_catches_if_not_exists.sql",
+            "monitorfish/create_landings_if_not_exists.sql",
             upstream_tasks=[create_database],
         )
 
-        catches = extract_catches.map(months_starts)
-        bft_catches = extract_bft_catches.map(months_starts)
-        all_catches = concat.map(catches, bft_catches)
-        load_catches.map(
-            all_catches, months_starts, upstream_tasks=[unmapped(created_table)]
+        landings = extract_landings.map(months_starts)
+        load_landings.map(
+            landings, months_starts, upstream_tasks=[unmapped(created_table)]
         )
 
 flow.file_name = Path(__file__).name
