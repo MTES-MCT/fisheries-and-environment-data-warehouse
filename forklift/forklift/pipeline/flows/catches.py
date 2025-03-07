@@ -1,6 +1,5 @@
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
-from typing import List
 
 import pandas as pd
 import prefect
@@ -10,29 +9,11 @@ from prefect import Flow, Parameter, case, task, unmapped
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.helpers.generic import extract
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
-from forklift.pipeline.shared_tasks.dates import get_utcnow
+from forklift.pipeline.shared_tasks.dates import get_months_starts, get_utcnow
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
     run_ddl_script,
 )
-
-
-@task(checkpoint=False)
-def get_months_starts(
-    now: datetime, start_months_ago: int, end_months_ago: int
-) -> List[date]:
-    assert start_months_ago >= end_months_ago
-    start_date = now.date().replace(day=1) - relativedelta(months=start_months_ago)
-    end_date = now.date() - relativedelta(months=end_months_ago)
-    months_starts = (
-        pd.date_range(start=start_date, end=end_date, freq="MS")
-        .to_pydatetime()
-        .tolist()
-    )
-    logger = prefect.context.get("logger")
-    months_list = ", ".join(m.strftime("%Y-%m") for m in months_starts)
-    logger.info(f"Catches will be synced for months { months_list }.")
-    return months_starts
 
 
 @task(checkpoint=False)
