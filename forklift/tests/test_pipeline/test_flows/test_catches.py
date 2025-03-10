@@ -131,3 +131,14 @@ def test_catches(drop_catches):
     catches_after_two_runs = client.query_df(query)
 
     assert len(catches_after_two_runs) == len(catches_after_one_run) == 6
+
+    expected_ids = [
+        202501000000000,
+        202501000000001,
+        202501000000002,
+        202501000000003,
+        202501000000004,
+        202502000000000,
+    ]
+    assert catches_after_one_run.id.sort_values().tolist() == expected_ids
+    assert catches_after_two_runs.id.sort_values().tolist() == expected_ids
