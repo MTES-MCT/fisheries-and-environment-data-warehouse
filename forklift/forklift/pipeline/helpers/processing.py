@@ -12,6 +12,8 @@ import simplejson
 import sqlalchemy
 from sqlalchemy import select
 
+from forklift.pipeline.entities.generic import IdRange
+
 
 def get_unused_col_name(col_name: str, df: pd.DataFrame) -> str:
     """
@@ -1004,3 +1006,34 @@ def get_matched_groups(string: str, regex: re.Pattern) -> pd.Series:
     else:
         result = pd.Series({i: None for i in regex.groupindex})
     return result
+
+
+def get_id_ranges(ids: List[int | str], batch_size: int) -> List[IdRange]:
+    """
+    Takes a list of integer ids and returns a list of `IdRange` object representing
+    groups of `batch_size` ids (except the last one which may contain less that
+    `batch_size` idw).
+
+    The input list is assumed to be sorted according to the relevant collation.
+
+    Args:
+        ids (list): list of integer or string ids
+        ids_per_group (int): positive integer
+
+    Returns:
+        List[IdRange]
+    """
+    assert isinstance(ids, list)
+    assert isinstance(batch_size, int)
+    assert batch_size > 0
+    if len(ids) == 0:
+        return []
+    else:
+        assert isinstance(ids[0], int | str)
+
+    if len(ids) <= batch_size:
+        return [IdRange(id_min=ids[0], id_max=ids[-1])]
+
+    return [IdRange(id_min=ids[0], id_max=ids[batch_size - 1])] + get_id_ranges(
+        ids=ids[batch_size:], batch_size=batch_size
+    )

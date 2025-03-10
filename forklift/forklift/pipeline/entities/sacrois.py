@@ -27,9 +27,3 @@ class SacroisFileImportSpec:
 class SacroisPartition:
     name: str
     processing_date: date
-
-
-@dataclass
-class IdRange:
-    id_min: int
-    id_max: int
