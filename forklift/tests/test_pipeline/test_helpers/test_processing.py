@@ -936,7 +936,7 @@ def test_get_id_ranges_returns_id_ranges():
 
     assert get_id_ranges(ids=[], batch_size=5) == []
 
-    assert get_id_ranges(li=list("abcdefghi"), batch_size=4) == [
+    assert get_id_ranges(ids=list("abcdefghi"), batch_size=4) == [
         IdRange(id_min="a", id_max="d"),
         IdRange(id_min="e", id_max="h"),
         IdRange(id_min="i", id_max="i"),
