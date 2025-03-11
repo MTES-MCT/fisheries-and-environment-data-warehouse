@@ -9,6 +9,7 @@ from forklift.pipeline.entities.generic import IdRange
 from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.helpers.processing import get_id_ranges
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
+from forklift.pipeline.shared_tasks.dates import get_current_year
 from forklift.pipeline.shared_tasks.generic import run_ddl_script
 
 
@@ -80,9 +81,11 @@ def enrich_catches(cfr_range: IdRange, far_datetime_year: int):
 with Flow("Enrich Monitorfish catches") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
-        far_datetime_year = Parameter("far_datetime_year")
-        batch_size = Parameter("batch_size", default=10000)
+        years_ago = Parameter("years_ago", default=0)
+        batch_size = Parameter("batch_size", default=100)
 
+        current_year = get_current_year()
+        far_datetime_year = current_year - years_ago
         created_table = run_ddl_script(
             "monitorfish/create_enriched_catches_if_not_exists.sql"
         )

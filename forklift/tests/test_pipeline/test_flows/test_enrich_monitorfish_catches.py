@@ -1,3 +1,4 @@
+from prefect import task
 from pytest import fixture
 
 from forklift.db_engines import create_datawarehouse_client
@@ -10,6 +11,20 @@ from forklift.pipeline.shared_tasks.generic import (
 from tests.mocks import mock_check_flow_not_running
 
 flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+
+
+def mock_get_current_year_factory(year: int):
+    @task(checkpoint=False)
+    def mock_get_current_year() -> int:
+        """Returns current year"""
+        return year
+
+    return mock_get_current_year
+
+
+mock_get_current_year = mock_get_current_year_factory(2050)
+
+flow.replace(flow.get_tasks("get_current_year")[0], mock_get_current_year)
 
 
 @fixture
@@ -128,7 +143,7 @@ def test_enrich_catches(
 
     # First run
     state = flow.run(
-        far_datetime_year=2050,
+        years_ago=0,
         batch_size=3,
     )
     assert state.is_successful()
@@ -139,7 +154,7 @@ def test_enrich_catches(
 
     # Second run should arrive to the same result
     state = flow.run(
-        far_datetime_year=2050,
+        years_ago=0,
         batch_size=3,
     )
     assert state.is_successful()
