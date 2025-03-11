@@ -1,4 +1,5 @@
 CREATE TABLE IF NOT EXISTS monitorfish.catches (
+    id Int64,
     report_id String,
     cfr LowCardinality(String),
     flag_state LowCardinality(String),

@@ -57,8 +57,15 @@ def load_catches(catches: pd.DataFrame, month_start: date):
 
 
 @task(checkpoint=False)
-def concat(catches: pd.DataFrame, bft_catches: pd.DataFrame) -> pd.DataFrame:
-    return pd.concat([catches, bft_catches])
+def concat(
+    catches: pd.DataFrame, bft_catches: pd.DataFrame, month_start: date
+) -> pd.DataFrame:
+    all_catches = pd.concat([catches, bft_catches])
+    # Build a unique `catch_id` of the form YYYYMM000000000, YYYYMM000000001...
+    catch_id_prefix = 10**9 * (month_start.year * 100 + month_start.month)
+    all_catches["id"] = range(catch_id_prefix, catch_id_prefix + len(all_catches))
+
+    return all_catches
 
 
 with Flow("Catches") as flow:
@@ -82,7 +89,7 @@ with Flow("Catches") as flow:
 
         catches = extract_catches.map(months_starts)
         bft_catches = extract_bft_catches.map(months_starts)
-        all_catches = concat.map(catches, bft_catches)
+        all_catches = concat.map(catches, bft_catches, months_starts)
         load_catches.map(
             all_catches, months_starts, upstream_tasks=[unmapped(created_table)]
         )

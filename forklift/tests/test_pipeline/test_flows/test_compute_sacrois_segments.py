@@ -4,15 +4,9 @@ import pytest
 from pytest import fixture
 
 from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.entities.sacrois import IdRange, SacroisPartition
-from forklift.pipeline.flows.compute_sacrois_segments import (
-    flow,
-    get_id_ranges,
-    get_partition,
-)
-from forklift.pipeline.flows.sync_table_from_db_connection import (
-    flow as sync_table_from_db_connection_flow,
-)
+from forklift.pipeline.entities.generic import IdRange
+from forklift.pipeline.entities.sacrois import SacroisPartition
+from forklift.pipeline.flows.compute_sacrois_segments import flow, get_partition
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
     run_ddl_script,
@@ -20,75 +14,6 @@ from forklift.pipeline.shared_tasks.generic import (
 from tests.mocks import mock_check_flow_not_running
 
 flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
-if sync_table_from_db_connection_flow.get_tasks("check_flow_not_running"):
-    sync_table_from_db_connection_flow.replace(
-        sync_table_from_db_connection_flow.get_tasks("check_flow_not_running")[0],
-        mock_check_flow_not_running,
-    )
-
-
-@fixture
-def init_species(add_monitorfish_proxy_database):
-    print("Creating monitorfish.species table")
-    state = sync_table_from_db_connection_flow.run(
-        source_database="monitorfish_proxy",
-        source_table="species",
-        destination_database="monitorfish",
-        destination_table="species",
-        order_by="species_code",
-    )
-    assert state.is_successful()
-    client = create_datawarehouse_client()
-    yield
-    print("Dropping monitorfish.species table")
-    client.command("DROP TABLE monitorfish.species")
-
-
-@fixture
-def init_fleet_segments(add_monitorfish_proxy_database):
-    # Create table in data warehouse by syncing with monitorfish_proxy database
-    print("Creating monitorfish.fleet_segments table")
-    state = sync_table_from_db_connection_flow.run(
-        source_database="monitorfish_proxy",
-        source_table="fleet_segments",
-        destination_database="monitorfish",
-        destination_table="fleet_segments",
-        order_by="year",
-    )
-    assert state.is_successful()
-
-    # Then replace the fleet_segments data with the fleet segments that we want for the
-    # tests in the parquet file
-    client = create_datawarehouse_client()
-    client.command("TRUNCATE TABLE monitorfish.fleet_segments")
-    client.command(
-        """
-        INSERT INTO TABLE monitorfish.fleet_segments
-        SELECT * FROM file('monitorfish/fleet_segments.parquet')
-    """
-    )
-
-    yield
-    print("Dropping monitorfish.fleet_segments table")
-    client.command("DROP TABLE monitorfish.fleet_segments")
-
-
-@fixture
-def init_vessels(add_monitorfish_proxy_database):
-    # Create table in data warehouse by syncing with vessels database
-    print("Creating monitorfish.vessels table")
-    state = sync_table_from_db_connection_flow.run(
-        source_database="monitorfish_proxy",
-        query_filepath="monitorfish_proxy/vessels.sql",
-        destination_database="monitorfish",
-        destination_table="vessels",
-        order_by="id",
-    )
-    assert state.is_successful()
-    client = create_datawarehouse_client()
-    yield
-    print("Dropping monitorfish.vessels table")
-    client.command("DROP TABLE IF EXISTS monitorfish.vessels")
 
 
 @fixture
@@ -156,40 +81,6 @@ def expected_segmented_fishing_activity() -> dict:
         35: "L BFT",
         36: "L BFT",
     }
-
-
-def test_get_id_ranges_returns_id_ranges():
-    ids = [1, 2, 9, 4, 8, 3, 10, 5, 7, 6]
-    assert get_id_ranges(ids=ids, batch_size=5) == [
-        IdRange(id_min=1, id_max=5),
-        IdRange(id_min=6, id_max=10),
-    ]
-    assert get_id_ranges(ids=ids, batch_size=3) == [
-        IdRange(id_min=1, id_max=3),
-        IdRange(id_min=4, id_max=6),
-        IdRange(id_min=7, id_max=9),
-        IdRange(id_min=10, id_max=10),
-    ]
-
-    assert get_id_ranges(ids=ids, batch_size=12) == [
-        IdRange(id_min=1, id_max=10),
-    ]
-
-    assert get_id_ranges(ids=[], batch_size=5) == []
-
-
-def test_get_id_ranges_raises_if_invalid_input():
-    with pytest.raises(AssertionError):
-        get_id_ranges([1, 2, 3], batch_size=0)
-
-    with pytest.raises(AssertionError):
-        get_id_ranges([1, 2, 3], batch_size="2")
-
-    with pytest.raises(AssertionError):
-        get_id_ranges("This is not a list", batch_size=5)
-
-    with pytest.raises(AssertionError):
-        get_id_ranges(["This", "is", "not", "an", "integer", "list"], batch_size=5)
 
 
 def test_get_partition():

@@ -10,6 +10,7 @@ import pytest
 import pytz
 from sqlalchemy import Column, Integer, MetaData, Table
 
+from forklift.pipeline.entities.generic import IdRange
 from forklift.pipeline.helpers.processing import (
     array_equals_row_on_window,
     back_propagate_ones,
@@ -21,6 +22,7 @@ from forklift.pipeline.helpers.processing import (
     df_values_to_psql_arrays,
     drop_duplicates_by_decreasing_priority,
     drop_rows_already_in_table,
+    get_id_ranges,
     get_matched_groups,
     get_unused_col_name,
     is_a_value,
@@ -913,3 +915,40 @@ def test_get_matched_groups():
     s_4 = None
     series_4 = get_matched_groups(s_4, regex)
     pd.testing.assert_series_equal(series_4, default_series)
+
+
+def test_get_id_ranges_returns_id_ranges():
+    ids = list(range(1, 11))
+    assert get_id_ranges(ids=ids, batch_size=5) == [
+        IdRange(id_min=1, id_max=5),
+        IdRange(id_min=6, id_max=10),
+    ]
+    assert get_id_ranges(ids=ids, batch_size=3) == [
+        IdRange(id_min=1, id_max=3),
+        IdRange(id_min=4, id_max=6),
+        IdRange(id_min=7, id_max=9),
+        IdRange(id_min=10, id_max=10),
+    ]
+
+    assert get_id_ranges(ids=ids, batch_size=12) == [
+        IdRange(id_min=1, id_max=10),
+    ]
+
+    assert get_id_ranges(ids=[], batch_size=5) == []
+
+    assert get_id_ranges(ids=list("abcdefghi"), batch_size=4) == [
+        IdRange(id_min="a", id_max="d"),
+        IdRange(id_min="e", id_max="h"),
+        IdRange(id_min="i", id_max="i"),
+    ]
+
+
+def test_get_id_ranges_raises_if_invalid_input():
+    with pytest.raises(AssertionError):
+        get_id_ranges([1, 2, 3], batch_size=0)
+
+    with pytest.raises(AssertionError):
+        get_id_ranges([1, 2, 3], batch_size="2")
+
+    with pytest.raises(AssertionError):
+        get_id_ranges("This is not a list", batch_size=5)

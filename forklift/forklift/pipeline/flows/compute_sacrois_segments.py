@@ -6,47 +6,12 @@ import prefect
 from prefect import Flow, Parameter, case, task, unmapped
 
 from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.entities.sacrois import IdRange, SacroisPartition
+from forklift.pipeline.entities.generic import IdRange
+from forklift.pipeline.entities.sacrois import SacroisPartition
 from forklift.pipeline.helpers.generic import run_sql_script
+from forklift.pipeline.helpers.processing import get_id_ranges
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import run_ddl_script
-
-
-def get_id_ranges(ids: list, batch_size: int) -> List[IdRange]:
-    """
-    Takes a list of integer ids and returns a list of `IdRange` object
-    representing groups of `ids_per_group` ids.
-
-    Args:
-        ids (list): list of integers
-        ids_per_group (int): positive integer
-
-    Returns:
-        List[IdRange]
-    """
-    assert isinstance(ids, list)
-    if len(ids) == 0:
-        return []
-    else:
-        assert isinstance(ids[0], int)
-    assert isinstance(batch_size, int)
-    assert batch_size > 0
-    return _get_id_ranges(ids=sorted(ids), batch_size=batch_size)
-
-
-def _get_id_ranges(ids: list, batch_size: int) -> List[IdRange]:
-    """
-    Same as `get_id_ranges` but assumes a sorted input.
-    """
-    if len(ids) == 0:
-        return []
-
-    if len(ids) <= batch_size:
-        return [IdRange(id_min=ids[0], id_max=ids[-1])]
-
-    return [IdRange(id_min=ids[0], id_max=ids[batch_size - 1])] + _get_id_ranges(
-        ids=ids[batch_size:], batch_size=batch_size
-    )
 
 
 @task(checkpoint=False)
@@ -90,6 +55,7 @@ def get_trip_id_ranges(partition: SacroisPartition, batch_size: int) -> List[IdR
             "SELECT DISTINCT TRIP_ID "
             "FROM sacrois.fishing_activity "
             "WHERE PROCESSING_DATE = {processing_date:Date}"
+            "ORDER BY 1"
         ),
         parameters={"processing_date": partition.processing_date},
     )
