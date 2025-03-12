@@ -62,7 +62,7 @@ def extract_cfr_ranges(far_datetime_year: int, batch_size: int) -> List[IdRange]
 
 
 @task(checkpoint=False)
-def enrich_catches(cfr_range: IdRange, far_datetime_year: int):
+def enrich_catches(cfr_range: IdRange, far_datetime_year: int, current_year: int):
     logger = prefect.context.get("logger")
     logger.info(
         f"Enriching catches of vessels { cfr_range.id_min } to { cfr_range.id_max }."
@@ -72,6 +72,7 @@ def enrich_catches(cfr_range: IdRange, far_datetime_year: int):
         sql_script_filepath=Path("data_flows") / "monitorfish/enrich_catches.sql",
         parameters=dict(
             far_datetime_year=far_datetime_year,
+            current_year=current_year,
             cfr_start=cfr_range.id_min,
             cfr_end=cfr_range.id_max,
         ),
@@ -101,6 +102,7 @@ with Flow("Enrich Monitorfish catches") as flow:
         enrich_catches.map(
             cfr_range=cfr_ranges,
             far_datetime_year=unmapped(far_datetime_year),
+            current_year=unmapped(current_year),
             upstream_tasks=[unmapped(dropped_partition)],
         )
 

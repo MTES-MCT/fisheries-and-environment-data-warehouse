@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS monitorfish.enriched_catches (
     weight Float64,
     trip_main_catch_type Enum('DEMERSAL' = 1, 'PELAGIC' = 2),
     segment LowCardinality(String),
+    segment_current_year LowCardinality(String),
     landing_datetime_utc Nullable(DateTime),
     landing_port_locode LowCardinality(Nullable(String)),
     landing_port_name LowCardinality(Nullable(String)),

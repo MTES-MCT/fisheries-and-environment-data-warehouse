@@ -50,7 +50,7 @@ trips_landings AS (
         cfr <= {cfr_end:String}
 ),
 
-efca_segments AS (
+segments AS (
     SELECT
         segment,
         gears,
@@ -65,6 +65,23 @@ efca_segments AS (
     FROM monitorfish.fleet_segments
     WHERE
         year = {far_datetime_year:Integer}
+),
+
+segments_current_year AS (
+    SELECT
+        segment,
+        gears,
+        arrayJoin(CASE WHEN empty(fao_areas) THEN [NULL] ELSE fao_areas END) as fao_area,
+        target_species,
+        min_share_of_target_species,
+        main_scip_species_type,
+        min_mesh,
+        max_mesh,
+        priority,
+        vessel_types
+    FROM monitorfish.fleet_segments
+    WHERE
+        year = {current_year:Integer}
 ),
 
 segmented_catches AS (
@@ -96,7 +113,54 @@ segmented_catches AS (
             OVER (PARTITION BY cfr, trip_number, s.segment)
         ) > 0 AS has_target_species
     FROM catches_main_type c
-    JOIN efca_segments s
+    JOIN segments s
+    ON
+        (has(s.gears, c.gear) OR s.gears = '[]')
+        AND (s.main_scip_species_type = c.main_scip_species_type OR s.main_scip_species_type IS NULL)
+        AND (c.mesh >= s.min_mesh OR s.min_mesh IS NULL)
+        AND (c.mesh < s.max_mesh OR s.max_mesh IS NULL)
+        AND (startsWith(c.fao_area, s.fao_area) OR s.fao_area IS NULL)
+        AND (has(s.vessel_types, c.vessel_type) OR s.vessel_types = [])
+    QUALIFY (
+        (
+            has_target_species AND
+            share_of_target_species >= s.min_share_of_target_species
+        ) OR
+        s.min_share_of_target_species IS NULL OR
+        s.target_species = []
+    )
+),
+
+segmented_catches_current_year AS (
+    SELECT
+        id,
+        s.segment,
+        s.priority AS priority,
+        COALESCE(
+            (
+                SUM(
+                    CASE WHEN
+                        has(s.target_species, c.species) OR
+                        s.target_species = []
+                    THEN
+                        weight
+                    ELSE
+                        0
+                    END
+                )
+                OVER (PARTITION BY cfr, trip_number, s.segment)
+            ) / nullIf(
+                SUM(weight) OVER (PARTITION BY cfr, trip_number, s.segment),
+                0
+            ),
+            0
+        ) AS share_of_target_species,
+        (
+            SUM(CASE WHEN has(s.target_species, c.species) THEN 1 ELSE 0 END)
+            OVER (PARTITION BY cfr, trip_number, s.segment)
+        ) > 0 AS has_target_species
+    FROM catches_main_type c
+    JOIN segments_current_year s
     ON
         (has(s.gears, c.gear) OR s.gears = '[]')
         AND (s.main_scip_species_type = c.main_scip_species_type OR s.main_scip_species_type IS NULL)
@@ -121,12 +185,22 @@ catches_top_priority_segment AS (
         priority
     FROM segmented_catches c
     ORDER BY id, priority DESC
+),
+
+catches_top_priority_segment_current_year AS (
+    SELECT DISTINCT ON (id)
+        id,
+        segment,
+        priority
+    FROM segmented_catches_current_year c
+    ORDER BY id, priority DESC
 )
 
 SELECT
     c.* EXCEPT (vessel_type, main_scip_species_type),
     main_scip_species_type AS trip_main_catch_type,
     COALESCE(s.segment, 'NO_SEGMENT') AS segment,
+    COALESCE(scy.segment, 'NO_SEGMENT') AS segment_current_year,
     landing_datetime_utc,
     l.port_locode AS landing_port_locode,
     l.port_name AS landing_port_name,
@@ -135,6 +209,8 @@ SELECT
 FROM catches_main_type c
 LEFT JOIN catches_top_priority_segment s
 ON c.id = s.id
+LEFT JOIN catches_top_priority_segment_current_year scy
+ON c.id = scy.id
 LEFT JOIN trips_landings l
 ON
     l.cfr = c.cfr AND
