@@ -1,3 +1,4 @@
+import pandas as pd
 from prefect import task
 from pytest import fixture
 
@@ -22,7 +23,7 @@ def mock_get_current_year_factory(year: int):
     return mock_get_current_year
 
 
-mock_get_current_year = mock_get_current_year_factory(2050)
+mock_get_current_year = mock_get_current_year_factory(2051)
 
 flow.replace(flow.get_tasks("get_current_year")[0], mock_get_current_year)
 
@@ -72,7 +73,7 @@ def init_catches(init_monitorfish):
 
 
 @fixture
-def expected_segmented_catches() -> dict:
+def expected_catches_segment() -> dict:
     return {
         1: "NO_SEGMENT",
         2: "T8-9",
@@ -111,6 +112,14 @@ def expected_segmented_catches() -> dict:
     }
 
 
+@fixture
+def expected_catches_segment_current_year(expected_catches_segment) -> dict:
+    return {
+        k: ("NO_SEGMENT" if v == "NO_SEGMENT" else f"{v}_current_year")
+        for (k, v) in expected_catches_segment.items()
+    }
+
+
 def test_extract_extract_cfr_ranges(init_catches):
     id_ranges = extract_cfr_ranges.run(far_datetime_year=2050, batch_size=5)
     assert id_ranges == [
@@ -130,7 +139,8 @@ def test_enrich_catches(
     init_fleet_segments,
     init_vessels,
     init_species,
-    expected_segmented_catches,
+    expected_catches_segment,
+    expected_catches_segment_current_year,
 ):
     query = (
         "SELECT "
@@ -143,27 +153,21 @@ def test_enrich_catches(
 
     # First run
     state = flow.run(
-        years_ago=0,
+        years_ago=1,
         batch_size=3,
     )
     assert state.is_successful()
 
-    df = client.query_df(query)
-    enriched_catches_first_run = df.set_index("id")["segment"].to_dict()
-    assert enriched_catches_first_run == expected_segmented_catches
+    enriched_catches_first_run = client.query_df(query)
+    catches_segment = enriched_catches_first_run.set_index("id")["segment"].to_dict()
+    catches_segment_current_year = enriched_catches_first_run.set_index("id")[
+        "segment_current_year"
+    ].to_dict()
+    assert catches_segment == expected_catches_segment
+    assert catches_segment_current_year == expected_catches_segment_current_year
 
-    # Second run should arrive to the same result
-    state = flow.run(
-        years_ago=0,
-        batch_size=3,
-    )
-    assert state.is_successful()
-
-    df = client.query_df(query)
-    enriched_catches_second_run = df.set_index("id")["segment"].to_dict()
-    assert enriched_catches_second_run == expected_segmented_catches
     landing_ports = (
-        df[["trip_number", "landing_port_locode"]]
+        enriched_catches_first_run[["trip_number", "landing_port_locode"]]
         .drop_duplicates()
         .set_index("trip_number")
         .to_dict()["landing_port_locode"]
@@ -178,3 +182,15 @@ def test_enrich_catches(
         "7": "FRBES",
         "8": "FRCQF",
     }
+
+    # Second run should arrive to the same result
+    state = flow.run(
+        years_ago=1,
+        batch_size=3,
+    )
+    assert state.is_successful()
+
+    enriched_catches_second_run = client.query_df(query)
+    pd.testing.assert_frame_equal(
+        enriched_catches_second_run, enriched_catches_first_run
+    )
