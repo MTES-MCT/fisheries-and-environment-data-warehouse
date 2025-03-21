@@ -6,3 +6,12 @@ updates:
       - "vincentchery"
     schedule:
       interval: "monthly"
+    groups:
+      non-major-dependencies:
+        applies-to: version-updates
+        dependency-type: production
+        update-types: ["minor", "patch"]
+      non-major-dev-dependencies:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: ["minor", "patch"]
