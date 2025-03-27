@@ -15,6 +15,12 @@ monitorenv_remote_ip: "{{ lookup('env', 'MONITORENV_REMOTE_IP') }}"
 monitorenv_remote_db: "{{ lookup('env', 'MONITORENV_REMOTE_DB') }}"
 monitorenv_remote_user: "{{ lookup('env', 'POSTGRES_USER') }}"
 
+###################RAPPORTNAV_REMOTE#########################
+rapportnav_remote_pwd: "{{ lookup('env', 'RAPPORTNAV_REMOTE_PWD') }}"
+rapportnav_remote_ip: "{{ lookup('env', 'RAPPORTNAV_REMOTE_IP') }}"
+rapportnav_remote_db: "{{ lookup('env', 'RAPPORTNAV_REMOTE_DB') }}"
+rapportnav_remote_user: "{{ lookup('env', 'POSTGRES_USER') }}"
+
 ###################MONITORFISH_LOCAL#########################
 monitorfish_local_ip: "{{ lookup('env', 'IP_CROSS') }}"
 monitorfish_local_name: "{{ lookup('env', 'MONITORFISH_LOCAL_NAME') }}"

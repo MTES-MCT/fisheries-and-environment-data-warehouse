@@ -37,6 +37,23 @@ services:
       timeout: 1s
       retries: 30
 
+  rapportnav-db:
+    image: postgres:15.10-alpine
+    container_name: rapportnav_database
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rapportnav_test_db
+    volumes:
+      - rapportnav-db-data:/var/lib/postgresql/data
+    ports:
+      - 5434:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 1s
+      retries: 30
+
 
   monitorfish-flyway:
     image: flyway/flyway
@@ -62,8 +79,21 @@ services:
       monitorenv-db:
         condition: service_healthy
 
+  rapportnav-flyway:
+    image: flyway/flyway
+    container_name: rapportnav_flyway
+    command: migrate -password=postgres -schemas=public -user=postgres -url=jdbc:postgresql://rapportnav-db:5432/rapportnav_test_db
+    volumes:
+      - ../../forklift/tests/test_data/external/rapportnav/backend/src/main/resources/db/migration:/flyway/sql/schema
+      - ../../forklift/tests/test_data/rapportnav/remote_database/:/flyway/sql/extra_test_data
+    depends_on:
+      rapportnav-db:
+        condition: service_healthy
+
 volumes:
   monitorfish-db-data:
     driver: local
   monitorenv-db-data:
+    driver: local
+  rapportnav-db-data:
     driver: local

@@ -4,7 +4,7 @@ services:
     container_name: data_warehouse
     environment:
       - CLICKHOUSE_USER=$DATA_WAREHOUSE_USER
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
       - CLICKHOUSE_PASSWORD=$DATA_WAREHOUSE_PASSWORD
     volumes:
       - data-warehouse-db:/var/lib/clickhouse/
