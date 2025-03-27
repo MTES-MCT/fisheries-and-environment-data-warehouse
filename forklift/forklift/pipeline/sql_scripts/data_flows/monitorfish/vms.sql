@@ -1,10 +1,10 @@
 INSERT INTO monitorfish.vms
 SELECT
     id,
-    internal_reference_number AS cfr,
-    external_reference_number,
-    ircs,
-    vessel_name,
+    COALESCE(internal_reference_number, 'NO_CFR') AS cfr,
+    COALESCE(external_reference_number, 'NO_EXTERNAL_REFERENCE_NUMBER') AS external_reference_number,
+    COALESCE(ircs, 'NO_IRCS') AS ircs,
+    COALESCE(vessel_name, 'NO_VESSEL_NAME') AS vessel_name,
     flag_state,
     latitude,
     longitude,
