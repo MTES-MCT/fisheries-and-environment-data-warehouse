@@ -25,6 +25,7 @@ from forklift.pipeline.flows import (
     reset_proxy_pg_database,
     sync_table_from_db_connection,
     sync_table_with_pandas,
+    vms,
 )
 
 
@@ -46,6 +47,7 @@ def get_flows_to_register():
     landings_flow = deepcopy(landings.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
+    vms_flow = deepcopy(vms.flow)
 
     catches_flow.schedule = CronSchedule("44 4 * * *")
     enrich_monitorfish_catches_flow.schedule = CronSchedule("04 5 * * *")
@@ -72,6 +74,19 @@ def get_flows_to_register():
         ]
     )
 
+    vms_flow.schedule = Schedule(
+        clocks=[
+            # Sync positions of only the current month every day...
+            clocks.CronClock("4 5 2-7,9-31 * *"),
+            # ...except once a week for the first two weeks of the month, positions of
+            # the previous month are synced too, in order to import "late" positions.
+            clocks.CronClock(
+                "4 5 1,8 * *",
+                parameter_defaults={"start_months_ago": 1, "end_months_ago": 0},
+            ),
+        ]
+    )
+
     #################### List flows to register with prefect server ###################
     flows_to_register = [
         catches_flow,
@@ -84,6 +99,7 @@ def get_flows_to_register():
         landings_flow,
         sync_table_from_db_connection_flow,
         sync_table_with_pandas_flow,
+        vms_flow,
     ]
 
     ############################## Define flows' storage ##############################
