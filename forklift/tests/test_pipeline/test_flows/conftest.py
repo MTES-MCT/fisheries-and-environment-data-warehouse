@@ -75,3 +75,21 @@ def init_vessels(add_monitorfish_proxy_database):
     yield
     print("Dropping monitorfish.vessels table")
     client.command("DROP TABLE IF EXISTS monitorfish.vessels")
+
+
+@fixture
+def init_mission_action(add_rapportnav_proxy_database):
+    # Create table in data warehouse by syncing with mission_action in rapportnav database
+    print("Creating rapportnav.mission_action table")
+    state = sync_table_from_db_connection_flow.run(
+        source_database="rapportnav_proxy",
+        query_filepath=None,
+        destination_database="rapportnav",
+        destination_table="mission_action",
+        order_by="id",
+    )
+    assert state.is_successful()
+    client = create_datawarehouse_client()
+    yield
+    print("Dropping rapportnav.mission_action table")
+    client.command("DROP TABLE IF EXISTS rapportnav.mission_action")

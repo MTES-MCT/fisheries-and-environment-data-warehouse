@@ -5,3 +5,5 @@
 "monitorfish_proxy","species",,"monitorfish","species",,"species_code","36 4 * * *"
 monitorfish_proxy,,monitorfish_proxy/vessels.sql,monitorfish,vessels,,id,40 4 * * *
 "monitorfish_proxy","infractions",,"monitorfish","infractions",,"natinf_code","42 4 * * *"
+"rapportnav_proxy","mission_action",,"rapportnav","mission_action",,"id","33 4 * * *"
+

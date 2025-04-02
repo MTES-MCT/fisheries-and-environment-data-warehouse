@@ -37,6 +37,14 @@ db_env = {
         "usr": "MONITORENV_REMOTE_DB_USER",
         "pwd": "MONITORENV_REMOTE_DB_PWD",
     },
+    "rapportnav_remote": {
+        "client": "RAPPORTNAV_REMOTE_DB_CLIENT",
+        "host": "RAPPORTNAV_REMOTE_DB_HOST",
+        "port": "RAPPORTNAV_REMOTE_DB_PORT",
+        "sid": "RAPPORTNAV_REMOTE_DB_NAME",
+        "usr": "RAPPORTNAV_REMOTE_DB_USER",
+        "pwd": "RAPPORTNAV_REMOTE_DB_PWD",
+    },
     "monitorfish_local": {
         "client": "MONITORFISH_LOCAL_CLIENT",
         "host": "MONITORFISH_LOCAL_HOST",
@@ -68,7 +76,7 @@ def make_connection_string(db: str) -> str:
 
     Args:
         db (str): Database name. Possible values :
-            'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote',
+            'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote', 'rapportnav_remote'
             'monitorfish_local', 'cacem_local', 'data_warehouse'
 
     Returns:
@@ -103,7 +111,7 @@ def create_engine(db: str, **kwargs) -> sa.engine.Engine:
 
     Args:
         db (str): Database name. Possible values :
-            'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote',
+            'ocan', 'fmc', 'monitorfish_remote', 'monitorenv_remote', 'rapportnav_remote'
             'monitorfish_local', 'cacem_local'
 
     Returns:

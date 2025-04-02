@@ -33,6 +33,7 @@ parameter_values = [
 def test_sync_table_from_db_connection(
     add_monitorfish_proxy_database,
     add_monitorenv_proxy_database,
+    add_rapportnav_proxy_database,
     source_database,
     source_table,
     query_filepath,
