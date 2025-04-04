@@ -12,7 +12,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     f_subunit Nullable(String),
     name_en Nullable(String),
     name_fr Nullable(String),
-    name_es Nullable(String)
+    name_es Nullable(String),
+    facade LowCardinality(String)
 )
 ENGINE MergeTree
 ORDER BY f_code
