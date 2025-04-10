@@ -10,7 +10,7 @@ from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.helpers.processing import get_id_ranges
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.dates import get_current_year
-from forklift.pipeline.shared_tasks.generic import run_ddl_script
+from forklift.pipeline.shared_tasks.generic import run_ddl_scripts
 
 
 @task(checkpoint=False)
@@ -19,7 +19,7 @@ def drop_partition(far_datetime_year: int):
     client = create_datawarehouse_client()
     logger.info(
         (
-            f"Dropping partition { far_datetime_year } "
+            f"Dropping partition {far_datetime_year} "
             "from table monitorfish.enriched_catches"
         )
     )
@@ -54,8 +54,8 @@ def extract_cfr_ranges(far_datetime_year: int, batch_size: int) -> List[IdRange]
     cfr_ranges = get_id_ranges(ids=cfrs.cfr.tolist(), batch_size=batch_size)
     logger.info(
         (
-            f"Found { len(cfrs) } vessels to enrich. "
-            f"Returning { len(cfr_ranges) } batches of { batch_size } vessels."
+            f"Found {len(cfrs)} vessels to enrich. "
+            f"Returning {len(cfr_ranges)} batches of {batch_size} vessels."
         )
     )
     return cfr_ranges
@@ -65,7 +65,7 @@ def extract_cfr_ranges(far_datetime_year: int, batch_size: int) -> List[IdRange]
 def enrich_catches(cfr_range: IdRange, far_datetime_year: int, current_year: int):
     logger = prefect.context.get("logger")
     logger.info(
-        f"Enriching catches of vessels { cfr_range.id_min } to { cfr_range.id_max }."
+        f"Enriching catches of vessels {cfr_range.id_min} to {cfr_range.id_max}."
     )
 
     run_sql_script(
@@ -87,7 +87,7 @@ with Flow("Enrich Monitorfish catches") as flow:
 
         current_year = get_current_year()
         far_datetime_year = current_year - years_ago
-        created_table = run_ddl_script(
+        created_table = run_ddl_scripts(
             "monitorfish/create_enriched_catches_if_not_exists.sql"
         )
 

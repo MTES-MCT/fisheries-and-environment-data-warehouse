@@ -12,7 +12,7 @@ from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.dates import get_months_starts, get_utcnow
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
-    run_ddl_script,
+    run_ddl_scripts,
 )
 
 
@@ -33,12 +33,12 @@ def load_pnos(pnos: pd.DataFrame, month_start: date):
     logger = prefect.context.get("logger")
     partition = f"{month_start.year}{month_start.month:0>2}"
     client = create_datawarehouse_client()
-    logger.info(f"Droppping pnos partition '{ partition }' data warehouse.")
+    logger.info(f"Droppping pnos partition '{partition}' data warehouse.")
     client.command(
         "ALTER TABLE monitorfish.pnos DROP PARTITION {partition:String}",
         parameters={"partition": partition},
     )
-    logger.info(f"Loading { len(pnos) } pnos of month { month_start } data warehouse.")
+    logger.info(f"Loading {len(pnos)} pnos of month {month_start} data warehouse.")
     client.insert_df(table="pnos", df=pnos, database="monitorfish")
 
 
@@ -56,7 +56,7 @@ with Flow("PNOs") as flow:
         )
 
         create_database = create_database_if_not_exists("monitorfish")
-        created_table = run_ddl_script(
+        created_table = run_ddl_scripts(
             "monitorfish/create_pnos_if_not_exists.sql",
             upstream_tasks=[create_database],
         )

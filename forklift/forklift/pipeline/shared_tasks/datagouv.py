@@ -125,7 +125,7 @@ def get_geopackage_file_object(gdf: gpd.GeoDataFrame, layers: str = None) -> Byt
         >>> gdf = gpd.GeoDataFrame({
             "a": [10, 20, 30],
             "geometry": [Point(1, 2), Point(3, 4), Point(5, 6)]
-        })
+       })
         >>> gdf
                 a                 geometry
             0  10  POINT (1.00000 2.00000)

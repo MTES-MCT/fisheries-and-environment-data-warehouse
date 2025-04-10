@@ -12,7 +12,7 @@ from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.dates import get_months_starts, get_utcnow
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
-    run_ddl_script,
+    run_ddl_scripts,
 )
 
 
@@ -63,7 +63,7 @@ with Flow("Discards") as flow:
         )
 
         create_database = create_database_if_not_exists("monitorfish")
-        created_table = run_ddl_script(
+        created_table = run_ddl_scripts(
             "monitorfish/create_discards_if_not_exists.sql",
             upstream_tasks=[create_database],
         )

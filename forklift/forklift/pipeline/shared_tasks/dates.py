@@ -93,5 +93,5 @@ def get_months_starts(
     )
     logger = prefect.context.get("logger")
     months_list = ", ".join(m.strftime("%Y-%m") for m in months_starts)
-    logger.info(f"Catches will be synced for months { months_list }.")
+    logger.info(f"Catches will be synced for months {months_list}.")
     return months_starts

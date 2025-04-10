@@ -183,7 +183,7 @@ def remove_nones_from_dict(d: dict) -> dict:
             "b": [1, 2, None],
             "c": {"key": "value", "key2": None},
             "d": None
-            }
+           }
         >>> remove_nones_from_dict(d)
         {"a" : 1, "b": [1, 2, None], "c": {"key": "value", "key2": None}}
     """
@@ -220,7 +220,7 @@ def df_to_dict_series(
       {
           "column_1" : value,
           "column_2": value,
-      }
+     }
 
 
     Args:

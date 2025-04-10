@@ -9,7 +9,7 @@ from forklift.pipeline.entities.sacrois import SacroisPartition
 from forklift.pipeline.flows.compute_sacrois_segments import flow, get_partition
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
-    run_ddl_script,
+    run_ddl_scripts,
 )
 from tests.mocks import mock_check_flow_not_running
 
@@ -29,7 +29,7 @@ def init_sacrois():
 @fixture
 def init_fishing_activity(init_sacrois):
     print("Creating fishing_activity table")
-    run_ddl_script.run("sacrois/create_fishing_activity_if_not_exists.sql")
+    run_ddl_scripts.run("sacrois/create_fishing_activity_if_not_exists.sql")
     client = create_datawarehouse_client()
     print("Inserting test data into fishing_activity table")
     client.command(
