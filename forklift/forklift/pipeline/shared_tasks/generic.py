@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import pandas as pd
 import prefect
@@ -27,18 +26,18 @@ def create_database_if_not_exists(database: str):
 
 
 @task(checkpoint=False)
-def run_ddl_scripts(ddl_script_paths: str | List[str], **parameters):
+def run_ddl_scripts(ddl_script_paths: str | Path | list, **parameters):
     """
     Runs DDL script(s) at designated location(s), passing kwargs to `run_sql_script`.
 
     Args:
-        ddl_script_paths (str | List[str]): DDL script location, or list of DDl script
-          locations, relative to ddl directory
+        ddl_script_paths (str | Path | list): DDL script location, or list of DDL
+          scripts locations, relative to ddl directory
         parameters (dict, optionnal): pamaters to pass to `run_sql_script`
     """
     logger = prefect.context.get("logger")
 
-    if isinstance(ddl_script_paths, str):
+    if isinstance(ddl_script_paths, (str, Path)):
         ddl_script_paths = [ddl_script_paths]
     else:
         assert isinstance(ddl_script_paths, list)
