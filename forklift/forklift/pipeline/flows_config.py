@@ -25,6 +25,7 @@ from forklift.pipeline.flows import (
     import_sacrois_data,
     landings,
     reset_proxy_pg_database,
+    sync_geo_table_to_h3_table,
     sync_table_from_db_connection,
     sync_table_with_pandas,
     vms,
@@ -49,6 +50,7 @@ def get_flows_to_register():
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
     landings_flow = deepcopy(landings.flow)
+    sync_geo_table_to_h3_table_flow = deepcopy(sync_geo_table_to_h3_table.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
     vms_flow = deepcopy(vms.flow)
@@ -59,6 +61,27 @@ def get_flows_to_register():
     enrich_monitorfish_catches_flow.schedule = CronSchedule("04 5 * * *")
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
     landings_flow.schedule = CronSchedule("54 4 * * *")
+    sync_geo_table_to_h3_table_flow.schedule = Schedule(
+        clocks=[
+            clocks.CronClock(
+                "4 5 1,8 * *",
+                parameter_defaults={
+                    "source_database": "monitorfish_remote",
+                    "query_filepath": "monitorfish_remote/regulations.sql",
+                    "geometry_column": "geometry_simplified",
+                    "crs": 4326,
+                    "resolution": 8,
+                    "ddl_script_paths": [
+                        "monitorfish/create_regulations_h3.sql",
+                        "monitorfish/add_regulations_h3_proiection.sql",
+                    ],
+                    "destination_database": "monitorfish",
+                    "destination_table": "regulations_h3",
+                    "batch_size": 50,
+                },
+            ),
+        ]
+    )
 
     scheduled_runs = pd.read_csv(
         LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_from_db_connection.csv"
@@ -105,6 +128,7 @@ def get_flows_to_register():
         reset_proxy_pg_database_flow,
         import_sacrois_data_flow,
         landings_flow,
+        sync_geo_table_to_h3_table_flow,
         sync_table_from_db_connection_flow,
         sync_table_with_pandas_flow,
         vms_flow,
