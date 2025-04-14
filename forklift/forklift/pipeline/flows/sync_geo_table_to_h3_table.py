@@ -6,6 +6,7 @@ import h3.api.numpy_int as h3
 import pandas as pd
 import prefect
 from prefect import Flow, Parameter, case, task, unmapped
+from prefect.executors import LocalDaskExecutor
 
 from forklift.pipeline.helpers.generic import extract, load_to_data_warehouse
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
@@ -73,7 +74,7 @@ def h3ify_and_load(
     )
 
 
-with Flow("Geo table to H3") as flow:
+with Flow("Geo table to H3", executor=LocalDaskExecutor()) as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         source_database = Parameter("source_database")
