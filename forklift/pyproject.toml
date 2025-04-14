@@ -6,7 +6,7 @@ authors = ["Vincent <vincent.chery@m4x.org>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.12.7"
+python = "3.12.10"
 prefect = "~1.4.1"
 pandas = {extras = ["postgresql"], version = "^2.2.2"}
 duckdb = "^1.0.0"
