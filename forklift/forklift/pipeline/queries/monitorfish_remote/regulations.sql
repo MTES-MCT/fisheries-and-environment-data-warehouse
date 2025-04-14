@@ -4,7 +4,7 @@ SELECT
     topic,
     zone,
     region,
-    geometry_simplified
+    ST_CollectionExtract(geometry_simplified) AS geometry_simplified
 FROM regulations
 WHERE
     geometry_simplified IS NOT NULL
