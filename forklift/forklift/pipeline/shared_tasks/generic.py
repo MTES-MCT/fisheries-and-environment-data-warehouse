@@ -26,18 +26,30 @@ def create_database_if_not_exists(database: str):
 
 
 @task(checkpoint=False)
-def run_ddl_script(ddl_script_path: str, **parameters):
+def run_ddl_scripts(ddl_script_paths: str | Path | list, **parameters):
     """
-    Runs DDL script at designated location, passing kwargs to `run_sql_script`.
+    Runs DDL script(s) at designated location(s), passing kwargs to `run_sql_script`.
 
     Args:
-        ddl_script_path (str): DDL script location, relative to ddl directory
+        ddl_script_paths (str | Path | list): DDL script location, or list of DDL
+          scripts locations, relative to ddl directory
         parameters (dict, optionnal): pamaters to pass to `run_sql_script`
     """
-    run_sql_script(
-        sql_script_filepath=Path("ddl") / ddl_script_path,
-        parameters=parameters,
-    )
+    logger = prefect.context.get("logger")
+
+    if isinstance(ddl_script_paths, (str, Path)):
+        ddl_script_paths = [ddl_script_paths]
+    else:
+        assert isinstance(ddl_script_paths, list)
+
+    n_scripts = len(ddl_script_paths)
+
+    for i, ddl_script_path in enumerate(ddl_script_paths):
+        logger.info(f"Running script {ddl_script_path} ({i + 1}/{n_scripts})")
+        run_sql_script(
+            sql_script_filepath=Path("ddl") / ddl_script_path,
+            parameters=parameters,
+        )
 
 
 @task(checkpoint=False)

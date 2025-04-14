@@ -7,7 +7,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     west Nullable(Float64),
     north Nullable(Float64),
     east Nullable(Float64),
-    area_km2 Nullable(Float64)
+    area_km2 Nullable(Float64),
+    facade LowCardinality(String)
 )
 ENGINE MergeTree
 ORDER BY id

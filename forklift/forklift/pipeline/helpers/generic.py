@@ -614,12 +614,10 @@ def read_table(
         return pd.read_sql_table(table_name, engine, schema=schema)
     elif backend == "geopandas":
         return gpd.read_postgis(
-            sql=f'SELECT * FROM "{ schema }"."{ table_name }"',
+            sql=f'SELECT * FROM "{schema}"."{table_name}"',
             con=engine,
             geom_col=geom_col,
             crs=crs,
         )
     else:
-        raise ValueError(
-            f"`backend` must be 'pandas' or 'geopandas', got '{ backend }'."
-        )
+        raise ValueError(f"`backend` must be 'pandas' or 'geopandas', got '{backend}'.")

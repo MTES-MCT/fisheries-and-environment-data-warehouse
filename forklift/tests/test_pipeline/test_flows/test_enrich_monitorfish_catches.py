@@ -7,7 +7,7 @@ from forklift.pipeline.entities.generic import IdRange
 from forklift.pipeline.flows.enrich_monitorfish_catches import extract_cfr_ranges, flow
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
-    run_ddl_script,
+    run_ddl_scripts,
 )
 from tests.mocks import mock_check_flow_not_running
 
@@ -41,7 +41,7 @@ def init_monitorfish():
 @fixture
 def init_landings(init_monitorfish):
     print("Creating landings table")
-    run_ddl_script.run("monitorfish/create_landings_if_not_exists.sql")
+    run_ddl_scripts.run("monitorfish/create_landings_if_not_exists.sql")
     client = create_datawarehouse_client()
     print("Inserting test data into landings table")
     client.command(
@@ -58,7 +58,7 @@ def init_landings(init_monitorfish):
 @fixture
 def init_catches(init_monitorfish):
     print("Creating catches table")
-    run_ddl_script.run("monitorfish/create_catches_if_not_exists.sql")
+    run_ddl_scripts.run("monitorfish/create_catches_if_not_exists.sql")
     client = create_datawarehouse_client()
     print("Inserting test data into catches table")
     client.command(

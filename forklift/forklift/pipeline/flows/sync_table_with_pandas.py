@@ -15,7 +15,7 @@ from forklift.pipeline.shared_tasks.generic import (
     drop_table_if_exists,
     load_df_to_data_warehouse,
     run_data_flow_script,
-    run_ddl_script,
+    run_ddl_scripts,
 )
 
 
@@ -110,7 +110,7 @@ with Flow("Sync table with pandas") as flow:
             destination_table,
             upstream_tasks=[create_database],
         )
-        created_table = run_ddl_script(
+        created_table = run_ddl_scripts(
             ddl_script_path,
             database=destination_database,
             table=destination_table,

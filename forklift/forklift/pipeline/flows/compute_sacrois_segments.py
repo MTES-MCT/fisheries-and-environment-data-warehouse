@@ -11,7 +11,7 @@ from forklift.pipeline.entities.sacrois import SacroisPartition
 from forklift.pipeline.helpers.generic import run_sql_script
 from forklift.pipeline.helpers.processing import get_id_ranges
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
-from forklift.pipeline.shared_tasks.generic import run_ddl_script
+from forklift.pipeline.shared_tasks.generic import run_ddl_scripts
 
 
 @task(checkpoint=False)
@@ -31,7 +31,7 @@ def drop_partition(partition: SacroisPartition):
     client = create_datawarehouse_client()
     logger.info(
         (
-            f"Dropping partition { partition.name } "
+            f"Dropping partition {partition.name} "
             "from table sacrois.segmented_fishing_activity"
         )
     )
@@ -63,8 +63,8 @@ def get_trip_id_ranges(partition: SacroisPartition, batch_size: int) -> List[IdR
     trip_id_ranges = get_id_ranges(ids=trip_ids, batch_size=batch_size)
     logger.info(
         (
-            f"Found { len(trip_ids) } trips to segment. "
-            f"Returning { len(trip_id_ranges) } batches of { batch_size } trips."
+            f"Found {len(trip_ids)} trips to segment. "
+            f"Returning {len(trip_id_ranges)} batches of {batch_size} trips."
         )
     )
     return trip_id_ranges
@@ -76,7 +76,7 @@ def compute_segments(
 ):
     logger = prefect.context.get("logger")
     logger.info(
-        f"Computing segments of trips { trip_id_range.id_min } to { trip_id_range.id_max }."
+        f"Computing segments of trips {trip_id_range.id_min} to {trip_id_range.id_max}."
     )
 
     run_sql_script(
@@ -99,7 +99,7 @@ with Flow("Compute SACROIS segments") as flow:
         processing_month = Parameter("processing_month", default=1)
         batch_size = Parameter("batch_size", default=10000)
 
-        created_table = run_ddl_script(
+        created_table = run_ddl_scripts(
             "sacrois/create_segmented_fishing_activity_if_not_exists.sql"
         )
 

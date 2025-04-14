@@ -9,7 +9,7 @@ from forklift.pipeline.entities.sacrois import SacroisFileImportSpec, SacroisFil
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
-    run_ddl_script,
+    run_ddl_scripts,
 )
 
 
@@ -64,7 +64,7 @@ def load_sacrois_data(import_spec: SacroisFileImportSpec):
     logger = prefect.context.get("logger")
     client = create_datawarehouse_client()
     logger.info(
-        f"Droppping sacrois partition '{ import_spec.partition }' data warehouse."
+        f"Droppping sacrois partition '{import_spec.partition}' data warehouse."
     )
     client.command(
         "ALTER TABLE sacrois.{table:Identifier} DROP PARTITION {partition:String}",
@@ -73,7 +73,7 @@ def load_sacrois_data(import_spec: SacroisFileImportSpec):
             "partition": import_spec.partition,
         },
     )
-    logger.info(f"Importing { import_spec.filepath.name }")
+    logger.info(f"Importing {import_spec.filepath.name}")
 
     client.command(
         (
@@ -105,7 +105,7 @@ with Flow("Import SACROIS data") as flow:
 
         ddl_script_path = get_ddl_script_path(file_type)
 
-        created_table = run_ddl_script(
+        created_table = run_ddl_scripts(
             ddl_script_path,
             upstream_tasks=[create_database],
         )
