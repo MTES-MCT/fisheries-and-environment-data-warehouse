@@ -10,7 +10,7 @@ python = "3.12.10"
 prefect = "~1.4.1"
 pandas = {extras = ["postgresql"], version = "^2.2.2"}
 duckdb = "^1.0.0"
-black = "^24.8.0"
+black = "^25.1.0"
 isort = "^6.0.1"
 coverage = "^7.6.1"
 pre-commit = "^4.2.0"
