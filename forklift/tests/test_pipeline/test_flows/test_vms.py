@@ -32,7 +32,6 @@ def expected_first_position() -> dict:
         "time_emitting_at_sea": 24.0,
         "network_type": None,
         "geometry": (5.543, 53.428),
-        "h3_6": 603929590649323519,
         "h3_8": 612936789849538559,
     }
 
@@ -44,12 +43,14 @@ def drop_vms():
     yield
     print("Drop vms cleaning")
     client.command("DROP TABLE IF EXISTS monitorfish.vms")
+    client.command("DROP TABLE IF EXISTS monitorfish.vms_h3")
 
 
 def test_vms(drop_vms, add_monitorfish_proxy_database, expected_first_position):
     client = create_datawarehouse_client()
 
     query = "SELECT * FROM monitorfish.vms ORDER BY id"
+    query_h3 = "SELECT * FROM monitorfish.vms_h3 ORDER BY id"
 
     # Initially the catches table does not exist
     with pytest.raises(
@@ -63,6 +64,7 @@ def test_vms(drop_vms, add_monitorfish_proxy_database, expected_first_position):
     )
     assert state.is_successful()
     vms_after_one_run = client.query_df(query)
+    vms_from_mv_after_one_run = client.query_df(query_h3)
 
     state = flow.run(
         start_months_ago=12,
@@ -70,8 +72,11 @@ def test_vms(drop_vms, add_monitorfish_proxy_database, expected_first_position):
     )
     assert state.is_successful()
     vms_after_two_runs = client.query_df(query)
+    vms_from_mv_after_two_runs = client.query_df(query_h3)
 
     pd.testing.assert_frame_equal(vms_after_one_run, vms_after_two_runs)
+    pd.testing.assert_frame_equal(vms_from_mv_after_two_runs, vms_from_mv_after_one_run)
+    pd.testing.assert_frame_equal(vms_from_mv_after_two_runs, vms_after_two_runs)
     assert len(vms_after_one_run) == 27
 
     pos = vms_after_one_run.loc[0].to_dict()

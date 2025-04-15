@@ -1,4 +1,4 @@
-INSERT INTO monitorfish.vms
+INSERT INTO monitorfish.vms_h3
 SELECT
     id,
     COALESCE(internal_reference_number, 'NO_CFR') AS cfr,

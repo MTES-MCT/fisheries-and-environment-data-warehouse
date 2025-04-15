@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS monitorfish.vms (
+CREATE TABLE IF NOT EXISTS monitorfish.vms_h3 (
     id Integer,
     cfr LowCardinality(String),
     external_reference_number LowCardinality(String),
@@ -23,4 +23,4 @@ CREATE TABLE IF NOT EXISTS monitorfish.vms (
 )
 ENGINE MergeTree()
 PARTITION BY toYYYYMM(date_time)
-ORDER BY (cfr, date_time);
+ORDER BY (h3_8, date_time);

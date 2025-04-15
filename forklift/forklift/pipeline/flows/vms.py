@@ -24,15 +24,25 @@ def extract_load_vms(month_start: date) -> pd.DataFrame:
 
     partition = f"{month_start.year}{month_start.month:0>2}"
     client = create_datawarehouse_client()
-    logger.info(f"Droppping vms partition '{partition}' from data warehouse.")
+    logger.info(f"Droppping vms partition '{partition}' from vms table.")
     client.command(
         "ALTER TABLE monitorfish.vms DROP PARTITION {partition:String}",
         parameters={"partition": partition},
     )
+    logger.info(f"Droppping vms partition '{partition}' from vms_h3 table.")
+    client.command(
+        "ALTER TABLE monitorfish.vms_h3 DROP PARTITION {partition:String}",
+        parameters={"partition": partition},
+    )
 
-    logger.info(f"Loading vms positions of month {month_start} into data warehouse.")
+    logger.info(f"Loading vms positions of month {month_start} into vms table.")
     run_sql_script(
         sql_script_filepath=Path("data_flows/monitorfish/vms.sql"),
+        parameters={"min_date": min_date, "max_date": max_date},
+    )
+    logger.info(f"Loading vms positions of month {month_start} into vms_h3 table.")
+    run_sql_script(
+        sql_script_filepath=Path("data_flows/monitorfish/vms_h3.sql"),
         parameters={"min_date": min_date, "max_date": max_date},
     )
 
@@ -54,8 +64,7 @@ with Flow("VMS") as flow:
         created_table = run_ddl_scripts(
             [
                 "monitorfish/create_vms_if_not_exists.sql",
-                "monitorfish/add_vms_h3_6_proiection_if_not_exists.sql",
-                "monitorfish/add_vms_h3_8_proiection_if_not_exists.sql",
+                "monitorfish/create_vms_h3_if_not_exists.sql",
             ],
             upstream_tasks=[create_database],
         )
