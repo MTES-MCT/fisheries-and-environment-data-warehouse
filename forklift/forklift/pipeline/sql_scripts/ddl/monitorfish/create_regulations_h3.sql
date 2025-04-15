@@ -4,7 +4,11 @@ CREATE TABLE monitorfish.regulations_h3 (
     topic LowCardinality(String),
     zone LowCardinality(String),
     region LowCardinality(Nullable(String)),
-    h3 UInt64 CODEC(Delta, ZSTD)
+    h3 UInt64 CODEC(Delta, ZSTD),
+    PROJECTION monitorfish_regulations_h3_projection (
+        SELECT *
+        ORDER BY law_type, topic, id, h3
+    )
 )
 ENGINE MergeTree
-ORDER BY (law_type, topic, id, h3);
+ORDER BY (h3, law_type, topic, id);

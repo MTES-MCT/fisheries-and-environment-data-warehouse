@@ -18,10 +18,7 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
             "monitorfish_remote/regulations.sql",
             "geometry_simplified",
             5,
-            [
-                "monitorfish/create_regulations_h3.sql",
-                "monitorfish/add_regulations_h3_proiection.sql",
-            ],
+            "monitorfish/create_regulations_h3.sql",
             "monitorfish",
             "regulations_h3",
             5,
