@@ -71,10 +71,7 @@ def get_flows_to_register():
                     "geometry_column": "geometry_simplified",
                     "crs": 4326,
                     "resolution": 8,
-                    "ddl_script_paths": [
-                        "monitorfish/create_regulations_h3.sql",
-                        "monitorfish/add_regulations_h3_proiection.sql",
-                    ],
+                    "ddl_script_paths": "monitorfish/create_regulations_h3.sql",
                     "destination_database": "monitorfish",
                     "destination_table": "regulations_h3",
                     "batch_size": 10,
