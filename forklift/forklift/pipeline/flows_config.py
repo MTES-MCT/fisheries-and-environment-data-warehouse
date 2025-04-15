@@ -77,7 +77,7 @@ def get_flows_to_register():
                     ],
                     "destination_database": "monitorfish",
                     "destination_table": "regulations_h3",
-                    "batch_size": 50,
+                    "batch_size": 10,
                 },
             ),
         ]
