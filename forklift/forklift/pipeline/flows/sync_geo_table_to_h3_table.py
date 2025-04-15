@@ -54,8 +54,11 @@ def h3ify_and_load(
     destination_database: str,
     destination_table: str,
 ) -> pd.DataFrame:
+    logger = prefect.context.get("logger")
     h3_df = gdf.copy(deep=True)
     geometry_column = h3_df.active_geometry_name
+    logger.info(f"Geometry column found: {geometry_column}")
+    logger.info("Converting geometries to h3...")
     h3_df["h3"] = h3_df.apply(
         lambda row: h3.h3shape_to_cells_experimental(
             h3.geo_to_h3shape(row[geometry_column].__geo_interface__),
@@ -64,7 +67,10 @@ def h3ify_and_load(
         ),
         axis=1,
     )
+    logger.info("Done.")
+    logger.info("Exploding h3 arrays...")
     h3_df = h3_df.drop(columns=[geometry_column]).explode("h3").reset_index(drop=True)
+    logger.info("Done.")
 
     load_to_data_warehouse(
         h3_df,

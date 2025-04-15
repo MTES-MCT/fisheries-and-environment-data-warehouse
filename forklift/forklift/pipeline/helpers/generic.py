@@ -97,7 +97,9 @@ def load_to_data_warehouse(
         df = df.to_wkt()
 
     client = create_datawarehouse_client()
-    logger.info(f"Loading into data warehouse {database}.{table_name} table.")
+    logger.info(
+        f"Loading {len(df)} rows into data warehouse {database}.{table_name} table."
+    )
     client.insert_df(table=table_name, df=df, database=database)
 
 
