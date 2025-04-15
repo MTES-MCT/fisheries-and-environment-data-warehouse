@@ -52,7 +52,11 @@ with Flow("VMS") as flow:
 
         create_database = create_database_if_not_exists("monitorfish")
         created_table = run_ddl_scripts(
-            "monitorfish/create_vms_if_not_exists.sql",
+            [
+                "monitorfish/create_vms_if_not_exists.sql",
+                "monitorfish/add_vms_h3_6_proiection_if_not_exists.sql",
+                "monitorfish/add_vms_h3_8_proiection_if_not_exists.sql",
+            ],
             upstream_tasks=[create_database],
         )
 
