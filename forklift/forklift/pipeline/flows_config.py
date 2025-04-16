@@ -64,7 +64,7 @@ def get_flows_to_register():
     sync_geo_table_to_h3_table_flow.schedule = Schedule(
         clocks=[
             clocks.CronClock(
-                "4 5 1,8 * *",
+                "8 5 3,10,17,24 * *",
                 parameter_defaults={
                     "source_database": "monitorfish_remote",
                     "query_filepath": "monitorfish_remote/regulations.sql",
@@ -75,6 +75,20 @@ def get_flows_to_register():
                     "destination_database": "monitorfish",
                     "destination_table": "regulations_h3",
                     "batch_size": 10,
+                },
+            ),
+            clocks.CronClock(
+                "8 5 4,11,18,25 * *",
+                parameter_defaults={
+                    "source_database": "monitorenv_remote",
+                    "query_filepath": "monitorenv_remote/amp_cacem.sql",
+                    "geometry_column": "geom",
+                    "crs": 4326,
+                    "resolution": 8,
+                    "ddl_script_paths": "monitorenv/create_amp_cacem_h3.sql",
+                    "destination_database": "monitorenv",
+                    "destination_table": "amp_cacem_h3",
+                    "batch_size": 50,
                 },
             ),
         ]

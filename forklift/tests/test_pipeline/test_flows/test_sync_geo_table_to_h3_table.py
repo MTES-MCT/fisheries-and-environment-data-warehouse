@@ -23,6 +23,16 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
             "regulations_h3",
             5,
         ),
+        (
+            "monitorenv_remote",
+            "monitorenv_remote/amp_cacem.sql",
+            "geom",
+            5,
+            "monitorenv/create_amp_cacem_h3.sql",
+            "monitorenv",
+            "amp_cacem_h3",
+            50,
+        ),
     ],
 )
 def test_sync_geo_table_to_h3_table(
