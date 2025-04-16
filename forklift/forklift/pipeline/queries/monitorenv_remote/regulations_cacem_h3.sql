@@ -1,6 +1,6 @@
 SELECT
     id,
-    ST_MakeValid(ST_SimplifyPreserveTopology(geom, 0.0001)) AS geom,
+    ST_CollectionExtract(ST_MakeValid(ST_SimplifyPreserveTopology(geom, 0.0001))) AS geom,
     entity_name,
     layer_name,
     COALESCE(facade, 'NO_FACADE') AS facade,
