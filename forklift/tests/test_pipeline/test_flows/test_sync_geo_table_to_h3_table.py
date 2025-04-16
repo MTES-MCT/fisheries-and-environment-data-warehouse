@@ -33,6 +33,16 @@ flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_ru
             "amp_cacem_h3",
             50,
         ),
+        (
+            "monitorenv_remote",
+            "monitorenv_remote/regulations_cacem_h3.sql",
+            "geom",
+            5,
+            "monitorenv/create_regulations_cacem_h3.sql",
+            "monitorenv",
+            "regulations_cacem_h3",
+            50,
+        ),
     ],
 )
 def test_sync_geo_table_to_h3_table(
@@ -72,6 +82,8 @@ def test_sync_geo_table_to_h3_table(
     )
 
     assert len(df) > 0
+    if destination_table == "regulations_cacem_h3":
+        breakpoint()
 
     client.command(
         "DROP DATABASE IF EXISTS {database:Identifier}",
