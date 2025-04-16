@@ -82,8 +82,6 @@ def test_sync_geo_table_to_h3_table(
     )
 
     assert len(df) > 0
-    if destination_table == "regulations_cacem_h3":
-        breakpoint()
 
     client.command(
         "DROP DATABASE IF EXISTS {database:Identifier}",
