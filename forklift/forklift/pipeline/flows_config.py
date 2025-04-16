@@ -91,6 +91,20 @@ def get_flows_to_register():
                     "batch_size": 50,
                 },
             ),
+            clocks.CronClock(
+                "8 5 5,12,19,26 * *",
+                parameter_defaults={
+                    "source_database": "monitorenv_remote",
+                    "query_filepath": "monitorenv_remote/regulations_cacem_h3.sql",
+                    "geometry_column": "geom",
+                    "crs": 4326,
+                    "resolution": 8,
+                    "ddl_script_paths": "monitorenv/create_regulations_cacem_h3.sql",
+                    "destination_database": "monitorenv",
+                    "destination_table": "regulations_cacem_h3",
+                    "batch_size": 10,
+                },
+            ),
         ]
     )
 
