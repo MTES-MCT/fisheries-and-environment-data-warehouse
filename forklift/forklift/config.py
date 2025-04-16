@@ -20,7 +20,7 @@ FORKLIFT_DOCKER_IMAGE = os.getenv("FORKLIFT_DOCKER_IMAGE")
 FORKLIFT_VERSION = os.getenv("FORKLIFT_VERSION")
 FLOWS_LOCATION = Path("forklift/pipeline/flows")  # relative to the WORKDIR in the image
 FLOWS_LABEL = "forklift"
-MAX_FLOW_RUN_MINUTES = 30
+MAX_FLOW_RUN_MINUTES = 60
 FLOW_STATES_TO_CLEAN = ["Running"]
 
 # Proxies for pipeline flows requiring Internet access
