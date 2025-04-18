@@ -35,3 +35,7 @@ PREFECT_SERVER_URL = os.getenv("PREFECT_SERVER_URL")
 # data.gouv.fr configuration
 DATAGOUV_API_ENDPOINT = "https://www.data.gouv.fr/api/1"
 DATAGOUV_API_KEY = os.getenv("DATAGOUV_API_KEY")
+
+# Data warehous credentials for use in flows
+DATA_WAREHOUSE_USER = os.getenv("DATA_WAREHOUSE_USER")
+DATA_WAREHOUSE_PWD = os.getenv("DATA_WAREHOUSE_PWD")

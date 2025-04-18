@@ -345,7 +345,11 @@ def delete_rows(
 
 
 def run_sql_script(
-    *, sql: str = None, sql_script_filepath: Path = None, parameters: dict = None
+    *,
+    sql: str = None,
+    sql_script_filepath: Path = None,
+    python_bind_parameters: dict = None,
+    parameters: dict = None,
 ):
     """
     Execute SQL script on data_warehouse. Does not return any result.
@@ -355,6 +359,8 @@ def run_sql_script(
           `sql_script_filepath` is null. Defaults to None.
         sql_script_filepath (Path, optional): path to .sql file, starting from the
           sql_sripts folder. example : "ddl/create_table_xxx.sql". Defaults to None.
+        python_bind_parameters (dict): a dictionary of parameters that will be binded
+          in python in the query string before passing the query to the data warehouse.
         parameters (dict, optionnal): pamaters to pass to clickhouse client `command`
           method.
 
@@ -388,6 +394,9 @@ def run_sql_script(
         sql_filepath = SQL_SCRIPTS_LOCATION / sql_script_filepath
         with open(sql_filepath, "r") as sql_file:
             sql = sql_file.read()
+
+        if python_bind_parameters:
+            sql = sql.format(**python_bind_parameters)
 
     client = create_datawarehouse_client()
     client.command(sql, parameters=parameters)
