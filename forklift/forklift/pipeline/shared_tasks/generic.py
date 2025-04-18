@@ -26,13 +26,19 @@ def create_database_if_not_exists(database: str):
 
 
 @task(checkpoint=False)
-def run_ddl_scripts(ddl_script_paths: str | Path | list, **parameters):
+def run_ddl_scripts(
+    ddl_script_paths: str | Path | list,
+    python_bind_parameters: dict = None,
+    **parameters,
+):
     """
     Runs DDL script(s) at designated location(s), passing kwargs to `run_sql_script`.
 
     Args:
         ddl_script_paths (str | Path | list): DDL script location, or list of DDL
           scripts locations, relative to ddl directory
+        python_bind_parameters (dict): a dictionary of parameters that will be binded
+          in python in the query string before passing the query to the data warehouse.
         parameters (dict, optionnal): pamaters to pass to `run_sql_script`
     """
     logger = prefect.context.get("logger")
@@ -48,6 +54,7 @@ def run_ddl_scripts(ddl_script_paths: str | Path | list, **parameters):
         logger.info(f"Running script {ddl_script_path} ({i + 1}/{n_scripts})")
         run_sql_script(
             sql_script_filepath=Path("ddl") / ddl_script_path,
+            python_bind_parameters=python_bind_parameters,
             parameters=parameters,
         )
 
@@ -80,6 +87,20 @@ def drop_table_if_exists(database: str, table: str):
     """
     sql = "DROP TABLE IF EXISTS  {database:Identifier}.{table:Identifier}"
     run_sql_script(sql=sql, parameters={"database": database, "table": table})
+
+
+@task(checkpoint=False)
+def drop_dictionary_if_exists(database: str, dictionary: str):
+    """
+    Drops designated dictionary from data_warehouse if it exists.
+    If the dictionary does not exist, does nothing.
+
+    Args:
+        database (str): Database name in data_warehouse.
+        dictionary (str): Name of the dictionary to drop.
+    """
+    sql = "DROP DICTIONARY IF EXISTS  {database:Identifier}.{dictionary:Identifier}"
+    run_sql_script(sql=sql, parameters={"database": database, "dictionary": dictionary})
 
 
 @task(checkpoint=False)

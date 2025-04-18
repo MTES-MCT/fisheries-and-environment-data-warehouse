@@ -3,10 +3,15 @@ import pytest
 
 from forklift.config import LIBRARY_LOCATION
 from forklift.db_engines import create_datawarehouse_client
+from forklift.pipeline.flows.reset_dictionary import flow as reset_dict_flow
 from forklift.pipeline.flows.sync_table_with_pandas import flow
 from tests.mocks import mock_check_flow_not_running
 
 flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+reset_dict_flow.replace(
+    reset_dict_flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running
+)
+
 
 scheduled_runs = pd.read_csv(
     LIBRARY_LOCATION / "pipeline/flow_schedules/sync_table_with_pandas.csv"
@@ -82,10 +87,41 @@ def test_sync_table_with_pandas(
 
     assert len(df) > 0
 
+    if final_table == "non_overlapping_fao_areas":
+        state = reset_dict_flow.run(
+            database="monitorfish",
+            dictionary="fao_areas_dict",
+            ddl_script_path="monitorfish/create_fao_areas_dict.sql",
+        )
+        assert state.is_successful()
+
+        q = "SELECT dictGet(monitorfish.fao_areas_dict, 'f_code', (0, 45)) AS fao_area"
+
+        area_from_dict_1 = client.query_df(q)
+
+        # Re-running should yield the same result
+        state = reset_dict_flow.run(
+            database="monitorfish",
+            dictionary="fao_areas_dict",
+            ddl_script_path="monitorfish/create_fao_areas_dict.sql",
+        )
+        assert state.is_successful()
+
+        area_from_dict_2 = client.query_df(q)
+
+        expected_fao_areas = pd.DataFrame({"fao_area": ["27.8"]})
+        assert state.is_successful()
+
+        pd.testing.assert_frame_equal(
+            area_from_dict_1, expected_fao_areas, check_dtype=False
+        )
+        pd.testing.assert_frame_equal(
+            area_from_dict_2, expected_fao_areas, check_dtype=False
+        )
+
     client.command(
-        ("DROP TABLE " "{database:Identifier}.{table:Identifier}"),
+        ("DROP DATABASE " "{database:Identifier}"),
         parameters={
             "database": destination_database,
-            "table": expected_table,
         },
     )
