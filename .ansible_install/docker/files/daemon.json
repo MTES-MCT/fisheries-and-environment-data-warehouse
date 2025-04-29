@@ -1,5 +1,6 @@
 {
     "insecure-registries": ["nexus.dsi.damgm.i2:5000", "nexus.dsi.damgm.i2:5020", "nexus.dsi.damgm.i2:6000"],
-    "registry-mirrors": ["http://nexus.dsi.damgm.i2:6000", "http://nexus.dsi.damgm.i2:5020"]
+    "registry-mirrors": ["http://nexus.dsi.damgm.i2:6000", "http://nexus.dsi.damgm.i2:5020"],
+    "log-driver": "local"
 }
   
