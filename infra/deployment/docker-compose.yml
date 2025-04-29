@@ -15,7 +15,7 @@ services:
       - 9000:9000
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "wget http://localhost:8123/ping || exit 1"]
+      test: ["CMD-SHELL", "wget --spider --no-verbose --tries=1 http://localhost:8123/ping || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
