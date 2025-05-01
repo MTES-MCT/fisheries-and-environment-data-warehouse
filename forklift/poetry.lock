@@ -540,35 +540,35 @@ files = [
 
 [[package]]
 name = "chdb"
-version = "3.1.2"
+version = "3.2.0"
 description = "chDB is an in-process SQL OLAP Engine powered by ClickHouse"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "chdb-3.1.2-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:7257f64c962826c0f7c47f62b33b19b10e30a858571f4d6f966c78c8ad518d05"},
-    {file = "chdb-3.1.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:7f2af8b738639b123ffffb50a5c9d499cc2676dfa5b1de23dec345ad1a77806a"},
-    {file = "chdb-3.1.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6686144b6bf567a67a6a2aa8da84b7bd9bf8b2a85be9d06784148a3ef3764de8"},
-    {file = "chdb-3.1.2-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cb0906a23fe8ecb79fbdaa7ccf6f70709f00379a08a3865650ecb7241cb7e48f"},
-    {file = "chdb-3.1.2-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:e0b4967c04a235ba7d8f37af4b3d619768e27b57a63e54992c40eaec9cc496c4"},
-    {file = "chdb-3.1.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:1f42790b5b3aa8997cb47485189876a1762f3aa6865e226639235f2537e961fe"},
-    {file = "chdb-3.1.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e1ebfb8d673e1b0f95177ae74a2f671d6ae028a3fb1bca8205670707c75c894a"},
-    {file = "chdb-3.1.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d8632bea2ddcc3b42855db08911c1437e5e38953cd2556402ddb960bcbd747bd"},
-    {file = "chdb-3.1.2-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:ba9ff2a8d6d624b744326fcffc5aa8b6277729fb4ce83cbabedc833af73fdef9"},
-    {file = "chdb-3.1.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:82108920f133187c2deaadf13005ce072e99911406d0b99ecfc50756682e2d7d"},
-    {file = "chdb-3.1.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c42fc21e2b047f2929ba91a8a39f9d3d7231c12e0f52587a4661c8c04d3396ec"},
-    {file = "chdb-3.1.2-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:daa54c16eb28d2a34f77a0ac6369ce6a79737bae106c383c9720d895565fce89"},
-    {file = "chdb-3.1.2-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:afdfb2f63df31c33311dd3cf8c2a048b90ffd8654705bd59914a1f8817333ca9"},
-    {file = "chdb-3.1.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:56a959a5b25919578418ce8aabdd7096893eea0fae09a15facea8c478db5a9c1"},
-    {file = "chdb-3.1.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f988ec8abc940e02474a3f7777689bb3f0e935e8430da3cf3fc306e48ce508a3"},
-    {file = "chdb-3.1.2-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2de504c37ea490a8efdc8f7d4eeb495c9c76743fcbb2bccfaf347abdbef59c98"},
-    {file = "chdb-3.1.2-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:3ae844546b352957f8acf15efeadede6607fde3ff76d0cfcf52c35d3294187a4"},
-    {file = "chdb-3.1.2-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:62763d98d3d39bcbec2a1b3cc12901b76bb8aefe4606427f3503e40819935698"},
-    {file = "chdb-3.1.2-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6c5c56f9a0e1cf894c208dfb34a2b9106f9adf3b63cbb3b76b791f9f58aa0963"},
-    {file = "chdb-3.1.2-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:e150e11556722d2771fe92ebfbe0391d081123147f628cbd8c5e778dc999ac48"},
-    {file = "chdb-3.1.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:f8086448f21935223949604fd8c1abd2ae887cb5f69f671d8865c79a5cfc94ba"},
-    {file = "chdb-3.1.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a4fd959b58821db4578c641a127951558d97ed05885d99aa12db92342a8c9ed4"},
-    {file = "chdb-3.1.2-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fd9f26dbea0dd7403925bab110f4a41375dbd87094bc2ece3b8a0e6321b1c13b"},
+    {file = "chdb-3.2.0-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:71073e1c158156a4ee7a856b6f1ecb0383d220cb4316cef36b289ad66d96800e"},
+    {file = "chdb-3.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:9d6eaa3a1cf33bbac2aed444310da49187b66a4bab7b8da31e82a5aacd716324"},
+    {file = "chdb-3.2.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6bf44c8a532d96690eadd70cad5f52937267119292b58118a5ebd7a21c96131c"},
+    {file = "chdb-3.2.0-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b07bac4bcf3a17bf3cb2cedcec9c1706955abcd1d7cac8c9d266294cb4aafd88"},
+    {file = "chdb-3.2.0-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:3ce03e8da61bfd3168849f4ef8292e681694b0e483afa4de00d4c6ab1cc77fee"},
+    {file = "chdb-3.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:7698ec5645546b4ac19ea6c590be9ee42cfca8189b09868fc909e437740c8d1a"},
+    {file = "chdb-3.2.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:26e07867822d91dba58d38371baa32f64709592a7856e8e057527cf954a447d0"},
+    {file = "chdb-3.2.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4f86fbcfca16ab9f6a4c9bbf824aa28b64ad57f572fe6d9ef342f864643e83f1"},
+    {file = "chdb-3.2.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:06529ab59f2c7b01cd2553ce251963ba7175e8961973afe13f42496117534a43"},
+    {file = "chdb-3.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:3482df4f747229873500bbbc08a5ad9087edd97f6edbf813e543357f4580fb9b"},
+    {file = "chdb-3.2.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fa74c7d15b067ec15fc3c3b1190661470d21845ee58b6837410a1c7a3c485846"},
+    {file = "chdb-3.2.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c97acd4b1e00418b56c9c73413c740a576865ee6592afb3ede51776d6ad9d732"},
+    {file = "chdb-3.2.0-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:a22d231b68e24c5ce898d15ea07b21486e34453eebacd2881456708180e54ad2"},
+    {file = "chdb-3.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:4decad4430331661810999ae4392acc9b38e66a76d2cbc17ace7ee4308435bf9"},
+    {file = "chdb-3.2.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2c259dcb768a95c9341457b1f15808c8d3889b798368d107324c498ed1688792"},
+    {file = "chdb-3.2.0-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1117e48bbbf67332f4aa39be7056851b1ad4518cc66c3fea4002706bd675abb4"},
+    {file = "chdb-3.2.0-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:9bfeac5d67f390cd4fc86bca377c43d742de4cf217983b0325464565162b71ef"},
+    {file = "chdb-3.2.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c51b6cc7f055db04e85cc3b8a36b5a885d6e0ac2b6135e905bf11221c3c0fbfe"},
+    {file = "chdb-3.2.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ccf1eb86d624deac00d50f27ad2a35acc8fc2b7ac3c7d9f177c374329c4cf9eb"},
+    {file = "chdb-3.2.0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:c7e653dba0446f3c7d3b1202865c44e4d3aa459474a20046a65e49ee6bc50c66"},
+    {file = "chdb-3.2.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:a317edb241b8f5afd437a2c7fffd08028a3f9003fa57cd96e153cc0ad13bf224"},
+    {file = "chdb-3.2.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:48cf17da1a6d9297c3b29b3322cdff482f76a75ec6b7d19d9899013c725f0fb6"},
+    {file = "chdb-3.2.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5b934e0a1f9a632bdee70013e01c3b884aaadd4603eec68a9b5e083ca72c89f0"},
 ]
 
 [package.dependencies]
@@ -4560,4 +4560,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.10"
-content-hash = "ebb9006ca92441d2d27ae89e5b6421fdf5625653d9debbcca4cd69c81f7a3df8"
+content-hash = "43eecab59220a4e0e831cab14ac996050318a28b202c46e6909cee5a4759e32a"
