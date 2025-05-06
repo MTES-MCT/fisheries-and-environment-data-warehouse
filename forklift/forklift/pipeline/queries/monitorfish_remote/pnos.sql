@@ -3,8 +3,12 @@ WITH pnos AS (
         operation_type,
         report_id,
         referenced_report_id,
-        cfr,
-        flag_state,
+        logbook_reports.cfr,
+        logbook_reports.external_identification AS external_immatriculation,
+        logbook_reports.ircs,
+        logbook_reports.vessel_name,
+        v.id AS vessel_id,
+        logbook_reports.flag_state,
         trip_number,
         operation_datetime_utc,
         report_datetime_utc,
@@ -27,6 +31,8 @@ WITH pnos AS (
         catch->>'preservationState' AS preservation_state,
         (catch->>'weight')::DOUBLE PRECISION AS weight
     FROM logbook_reports
+    LEFT JOIN vessels v
+    ON v.cfr = logbook_reports.cfr
     LEFT JOIN ports p
     ON p.locode = value->>'port'
     JOIN jsonb_array_elements(value->'catchOnboard') catch ON true
@@ -97,6 +103,10 @@ acknowledged_cors_targeting_pnos AS (
 SELECT
     report_id,
     cfr,
+    external_immatriculation,
+    ircs,
+    vessel_name,
+    vessel_id,
     flag_state,
     trip_number,
     port_locode,
@@ -118,7 +128,8 @@ SELECT
     presentation,
     conversion_factor,
     preservation_state,
-    weight
+    weight,
+    'LOGBOOK' AS prior_notification_source
 FROM pnos
 WHERE
     (
