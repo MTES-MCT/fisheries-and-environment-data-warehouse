@@ -35,6 +35,7 @@ def extract_load_vms(month_start: date) -> pd.DataFrame:
         parameters={"partition": partition},
     )
 
+    breakpoint()
     logger.info(f"Loading vms positions of month {month_start} into vms table.")
     run_sql_script(
         sql_script_filepath=Path("data_flows/monitorfish/vms.sql"),
