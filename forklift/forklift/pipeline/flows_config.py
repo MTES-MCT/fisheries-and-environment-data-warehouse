@@ -75,7 +75,15 @@ def get_flows_to_register():
                     "dictionary": "fao_areas_dict",
                     "ddl_script_path": "monitorfish/create_fao_areas_dict.sql",
                 },
-            )
+            ),
+            clocks.CronClock(
+                "52 1 1 * *",
+                parameter_defaults={
+                    "database": "monitorfish",
+                    "dictionary": "eez_areas_dict",
+                    "ddl_script_path": "monitorfish/create_eez_areas_dict.sql",
+                },
+            ),
         ]
     )
     sync_geo_table_to_h3_table_flow.schedule = Schedule(

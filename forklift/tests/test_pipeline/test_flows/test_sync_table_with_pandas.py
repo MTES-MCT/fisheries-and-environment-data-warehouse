@@ -119,6 +119,38 @@ def test_sync_table_with_pandas(
             area_from_dict_2, expected_fao_areas, check_dtype=False
         )
 
+    if final_table == "eez_areas":
+        state = reset_dict_flow.run(
+            database="monitorfish",
+            dictionary="eez_areas_dict",
+            ddl_script_path="monitorfish/create_eez_areas_dict.sql",
+        )
+        assert state.is_successful()
+
+        q = "SELECT dictGet(monitorfish.eez_areas_dict, 'iso_sov1', (5, 47)) AS eez_area"
+
+        area_from_dict_1 = client.query_df(q)
+
+        # Re-running should yield the same result
+        state = reset_dict_flow.run(
+            database="monitorfish",
+            dictionary="eez_areas_dict",
+            ddl_script_path="monitorfish/create_eez_areas_dict.sql",
+        )
+        assert state.is_successful()
+
+        area_from_dict_2 = client.query_df(q)
+
+        expected_eez_areas = pd.DataFrame({"eez_area": ["EST"]})
+        assert state.is_successful()
+
+        pd.testing.assert_frame_equal(
+            area_from_dict_1, expected_eez_areas, check_dtype=False
+        )
+        pd.testing.assert_frame_equal(
+            area_from_dict_2, expected_eez_areas, check_dtype=False
+        )
+
     client.command(
         ("DROP DATABASE " "{database:Identifier}"),
         parameters={
