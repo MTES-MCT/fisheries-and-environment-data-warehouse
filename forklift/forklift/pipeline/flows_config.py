@@ -24,6 +24,7 @@ from forklift.pipeline.flows import (
     enrich_monitorfish_catches,
     import_sacrois_data,
     landings,
+    pnos,
     reset_dictionary,
     reset_proxy_pg_database,
     sync_geo_table_to_h3_table,
@@ -51,6 +52,7 @@ def get_flows_to_register():
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
     landings_flow = deepcopy(landings.flow)
+    pnos_flow = deepcopy(pnos.flow)
     reset_dictionary_flow = deepcopy(reset_dictionary.flow)
     sync_geo_table_to_h3_table_flow = deepcopy(sync_geo_table_to_h3_table.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
@@ -63,6 +65,7 @@ def get_flows_to_register():
     enrich_monitorfish_catches_flow.schedule = CronSchedule("04 5 * * *")
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
     landings_flow.schedule = CronSchedule("54 4 * * *")
+    pnos_flow.schedule = CronSchedule("55 4 * * *")
     reset_dictionary_flow.schedule = Schedule(
         clocks=[
             clocks.CronClock(
@@ -167,6 +170,7 @@ def get_flows_to_register():
         reset_proxy_pg_database_flow,
         import_sacrois_data_flow,
         landings_flow,
+        pnos_flow,
         reset_dictionary_flow,
         sync_geo_table_to_h3_table_flow,
         sync_table_from_db_connection_flow,
