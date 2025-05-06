@@ -8,7 +8,7 @@ from prefect import Flow, Parameter, case, task, unmapped
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.entities.generic import IdRange
 from forklift.pipeline.entities.sacrois import SacroisPartition
-from forklift.pipeline.helpers.generic import run_sql_script
+from forklift.pipeline.helpers.generic import extract, run_sql_script
 from forklift.pipeline.helpers.processing import get_id_ranges
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import run_ddl_scripts
@@ -78,6 +78,20 @@ def compute_segments(
     logger.info(
         f"Computing segments of trips {trip_id_range.id_min} to {trip_id_range.id_max}."
     )
+
+    breakpoint()
+    df = extract(
+        db_name="data_warehouse",
+        query_filepath=Path("../sql_scripts/data_flows")
+        / "sacrois/compute_fishing_activity_segments.sql",
+        params=dict(
+            processing_date=partition.processing_date,
+            id_min=trip_id_range.id_min,
+            id_max=trip_id_range.id_max,
+            segments_year=segments_year,
+        ),
+    )
+    print(len(df))
 
     run_sql_script(
         sql_script_filepath=Path("data_flows")
