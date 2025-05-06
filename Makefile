@@ -26,7 +26,7 @@ dev-stop-metabase:
 	docker compose -f ./infra/testing/docker-compose-dev-metabase.yml down
 
 dev-erase-data-warehouse-databases:
-	docker volume rm deployment_data-warehouse-db deployment_data-warehouse-logs deployment_monitorfish-db-data deployment_monitorenv-db-data rapportnav-db-data || exit 0
+	docker volume rm deployment_data-warehouse-db deployment_data-warehouse-logs deployment_monitorfish-db-data deployment_monitorenv-db-data deployment_rapportnav-db-data || exit 0
 
 dev-run-infra-for-tests: dev-stop-data-warehouse dev-erase-data-warehouse-databases dev-run-data-warehouse
 
