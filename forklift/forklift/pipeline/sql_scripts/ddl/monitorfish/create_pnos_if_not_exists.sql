@@ -2,8 +2,12 @@
 CREATE TABLE IF NOT EXISTS monitorfish.pnos (
     report_id String,
     cfr LowCardinality(String),
+    external_immatriculation LowCardinality(Nullable(String)),
+    ircs LowCardinality(Nullable(String)),
+    vessel_name LowCardinality(Nullable(String)),
+    vessel_id Nullable(Integer),
     flag_state LowCardinality(String),
-    trip_number String,
+    trip_number Nullable(String),
     port_locode LowCardinality(String),
     port_name LowCardinality(Nullable(String)),
     port_latitude Nullable(Float64),
@@ -23,7 +27,8 @@ CREATE TABLE IF NOT EXISTS monitorfish.pnos (
     presentation LowCardinality(Nullable(String)),
     conversion_factor Nullable(Float64),
     preservation_state LowCardinality(Nullable(String)),
-    weight Float64
+    weight Float64,
+    prior_notification_source Enum('MANUAL' = 1, 'LOGBOOK' = 2)
 )
 ENGINE MergeTree()
 PARTITION BY toYYYYMM(operation_datetime_utc)

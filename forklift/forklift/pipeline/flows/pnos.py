@@ -29,6 +29,32 @@ def extract_pnos(month_start: date) -> pd.DataFrame:
 
 
 @task(checkpoint=False)
+def extract_manual_pnos(month_start: date) -> pd.DataFrame:
+    min_date = month_start
+    max_date = month_start + relativedelta(months=1)
+
+    return extract(
+        db_name="monitorfish_remote",
+        query_filepath="monitorfish_remote/manual_pnos.sql",
+        params={"min_date": min_date, "max_date": max_date},
+    )
+
+
+@task(checkpoint=False)
+def concat(
+    pnos: pd.DataFrame,
+    manual_pnos: pd.DataFrame,
+) -> pd.DataFrame:
+    return pd.concat(
+        [
+            pnos,
+            manual_pnos,
+        ],
+        ignore_index=True,
+    )
+
+
+@task(checkpoint=False)
 def load_pnos(pnos: pd.DataFrame, month_start: date):
     logger = prefect.context.get("logger")
     partition = f"{month_start.year}{month_start.month:0>2}"
@@ -62,6 +88,9 @@ with Flow("PNOs") as flow:
         )
 
         pnos = extract_pnos.map(months_starts)
-        load_pnos.map(pnos, months_starts, upstream_tasks=[unmapped(created_table)])
+        manual_pnos = extract_manual_pnos.map(months_starts)
+
+        all_pnos = concat.map(pnos, manual_pnos)
+        load_pnos.map(all_pnos, months_starts, upstream_tasks=[unmapped(created_table)])
 
 flow.file_name = Path(__file__).name
