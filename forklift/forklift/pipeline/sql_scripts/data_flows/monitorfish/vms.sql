@@ -1,4 +1,4 @@
--- INSERT INTO monitorfish.vms
+INSERT INTO monitorfish.vms
 SELECT
     id,
     COALESCE(internal_reference_number, 'NO_CFR') AS cfr,
@@ -23,6 +23,6 @@ SELECT
     geoToH3(longitude, latitude, 8) AS h3_8
 FROM monitorfish_proxy.positions
 WHERE
-    date_time >= {min_date:DateTime} AND
-    date_time < {max_date:DateTime} AND
+    date_time >= {min_date:String} AND
+    date_time < {max_date:String} AND
     is_fishing IS NOT NULL
