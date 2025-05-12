@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS monitorfish.pnos (
     operation_datetime_utc DateTime,
     report_datetime_utc DateTime,
     predicted_arrival_datetime_utc DateTime,
-    trip_start_date DateTime,
+    trip_start_date Nullable(DateTime),
     fao_area LowCardinality(String),
     statistical_rectangle LowCardinality(Nullable(String)),
     economic_zone LowCardinality(Nullable(String)),
