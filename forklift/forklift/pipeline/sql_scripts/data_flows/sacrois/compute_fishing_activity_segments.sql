@@ -23,12 +23,12 @@ efca_segments AS (
     SELECT
         segment,
         gears,
-        arrayJoin(CASE WHEN empty(fao_areas) THEN [NULL] ELSE fao_areas END) as fao_area,
+        arrayJoin(CASE WHEN empty(fao_areas) OR fao_areas IS NULL THEN [''] ELSE fao_areas END) as fao_area,
         target_species,
         min_share_of_target_species,
         main_scip_species_type,
-        min_mesh,
-        max_mesh,
+        COALESCE(min_mesh, -1.0) AS min_mesh,
+        COALESCE(max_mesh, 1000.0) AS max_mesh,
         priority,
         vessel_types
     FROM monitorfish.fleet_segments
@@ -67,11 +67,12 @@ segmented_catches AS (
     FROM catches_main_type c
     JOIN efca_segments s
     ON
+        (s.main_scip_species_type = c.MAIN_SCIP_SPECIES_TYPE OR s.main_scip_species_type IS NULL)
+        AND startsWith(c.AREA, s.fao_area)
+        AND COALESCE(c.MESH, 0) >= s.min_mesh
+        AND COALESCE(c.MESH, 0) < s.max_mesh
+    WHERE
         (has(s.gears, c.GEAR) OR s.gears = '[]')
-        AND (s.main_scip_species_type = c.MAIN_SCIP_SPECIES_TYPE OR s.main_scip_species_type IS NULL)
-        AND (c.MESH >= s.min_mesh OR s.min_mesh IS NULL)
-        AND (c.MESH < s.max_mesh OR s.max_mesh IS NULL)
-        AND (startsWith(c.AREA, s.fao_area) OR s.fao_area IS NULL)
         AND (has(s.vessel_types, c.VESSEL_TYPE) OR s.vessel_types = [])
     QUALIFY (
         (

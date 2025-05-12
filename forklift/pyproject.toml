@@ -20,7 +20,7 @@ pytest = "^8.3.2"
 geopandas = "^1.0.1"
 simplejson = "^3.19.3"
 geoalchemy2 = "^0.17.1"
-clickhouse-connect = "^0.8.15"
+clickhouse-connect = "^0.8.17"
 h3 = "^4.2.2"
 
 
