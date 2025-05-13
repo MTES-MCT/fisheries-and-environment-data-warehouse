@@ -92,6 +92,14 @@ def get_flows_to_register():
                     "ddl_script_path": "monitorfish/create_rectangles_stat_areas_dict.sql",
                 },
             ),
+            clocks.CronClock(
+                "56 1 1 * *",
+                parameter_defaults={
+                    "database": "monitorfish",
+                    "dictionary": "facade_areas_dict",
+                    "ddl_script_path": "monitorfish/create_facade_areas_dict.sql",
+                },
+            ),
         ]
     )
     sync_geo_table_to_h3_table_flow.schedule = Schedule(
