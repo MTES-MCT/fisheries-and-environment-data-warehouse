@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 import prefect
@@ -108,10 +109,12 @@ def load_df_to_data_warehouse(
     df: pd.DataFrame,
     destination_database: str,
     destination_table: str,
+    datetime_cols_to_clip: List = None,
 ):
     load_to_data_warehouse(
         df,
         table_name=destination_table,
         database=destination_database,
         logger=prefect.context.get("logger"),
+        datetime_cols_to_clip=datetime_cols_to_clip,
     )
