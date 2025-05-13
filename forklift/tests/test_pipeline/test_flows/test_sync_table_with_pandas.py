@@ -183,6 +183,38 @@ def test_sync_table_with_pandas(
             area_from_dict_2, expected_stat_rectangle, check_dtype=False
         )
 
+        if final_table == "facade_areas_subdivided":
+            state = reset_dict_flow.run(
+                database="monitorfish",
+                dictionary="facade_areas_dict",
+                ddl_script_path="monitorfish/create_facade_areas_dict.sql",
+            )
+            assert state.is_successful()
+
+            q = "SELECT dictGet(monitorfish.facade_areas_dict, 'facade', (0, 25)) AS facade"
+
+            area_from_dict_1 = client.query_df(q)
+
+            # Re-running should yield the same result
+            state = reset_dict_flow.run(
+                database="monitorfish",
+                dictionary="rectangles_stat_areas_dict",
+                ddl_script_path="monitorfish/create_rectangles_stat_areas_dict.sql",
+            )
+            assert state.is_successful()
+
+            area_from_dict_2 = client.query_df(q)
+
+            expected_stat_rectangle = pd.DataFrame({"facade": ["NAMO"]})
+            assert state.is_successful()
+
+            pd.testing.assert_frame_equal(
+                area_from_dict_1, expected_stat_rectangle, check_dtype=False
+            )
+            pd.testing.assert_frame_equal(
+                area_from_dict_2, expected_stat_rectangle, check_dtype=False
+            )
+
     client.command(
         ("DROP DATABASE " "{database:Identifier}"),
         parameters={
