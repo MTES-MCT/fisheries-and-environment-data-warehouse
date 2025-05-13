@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -89,7 +90,9 @@ def load_to_data_warehouse(
     table_name: str,
     database: str,
     logger: logging.Logger,
+    datetime_cols_to_clip: List = None,
 ):
+    df = df.copy(deep=True)
     if isinstance(df, gpd.GeoDataFrame):
         logger.info(
             "GeoDataFrame detected. Converting geometry to text representation."
@@ -100,6 +103,15 @@ def load_to_data_warehouse(
     logger.info(
         f"Loading {len(df)} rows into data warehouse {database}.{table_name} table."
     )
+
+    if datetime_cols_to_clip:
+        for col in datetime_cols_to_clip:
+            df[col] = pd.to_datetime(
+                df[col].clip(
+                    datetime(1970, 1, 1, 0, 0, 0), datetime(2106, 2, 7, 6, 28, 15)
+                )
+            )
+
     client.insert_df(table=table_name, df=df, database=database)
 
 
