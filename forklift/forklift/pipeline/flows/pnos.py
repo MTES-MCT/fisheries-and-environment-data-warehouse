@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 from prefect import Flow, Parameter, case, task, unmapped
 
 from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.helpers.generic import extract
+from forklift.pipeline.helpers.generic import extract, load_to_data_warehouse
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.dates import get_months_starts, get_utcnow
 from forklift.pipeline.shared_tasks.generic import (
@@ -65,7 +65,13 @@ def load_pnos(pnos: pd.DataFrame, month_start: date):
         parameters={"partition": partition},
     )
     logger.info(f"Loading {len(pnos)} pnos of month {month_start} data warehouse.")
-    client.insert_df(table="pnos", df=pnos, database="monitorfish")
+    load_to_data_warehouse(
+        pnos,
+        table_name="pnos",
+        database="monitorfish",
+        logger=logger,
+        datetime_cols_to_clip=["predicted_arrival_datetime_utc", "trip_start_date"],
+    )
 
 
 with Flow("PNOs") as flow:
