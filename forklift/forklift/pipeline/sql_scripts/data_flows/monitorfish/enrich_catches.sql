@@ -42,6 +42,9 @@ trips_landings AS (
         port_name,
         port_latitude,
         port_longitude,
+        country_code_iso2 AS landing_country_code_iso2,
+        facade AS landing_facade,
+        region AS landing_region,
         landing_datetime_utc
     FROM monitorfish.landings
     WHERE
@@ -207,7 +210,10 @@ SELECT
     l.port_locode AS landing_port_locode,
     l.port_name AS landing_port_name,
     l.port_latitude AS landing_port_latitude,
-    l.port_longitude AS landing_port_longitude
+    l.port_longitude AS landing_port_longitude,
+    COALESCE(landing_country_code_iso2, 'Hors façade') AS landing_country_code_iso2,
+    landing_facade,
+    landing_region
 FROM catches_main_type c
 LEFT JOIN catches_top_priority_segment s
 ON c.id = s.id
