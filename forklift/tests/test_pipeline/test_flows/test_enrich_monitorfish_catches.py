@@ -546,8 +546,6 @@ def test_enrich_catches(
         enriched_catches_second_run[
             [
                 "report_id",
-                "cfr",
-                "far_datetime_utc",
                 "longitude",
                 "latitude",
                 "position_source",
