@@ -86,7 +86,10 @@ def drop_table_if_exists(database: str, table: str):
         database (str): Database name in data_warehouse.
         table (str): Name of the table to drop.
     """
-    sql = "DROP TABLE IF EXISTS  {database:Identifier}.{table:Identifier}"
+    sql = (
+        "DROP TABLE IF EXISTS  {database:Identifier}.{table:Identifier} "
+        "SETTINGS check_table_dependencies=0"
+    )
     run_sql_script(sql=sql, parameters={"database": database, "table": table})
 
 
@@ -102,6 +105,23 @@ def drop_dictionary_if_exists(database: str, dictionary: str):
     """
     sql = "DROP DICTIONARY IF EXISTS  {database:Identifier}.{dictionary:Identifier}"
     run_sql_script(sql=sql, parameters={"database": database, "dictionary": dictionary})
+
+
+@task(checkpoint=False)
+def drop_partition(database: str, table: str, partition: int | str):
+    logger = prefect.context.get("logger")
+    logger.info((f"Dropping partition {partition} " f"from table {database}.{table}"))
+    run_sql_script(
+        sql=(
+            "ALTER TABLE {database:Identifier}.{table:Identifier} "
+            "DROP PARTITION {partition:String}"
+        ),
+        parameters={
+            "partition": partition,
+            "database": database,
+            "table": table,
+        },
+    )
 
 
 @task(checkpoint=False)

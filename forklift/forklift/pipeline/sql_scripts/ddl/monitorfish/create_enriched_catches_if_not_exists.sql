@@ -6,7 +6,15 @@ CREATE TABLE IF NOT EXISTS monitorfish.enriched_catches (
     trip_number String,
     latitude Nullable(Float64),
     longitude Nullable(Float64),
+    position_source Enum(
+        'LOGBOOK' = 1,
+        'VMS' = 2,
+        'ICES_SR' = 3,
+        'PORT' = 4,
+        'NONE' = 5,
+    ),
     far_datetime_utc DateTime,
+    facade LowCardinality(String),
     fao_area LowCardinality(String),
     statistical_rectangle LowCardinality(Nullable(String)),
     economic_zone LowCardinality(Nullable(String)),
@@ -21,12 +29,10 @@ CREATE TABLE IF NOT EXISTS monitorfish.enriched_catches (
     landing_port_locode LowCardinality(Nullable(String)),
     landing_port_name LowCardinality(Nullable(String)),
     landing_port_latitude Nullable(Float64),
-    landing_port_longitude Nullable(Float64)
-    -- TODO:
-    -- catch_facade LowCardinality(String),
-    -- landing_port_country LowCardinality(Nullable(String)),
-    -- landing_facade LowCardinality(String),
-    -- landing_region LowCardinality(Nullable(String))
+    landing_port_longitude Nullable(Float64),
+    landing_country_code_iso2 LowCardinality(Nullable(String)),
+    landing_facade LowCardinality(String),
+    landing_region LowCardinality(Nullable(String))
 )
 ENGINE MergeTree()
 PARTITION BY toISOYear(far_datetime_utc)

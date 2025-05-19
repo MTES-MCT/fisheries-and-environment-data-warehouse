@@ -7,9 +7,9 @@ from pytest import fixture
 
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.landings import extract_landings, flow
-from tests.mocks import get_utcnow_mock_factory, mock_check_flow_not_running
+from tests.mocks import get_utcnow_mock_factory, replace_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+replace_check_flow_not_running(flow)
 
 
 @fixture
@@ -35,6 +35,9 @@ def expected_landings() -> pd.DataFrame:
             "port_name": [None],
             "port_latitude": [None],
             "port_longitude": [None],
+            "country_code_iso2": [None],
+            "facade": ["Hors façade"],
+            "region": [None],
             "fao_area": ["27.9.b.2"],
             "statistical_rectangle": [None],
             "economic_zone": ["ESP"],

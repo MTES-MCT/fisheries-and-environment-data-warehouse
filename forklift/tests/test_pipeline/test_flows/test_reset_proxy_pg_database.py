@@ -2,9 +2,9 @@ import pytest
 
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.reset_proxy_pg_database import flow
-from tests.mocks import mock_check_flow_not_running
+from tests.mocks import replace_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+replace_check_flow_not_running(flow)
 
 
 @pytest.mark.parametrize(

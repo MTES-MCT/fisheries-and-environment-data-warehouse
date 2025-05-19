@@ -4,13 +4,9 @@ from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.sync_table_from_db_connection import (
     flow as sync_table_from_db_connection_flow,
 )
-from tests.mocks import mock_check_flow_not_running
+from tests.mocks import replace_check_flow_not_running
 
-if sync_table_from_db_connection_flow.get_tasks("check_flow_not_running"):
-    sync_table_from_db_connection_flow.replace(
-        sync_table_from_db_connection_flow.get_tasks("check_flow_not_running")[0],
-        mock_check_flow_not_running,
-    )
+replace_check_flow_not_running(sync_table_from_db_connection_flow)
 
 
 @fixture

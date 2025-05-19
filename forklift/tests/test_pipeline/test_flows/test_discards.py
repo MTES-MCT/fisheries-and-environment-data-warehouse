@@ -7,9 +7,9 @@ from pytest import fixture
 
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.discards import extract_discards, flow
-from tests.mocks import get_utcnow_mock_factory, mock_check_flow_not_running
+from tests.mocks import get_utcnow_mock_factory, replace_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+replace_check_flow_not_running(flow)
 
 
 @fixture
