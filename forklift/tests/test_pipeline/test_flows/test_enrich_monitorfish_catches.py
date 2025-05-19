@@ -561,5 +561,4 @@ def test_enrich_catches(
     )
 
     pd.testing.assert_frame_equal(positions_second_run, expected_catches_positions)
-    expected_catches_positions
     pd.testing.assert_frame_equal(positions_first_run, expected_catches_positions)
