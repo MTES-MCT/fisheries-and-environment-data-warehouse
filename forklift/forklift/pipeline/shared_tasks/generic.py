@@ -86,7 +86,10 @@ def drop_table_if_exists(database: str, table: str):
         database (str): Database name in data_warehouse.
         table (str): Name of the table to drop.
     """
-    sql = "DROP TABLE IF EXISTS  {database:Identifier}.{table:Identifier}"
+    sql = (
+        "DROP TABLE IF EXISTS  {database:Identifier}.{table:Identifier} "
+        "SETTINGS check_table_dependencies=0"
+    )
     run_sql_script(sql=sql, parameters={"database": database, "table": table})
 
 
