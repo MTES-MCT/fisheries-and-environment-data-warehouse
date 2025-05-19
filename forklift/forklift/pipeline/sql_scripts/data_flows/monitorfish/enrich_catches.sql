@@ -44,7 +44,7 @@ trips_landings AS (
         port_longitude,
         nearby_position_at_sea_longitude,
         nearby_position_at_sea_latitude,
-        country_code_iso2 AS landing_country_code_iso2,
+        p.country_code_iso2 AS landing_country_code_iso2,
         p.facade AS landing_facade,
         p.region AS landing_region,
         landing_datetime_utc
