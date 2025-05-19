@@ -16,11 +16,7 @@ from forklift.pipeline.shared_tasks.generic import drop_partition, run_ddl_scrip
 @task(checkpoint=False)
 def compute_catches_positions(catch_year: int):
     logger = prefect.context.get("logger")
-
     logger.info(f"Computing catches positions of year {catch_year}.")
-
-    # breakpoint()
-    # positions = extract("data_warehouse", query_filepath=Path("../sql_scripts/data_flows") / "monitorfish/compute_catches_positions.sql", params=dict( catch_year=catch_year, ), )
     run_sql_script(
         sql_script_filepath=Path("data_flows")
         / "monitorfish/compute_catches_positions.sql",
