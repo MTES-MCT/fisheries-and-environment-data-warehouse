@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.12.10"
-prefect = "~1.4.1"
+prefect = "~2.20.17"
 pandas = {extras = ["postgresql"], version = "^2.2.2"}
 duckdb = "^1.0.0"
 black = "^25.1.0"
