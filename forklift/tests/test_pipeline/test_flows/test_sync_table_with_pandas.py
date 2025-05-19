@@ -5,12 +5,10 @@ from forklift.config import LIBRARY_LOCATION
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.reset_dictionary import flow as reset_dict_flow
 from forklift.pipeline.flows.sync_table_with_pandas import flow
-from tests.mocks import mock_check_flow_not_running
+from tests.mocks import replace_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
-reset_dict_flow.replace(
-    reset_dict_flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running
-)
+replace_check_flow_not_running(flow)
+replace_check_flow_not_running(reset_dict_flow)
 
 
 scheduled_runs = pd.read_csv(
@@ -31,9 +29,19 @@ parameter_values = [
 ]
 
 
+@pytest.fixture
+def drop_db(destination_database):
+    client = create_datawarehouse_client()
+    yield
+    print("Dropping databases")
+    client.command("DROP DATABASE IF EXISTS monitorfish")
+    client.command("DROP DATABASE IF EXISTS monitorenv")
+
+
 @pytest.mark.parametrize(parameters, parameter_values)
 def test_sync_table_with_pandas(
     add_monitorenv_proxy_database,
+    drop_db,
     source_database,
     query_filepath,
     schema,
@@ -183,41 +191,34 @@ def test_sync_table_with_pandas(
             area_from_dict_2, expected_stat_rectangle, check_dtype=False
         )
 
-        if final_table == "facade_areas_subdivided":
-            state = reset_dict_flow.run(
-                database="monitorfish",
-                dictionary="facade_areas_dict",
-                ddl_script_path="monitorfish/create_facade_areas_dict.sql",
-            )
-            assert state.is_successful()
+    if final_table == "facade_areas_subdivided":
+        state = reset_dict_flow.run(
+            database="monitorfish",
+            dictionary="facade_areas_dict",
+            ddl_script_path="monitorfish/create_facade_areas_dict.sql",
+        )
+        assert state.is_successful()
 
-            q = "SELECT dictGet(monitorfish.facade_areas_dict, 'facade', (0, 25)) AS facade"
+        q = "SELECT dictGet(monitorfish.facade_areas_dict, 'facade', (0, 25)) AS facade"
 
-            area_from_dict_1 = client.query_df(q)
+        area_from_dict_1 = client.query_df(q)
 
-            # Re-running should yield the same result
-            state = reset_dict_flow.run(
-                database="monitorfish",
-                dictionary="rectangles_stat_areas_dict",
-                ddl_script_path="monitorfish/create_rectangles_stat_areas_dict.sql",
-            )
-            assert state.is_successful()
+        # Re-running should yield the same result
+        state = reset_dict_flow.run(
+            database="monitorfish",
+            dictionary="rectangles_stat_areas_dict",
+            ddl_script_path="monitorfish/create_rectangles_stat_areas_dict.sql",
+        )
+        assert state.is_successful()
 
-            area_from_dict_2 = client.query_df(q)
+        area_from_dict_2 = client.query_df(q)
 
-            expected_stat_rectangle = pd.DataFrame({"facade": ["NAMO"]})
-            assert state.is_successful()
+        expected_facade = pd.DataFrame({"facade": ["NAMO"]})
+        assert state.is_successful()
 
-            pd.testing.assert_frame_equal(
-                area_from_dict_1, expected_stat_rectangle, check_dtype=False
-            )
-            pd.testing.assert_frame_equal(
-                area_from_dict_2, expected_stat_rectangle, check_dtype=False
-            )
-
-    client.command(
-        ("DROP DATABASE " "{database:Identifier}"),
-        parameters={
-            "database": destination_database,
-        },
-    )
+        pd.testing.assert_frame_equal(
+            area_from_dict_1, expected_facade, check_dtype=False
+        )
+        pd.testing.assert_frame_equal(
+            area_from_dict_2, expected_facade, check_dtype=False
+        )

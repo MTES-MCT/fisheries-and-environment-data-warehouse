@@ -105,6 +105,23 @@ def drop_dictionary_if_exists(database: str, dictionary: str):
 
 
 @task(checkpoint=False)
+def drop_partition(database: str, table: str, partition: int | str):
+    logger = prefect.context.get("logger")
+    logger.info((f"Dropping partition {partition} " f"from table {database}.{table}"))
+    run_sql_script(
+        sql=(
+            "ALTER TABLE {database:Identifier}.{table:Identifier} "
+            "DROP PARTITION {partition:String}"
+        ),
+        parameters={
+            "partition": partition,
+            "database": database,
+            "table": table,
+        },
+    )
+
+
+@task(checkpoint=False)
 def load_df_to_data_warehouse(
     df: pd.DataFrame,
     destination_database: str,

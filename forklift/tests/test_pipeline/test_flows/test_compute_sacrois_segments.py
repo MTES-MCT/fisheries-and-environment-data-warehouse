@@ -11,9 +11,9 @@ from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
     run_ddl_scripts,
 )
-from tests.mocks import mock_check_flow_not_running
+from tests.mocks import replace_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+replace_check_flow_not_running(flow)
 
 
 @fixture

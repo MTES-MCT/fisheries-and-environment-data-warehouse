@@ -10,9 +10,9 @@ from forklift.pipeline.flows.import_sacrois_data import (
     get_file_type,
     get_sacrois_file_import_spec,
 )
-from tests.mocks import mock_check_flow_not_running
+from tests.mocks import replace_check_flow_not_running
 
-flow.replace(flow.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
+replace_check_flow_not_running(flow)
 
 
 @fixture

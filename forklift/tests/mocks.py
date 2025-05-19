@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import requests
-from prefect import task
+from prefect import Flow, task
 
 from forklift.pipeline.helpers.generic import extract
 from forklift.pipeline.shared_tasks.datagouv import update_resource
@@ -68,6 +68,11 @@ def get_utcnow_mock_factory(utcnow: datetime):
 @task(checkpoint=False)
 def mock_check_flow_not_running():
     return True
+
+
+def replace_check_flow_not_running(f: Flow) -> Flow:
+    if f.get_tasks("check_flow_not_running"):
+        f.replace(f.get_tasks("check_flow_not_running")[0], mock_check_flow_not_running)
 
 
 @task(checkpoint=False)

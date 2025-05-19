@@ -37,7 +37,7 @@ def create_docker_client():
 
 @pytest.fixture(scope="session", autouse=True)
 def wait_for_data_warehouse_and_migrations(
-        set_environment_variables, create_docker_client
+    set_environment_variables, create_docker_client
 ):
     client = create_docker_client
     health = None
@@ -105,6 +105,7 @@ def add_monitorenv_proxy_database():
     print("Dropping monitorenv database proxy database")
     client = create_datawarehouse_client()
     client.command("DROP DATABASE monitorenv_proxy")
+
 
 @pytest.fixture
 def add_rapportnav_proxy_database():
