@@ -7,8 +7,8 @@ WITH catches_main_type AS (
         c.cfr AS cfr,
         c.flag_state AS flag_state,
         c.trip_number,
-        c.latitude,
-        c.longitude,
+        CASE WHEN c.latitude = 0 AND c.longitude = 0 THEN NULL ELSE c.longitude END AS longitude,
+        CASE WHEN c.latitude = 0 AND c.longitude = 0 THEN NULL ELSE c.latitude END AS latitude,
         c.far_datetime_utc,
         c.fao_area,
         c.statistical_rectangle,
@@ -29,7 +29,7 @@ WITH catches_main_type AS (
     LEFT JOIN monitorfish.vessels v ON v.cfr = c.cfr
     LEFT JOIN monitorfish.species s ON s.species_code = c.species
     WHERE
-        toISOYear(far_datetime_utc) = {catch_year:Integer} AND
+        toYear(far_datetime_utc) = {catch_year:Integer} AND
         c.cfr >= {cfr_start:String} AND
         c.cfr <= {cfr_end:String}
 ),
@@ -52,7 +52,7 @@ trips_landings AS (
     LEFT JOIN monitorfish.ports p
     ON p.locode = l.port_locode
     WHERE
-        toISOYear(landing_datetime_utc) = {catch_year:Integer} AND
+        toYear(landing_datetime_utc) = {catch_year:Integer} AND
         cfr >= {cfr_start:String} AND
         cfr <= {cfr_end:String}
 ),

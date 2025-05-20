@@ -35,6 +35,6 @@ CREATE TABLE IF NOT EXISTS monitorfish.enriched_catches (
     landing_region LowCardinality(Nullable(String))
 )
 ENGINE MergeTree()
-PARTITION BY toISOYear(far_datetime_utc)
+PARTITION BY toYear(far_datetime_utc)
 PRIMARY KEY (toStartOfMonth(far_datetime_utc), cfr)
 ORDER BY (toStartOfMonth(far_datetime_utc), cfr, far_datetime_utc, gear);
