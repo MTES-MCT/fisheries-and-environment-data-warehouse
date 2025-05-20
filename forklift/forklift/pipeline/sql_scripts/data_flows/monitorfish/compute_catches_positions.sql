@@ -21,8 +21,8 @@ far_reports AS (
         cfr,
         toStartOfDay(far_datetime_utc) AS far_day,
         toYear(far_datetime_utc) AS far_year,
-        longitude AS far_longitude,
-        latitude AS far_latitude
+        CASE WHEN latitude = 0 AND longitude = 0 THEN NULL ELSE longitude END AS far_longitude,
+        CASE WHEN latitude = 0 AND longitude = 0 THEN NULL ELSE latitude END AS far_latitude
     FROM monitorfish.catches
     WHERE toYear(far_datetime_utc) = {catch_year:Integer}
 )
