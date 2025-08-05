@@ -6,6 +6,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     year Int32,
     mission_start_datetime_utc DateTime,
     mission_end_datetime_utc DateTime,
+    mission_created_at_utc DateTime,
+    mission_updated_at_utc DateTime,
     mission_type LowCardinality(String),
     action_type LowCardinality(String),
     mission_facade LowCardinality(String),
@@ -24,6 +26,7 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     latitude Nullable(Float64),
     infraction Nullable(UInt8),
     number_of_controls Nullable(Float64),
+    number_of_awareness Nullable(Float64),
     surveillance_duration Nullable(Float64),
     observations_cacem Nullable(String)
 )
