@@ -47,7 +47,7 @@ def load_cps(cps: pd.DataFrame, month_start: date):
 with Flow("CPS") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
-        start_months_ago = Parameter("start_months_ago", default=0)
+        start_months_ago = Parameter("start_months_ago", default=1)
         end_months_ago = Parameter("end_months_ago", default=0)
 
         now = get_utcnow()
