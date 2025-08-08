@@ -189,6 +189,7 @@ def get_flows_to_register():
         compute_sacrois_segments_flow,
         catches_flow,
         drop_table_flow,
+        cps_flow,
         discards_flow,
         enrich_monitorfish_catches_flow,
         reset_proxy_pg_database_flow,
