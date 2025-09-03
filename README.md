@@ -7,7 +7,7 @@ Requires :
 * Poetry
 * Docker
 
-In order to have all required dependencies, you cane run `sudo apt install python3-dev gcc libpq-dev build-essential libsqlite3-dev`
+In order to have all required dependencies, you can run `sudo apt install python3-dev gcc libpq-dev build-essential libsqlite3-dev`
 
 ## Clickhouse
 
