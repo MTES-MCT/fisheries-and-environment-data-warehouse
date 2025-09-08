@@ -6,7 +6,7 @@ authors = ["Vincent <vincent.chery@m4x.org>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.12.10"
+python = "^3.13.7"
 prefect = "~1.4.1"
 pandas = {extras = ["postgresql"], version = "^2.2.2"}
 duckdb = "^1.0.0"
@@ -22,6 +22,7 @@ simplejson = "^3.19.3"
 geoalchemy2 = "^0.17.1"
 clickhouse-connect = "^0.8.17"
 h3 = "^4.2.2"
+#psycopg2-binary = "2.9.10"
 
 
 [tool.poetry.group.dev.dependencies]
