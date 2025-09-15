@@ -1,5 +1,5 @@
 "source_database","query_filepath","schema","table_name","backend","geom_col","destination_database","destination_table","ddl_script_path","post_processing_script_path","final_table","cron_string"
-"monitorenv_remote",,"public","amp_cacem","geopandas","geom","monitorenv","amp_cacem_tmp","monitorenv/create_amp_cacem_tmp.sql","monitorenv/post_process_amp_cacem.sql","amp_cacem","31 1 * * *"
+"monitorenv_remote","monitorenv_remote/amp_cacem_tmp.sql",,,"geopandas","geom","monitorenv","amp_cacem_tmp","monitorenv/create_amp_cacem_tmp.sql","monitorenv/post_process_amp_cacem.sql","amp_cacem","31 1 * * *"
 "monitorenv_remote","monitorenv_remote/regulations_cacem.sql",,,"geopandas","geom","monitorenv","regulations_cacem_tmp","monitorenv/create_regulations_cacem_tmp.sql","monitorenv/post_process_regulations_cacem.sql","regulations_cacem","51 1 * * *"
 "monitorfish_remote","monitorfish_remote/regulations.sql",,,"geopandas","geometry_simplified","monitorfish","regulations_tmp","monitorfish/create_regulations_tmp.sql","monitorfish/post_process_regulations.sql","regulations","31 1 * * *"
 "monitorenv_remote","monitorenv_remote/analytics_actions.sql",,,"pandas","geom","monitorenv","analytics_actions","monitorenv/create_analytics_actions.sql",,,"30 * * * *"
