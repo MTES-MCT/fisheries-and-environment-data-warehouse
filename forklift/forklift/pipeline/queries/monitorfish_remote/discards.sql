@@ -37,17 +37,20 @@ dels_targeting_diss AS (
    JOIN dis_reports
    ON del.referenced_report_id = dis_reports.report_id
    WHERE
-        del.operation_datetime_utc >= :min_date
-        AND del.operation_datetime_utc < :max_date + INTERVAL '1 week'
-        AND del.operation_type = 'DEL'
+        del.operation_type = 'DEL'
+        AND del.operation_datetime_utc >= :min_date
+        AND del.operation_datetime_utc < :max_date + INTERVAL '3 months'
 ),
 
 cors_targeting_diss AS (
    SELECT cor.referenced_report_id, cor.report_id, cor.flag_state
-   FROM dis_reports cor
+   FROM logbook_reports cor
    JOIN dis_reports
    ON cor.referenced_report_id = dis_reports.report_id
-   WHERE cor.operation_type = 'COR'
+   WHERE
+        cor.operation_type = 'COR'
+        AND cor.operation_datetime_utc >= :min_date
+        AND cor.operation_datetime_utc < :max_date + INTERVAL '3 months'
 
 ),
 
@@ -56,7 +59,7 @@ acknowledged_report_ids AS (
    FROM logbook_reports
    WHERE
        operation_datetime_utc >= :min_date
-       AND operation_datetime_utc < :max_date + INTERVAL '1 week'
+       AND operation_datetime_utc < :max_date + INTERVAL '3 months'
        AND operation_type = 'RET'
        AND value->>'returnStatus' = '000'
        AND referenced_report_id IN (

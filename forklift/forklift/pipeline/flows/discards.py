@@ -52,7 +52,7 @@ def load_discards(discards: pd.DataFrame, month_start: date):
 with Flow("Discards") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
-        start_months_ago = Parameter("start_months_ago", default=1)
+        start_months_ago = Parameter("start_months_ago", default=2)
         end_months_ago = Parameter("end_months_ago", default=0)
 
         now = get_utcnow()
