@@ -27,7 +27,7 @@ dels_targeting_activities AS (
    WHERE
         del.operation_type = 'DEL'
         AND del.operation_datetime_utc >= :min_date
-        AND del.operation_datetime_utc < :max_date + INTERVAL '3 months'
+        AND del.operation_datetime_utc < :max_date + INTERVAL '2 years'
 ),
 
 cors_targeting_activities AS (
@@ -38,7 +38,7 @@ cors_targeting_activities AS (
    WHERE
         cor.operation_type = 'COR'
         AND cor.operation_datetime_utc >= :min_date
-        AND cor.operation_datetime_utc < :max_date + INTERVAL '3 months'
+        AND cor.operation_datetime_utc < :max_date + INTERVAL '2 years'
 
 ),
 
@@ -47,7 +47,7 @@ acknowledged_report_ids AS (
    FROM logbook_reports
    WHERE
        operation_datetime_utc >= :min_date
-       AND operation_datetime_utc < :max_date + INTERVAL '3 months'
+       AND operation_datetime_utc < :max_date + INTERVAL '2 years'
        AND operation_type = 'RET'
        AND value->>'returnStatus' = '000'
        AND referenced_report_id IN (
