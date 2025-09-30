@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS monitorfish.activity_dates (
     operation_datetime_utc DateTime,
     cfr LowCardinality(String),
-    activity_datetime_utc DateTime,
+    activity_datetime_utc Nullable(DateTime),
     log_type LowCardinality(String),
     trip_number String,
     trip_number_was_computed bool,
@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS monitorfish.activity_dates (
 )
 ENGINE MergeTree()
 PARTITION BY toYYYYMM(operation_datetime_utc)
-PRIMARY KEY (cfr)
-ORDER BY (cfr, activity_datetime_utc)
+PRIMARY KEY cfr
+ORDER BY cfr
