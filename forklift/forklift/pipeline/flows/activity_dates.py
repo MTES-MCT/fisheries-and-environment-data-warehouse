@@ -5,9 +5,10 @@ import pandas as pd
 import prefect
 from dateutil.relativedelta import relativedelta
 from prefect import Flow, Parameter, case, task, unmapped
+from sqlalchemy import text
 
-from forklift.db_engines import create_datawarehouse_client
-from forklift.pipeline.helpers.generic import extract
+from forklift.db_engines import create_datawarehouse_client, create_engine
+from forklift.pipeline.helpers.generic import read_saved_query
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.dates import get_months_starts, get_utcnow
 from forklift.pipeline.shared_tasks.generic import (
@@ -24,14 +25,19 @@ def extract_load_activity_dates(month_start: date) -> pd.DataFrame:
     max_date = month_start + relativedelta(months=1)
 
     logger.info(f"Extracting activity_dates for from {min_date} to {max_date}.")
-    activity_dates = extract(
-        db_name="monitorfish_remote",
-        query_filepath="monitorfish_remote/activity_dates.sql",
-        params={
-            "min_date": min_date,
-            "max_date": max_date,
-        },
-    )
+    engine = create_engine("monitorfish_remote")
+    with engine.begin() as con:
+        savepoint = con.begin_nested()
+        con.execute(text("SET jit=off"))
+        activity_dates = read_saved_query(
+            sql_filepath="monitorfish_remote/activity_dates.sql",
+            con=con,
+            params={
+                "min_date": min_date,
+                "max_date": max_date,
+            },
+        )
+        savepoint.rollback()
 
     partition = f"{month_start.year}{month_start.month:0>2}"
     client = create_datawarehouse_client()
