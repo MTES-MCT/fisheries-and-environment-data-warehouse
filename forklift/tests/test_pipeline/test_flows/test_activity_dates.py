@@ -4,9 +4,11 @@ import pandas as pd
 import pytest
 from clickhouse_connect.driver.exceptions import DatabaseError
 from pytest import fixture
+from sqlalchemy import text
 
-from forklift.db_engines import create_datawarehouse_client
+from forklift.db_engines import create_datawarehouse_client, create_engine
 from forklift.pipeline.flows.activity_dates import flow
+from forklift.pipeline.helpers.generic import read_query
 from tests.mocks import get_utcnow_mock_factory, replace_check_flow_not_running
 
 replace_check_flow_not_running(flow)
@@ -19,6 +21,35 @@ def drop_activity_dates():
     yield
     print("Drop activity_dates cleaning")
     client.command("DROP TABLE IF EXISTS monitorfish.activity_dates")
+
+
+@fixture
+def mess_up_activity_datetime_utc():
+    engine = create_engine("monitorfish_remote")
+    with engine.begin() as con:
+        initial_activity_datetime_utc = read_query(
+            "SELECT activity_datetime_utc FROM logbook_reports WHERE report_id = '12'",
+            con=con,
+        ).iloc[0, 0]
+        con.execute(
+            text(
+                "UPDATE logbook_reports "
+                "SET activity_datetime_utc = '1910-02-25 12:35:41' "
+                "WHERE report_id = '12'"
+            )
+        )
+
+    yield
+
+    with engine.begin() as con:
+        con.execute(
+            text(
+                "UPDATE logbook_reports "
+                "SET activity_datetime_utc = :initial_activity_datetime_utc "
+                "WHERE report_id = '12'"
+            ),
+            parameters={"initial_activity_datetime_utc": initial_activity_datetime_utc},
+        )
 
 
 @fixture
@@ -62,7 +93,7 @@ def expected_activity_dates() -> pd.DataFrame:
                 "___TARGET___",
             ],
             "activity_datetime_utc": [
-                pd.Timestamp("2025-01-05 22:32:03"),
+                pd.Timestamp("1970-01-01 00:00:00"),
                 pd.Timestamp("2025-01-05 20:57:03"),
                 pd.Timestamp("2025-01-05 22:05:03"),
                 pd.Timestamp("2025-02-03 18:57:03"),
@@ -218,7 +249,9 @@ def expected_activity_dates() -> pd.DataFrame:
     )
 
 
-def test_activity_dates(drop_activity_dates, expected_activity_dates):
+def test_activity_dates(
+    drop_activity_dates, mess_up_activity_datetime_utc, expected_activity_dates
+):
     client = create_datawarehouse_client()
 
     flow.replace(

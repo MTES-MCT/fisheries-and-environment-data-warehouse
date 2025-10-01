@@ -78,7 +78,13 @@ acknowledged_cors_targeting_activities AS (
 SELECT
     operation_datetime_utc,
     cfr,
-    activity_datetime_utc,
+    GREATEST(
+        LEAST(
+            activity_datetime_utc,
+            '2106-01-01 00:00:00'::TIMESTAMP WITHOUT TIME ZONE
+        ),
+        '1970-01-01 00:00:00'::TIMESTAMP WITHOUT TIME ZONE
+    ) AS activity_datetime_utc,
     log_type,
     trip_number,
     trip_number_was_computed,
