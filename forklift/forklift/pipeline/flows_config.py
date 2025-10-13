@@ -65,7 +65,7 @@ def get_flows_to_register():
     catches_flow.schedule = CronSchedule("44 4 * * *")
     cps_flow.schedule = CronSchedule("41 4 * * *")
     discards_flow.schedule = CronSchedule("35 4 * * *")
-    enrich_monitorfish_catches_flow.schedule = CronSchedule("04 5 * * *")
+    enrich_monitorfish_catches_flow.schedule = CronSchedule("14 5 * * *")
     clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
     landings_flow.schedule = CronSchedule("54 4 * * *")
     pnos_flow.schedule = CronSchedule("55 4 * * *")
