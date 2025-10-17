@@ -9,3 +9,4 @@
 "monitorenv_proxy","control_units",,"monitorenv","control_units",,"id","44 4 * * *"
 "monitorfish_proxy","producer_organization_memberships",,"monitorfish","producer_organization_memberships",,"internal_reference_number","46 4 * * *"
 "rapportnav_proxy",,"rapportnav_remote/analytics_missions_full_data.sql","rapportnav","mission_analytics",,"id","48 4 * * *"
+"monitorfish_proxy","districts",,"monitorfish","districts",,"district_code","50 4 * * *"
