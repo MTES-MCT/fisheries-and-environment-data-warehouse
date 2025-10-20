@@ -7,7 +7,7 @@ from pytest import fixture
 from sqlalchemy import text
 
 from forklift.db_engines import create_datawarehouse_client, create_engine
-from forklift.pipeline.flows.activity_dates import flow
+from forklift.pipeline.flows.activities import flow
 from forklift.pipeline.helpers.generic import read_query
 from tests.mocks import get_utcnow_mock_factory, replace_check_flow_not_running
 
@@ -15,12 +15,12 @@ replace_check_flow_not_running(flow)
 
 
 @fixture
-def drop_activity_dates():
+def drop_activities():
     client = create_datawarehouse_client()
-    print("Drop activity_dates init")
+    print("Drop activities init")
     yield
-    print("Drop activity_dates cleaning")
-    client.command("DROP TABLE IF EXISTS monitorfish.activity_dates")
+    print("Drop activities cleaning")
+    client.command("DROP TABLE IF EXISTS monitorfish.activities")
 
 
 @fixture
@@ -53,7 +53,7 @@ def mess_up_activity_datetime_utc():
 
 
 @fixture
-def expected_activity_dates() -> pd.DataFrame:
+def expected_activities() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "operation_datetime_utc": [
@@ -182,60 +182,6 @@ def expected_activity_dates() -> pd.DataFrame:
                 "21",
                 "15",
             ],
-            "is_deleted": [
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            "is_corrected": [
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-            ],
-            "is_acknowledged": [
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-            ],
         }
     ).astype(
         {
@@ -249,8 +195,8 @@ def expected_activity_dates() -> pd.DataFrame:
     )
 
 
-def test_activity_dates(
-    drop_activity_dates, mess_up_activity_datetime_utc, expected_activity_dates
+def test_activities(
+    drop_activities, mess_up_activity_datetime_utc, expected_activities
 ):
     client = create_datawarehouse_client()
 
@@ -258,9 +204,7 @@ def test_activity_dates(
         flow.get_tasks("get_utcnow")[0], get_utcnow_mock_factory(datetime(2025, 2, 7))
     )
 
-    query = (
-        "SELECT * FROM monitorfish.activity_dates ORDER BY cfr, activity_datetime_utc"
-    )
+    query = "SELECT * FROM monitorfish.activities ORDER BY cfr, activity_datetime_utc"
 
     # Initially the catches table does not exist
     with pytest.raises(
@@ -273,16 +217,14 @@ def test_activity_dates(
         end_months_ago=0,
     )
     assert state.is_successful()
-    activity_dates_after_one_run = client.query_df(query)
+    activities_after_one_run = client.query_df(query)
 
     state = flow.run(
         start_months_ago=12,
         end_months_ago=0,
     )
     assert state.is_successful()
-    activity_dates_after_two_runs = client.query_df(query)
+    activities_after_two_runs = client.query_df(query)
 
-    pd.testing.assert_frame_equal(activity_dates_after_one_run, expected_activity_dates)
-    pd.testing.assert_frame_equal(
-        activity_dates_after_one_run, activity_dates_after_two_runs
-    )
+    pd.testing.assert_frame_equal(activities_after_one_run, expected_activities)
+    pd.testing.assert_frame_equal(activities_after_one_run, activities_after_two_runs)
