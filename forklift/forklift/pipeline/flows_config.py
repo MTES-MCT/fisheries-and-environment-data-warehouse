@@ -15,7 +15,7 @@ from forklift.config import (
     ROOT_DIRECTORY,
 )
 from forklift.pipeline.flows import (
-    activity_dates,
+    activities,
     catches,
     clean_flow_runs,
     compute_sacrois_segments,
@@ -43,7 +43,7 @@ def make_cron_clock_from_run_param_series(s: pd.Series) -> clocks.CronClock:
 
 ################################ Define flow schedules ################################
 def get_flows_to_register():
-    activity_dates_flow = deepcopy(activity_dates.flow)
+    activities_flow = deepcopy(activities.flow)
     catches_flow = deepcopy(catches.flow)
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     compute_sacrois_segments_flow = deepcopy(compute_sacrois_segments.flow)
@@ -61,7 +61,7 @@ def get_flows_to_register():
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
     vms_flow = deepcopy(vms.flow)
 
-    activity_dates_flow.schedule = CronSchedule("46 4 * * *")
+    activities_flow.schedule = CronSchedule("46 4 * * *")
     catches_flow.schedule = CronSchedule("44 4 * * *")
     cps_flow.schedule = CronSchedule("41 4 * * *")
     discards_flow.schedule = CronSchedule("35 4 * * *")
@@ -187,7 +187,7 @@ def get_flows_to_register():
 
     #################### List flows to register with prefect server ###################
     flows_to_register = [
-        activity_dates_flow,
+        activities_flow,
         catches_flow,
         clean_flow_runs_flow,
         compute_sacrois_segments_flow,

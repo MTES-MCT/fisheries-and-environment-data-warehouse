@@ -18,19 +18,19 @@ from forklift.pipeline.shared_tasks.generic import (
 
 
 @task(checkpoint=False)
-def extract_load_activity_dates(month_start: date) -> pd.DataFrame:
+def extract_load_activities(month_start: date) -> pd.DataFrame:
     logger = prefect.context.get("logger")
 
     min_date = month_start
     max_date = month_start + relativedelta(months=1)
 
-    logger.info(f"Extracting activity_dates for from {min_date} to {max_date}.")
+    logger.info(f"Extracting activities for from {min_date} to {max_date}.")
     engine = create_engine("monitorfish_remote")
     with engine.begin() as con:
         savepoint = con.begin_nested()
         con.execute(text("SET jit=off"))
-        activity_dates = read_saved_query(
-            sql_filepath="monitorfish_remote/activity_dates.sql",
+        activities = read_saved_query(
+            sql_filepath="monitorfish_remote/activities.sql",
             con=con,
             params={
                 "min_date": min_date,
@@ -41,16 +41,16 @@ def extract_load_activity_dates(month_start: date) -> pd.DataFrame:
 
     partition = f"{month_start.year}{month_start.month:0>2}"
     client = create_datawarehouse_client()
-    logger.info(f"Droppping activity_dates partition '{partition}'.")
+    logger.info(f"Droppping activities partition '{partition}'.")
     client.command(
-        "ALTER TABLE monitorfish.activity_dates DROP PARTITION {partition:String}",
+        "ALTER TABLE monitorfish.activities DROP PARTITION {partition:String}",
         parameters={"partition": partition},
     )
-    logger.info(f"Loading {len(activity_dates)} activity_dates of month {month_start}.")
-    client.insert_df(table="activity_dates", df=activity_dates, database="monitorfish")
+    logger.info(f"Loading {len(activities)} activities of month {month_start}.")
+    client.insert_df(table="activities", df=activities, database="monitorfish")
 
 
-with Flow("Activity dates") as flow:
+with Flow("Activities") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         start_months_ago = Parameter("start_months_ago", default=2)
@@ -65,11 +65,11 @@ with Flow("Activity dates") as flow:
 
         created_database = create_database_if_not_exists("monitorfish")
         created_table = run_ddl_scripts(
-            "monitorfish/create_activity_dates_if_not_exists.sql",
+            "monitorfish/create_activities_if_not_exists.sql",
             upstream_tasks=[created_database],
         )
 
-        activity_dates = extract_load_activity_dates.map(
+        activities = extract_load_activities.map(
             months_starts, upstream_tasks=[unmapped(created_table)]
         )
 
