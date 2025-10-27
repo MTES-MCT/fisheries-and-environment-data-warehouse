@@ -39,3 +39,7 @@ DATAGOUV_API_KEY = os.getenv("DATAGOUV_API_KEY")
 # Data warehous credentials for use in flows
 DATA_WAREHOUSE_USER = os.getenv("DATA_WAREHOUSE_USER")
 DATA_WAREHOUSE_PWD = os.getenv("DATA_WAREHOUSE_PWD")
+
+# Rapportnav API
+RAPPORTNAV_API_ENDPOINT = "https://www.https://rapport-nav.din.developpement-durable.gouv.fr/api/v1/analytics" 
+RAPPORTNAV_API_TOKEN = "token"
