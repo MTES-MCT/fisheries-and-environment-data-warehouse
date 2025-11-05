@@ -8,6 +8,7 @@ version_application: "{{ lookup('env', 'PROJECT_VERSION') }}"
 http_proxy: "{{ lookup('env', 'PROXY_HOST') }}"
 port_proxy: "{{ lookup('env', 'PROXY_PORT') }}"
 postgresql_port: "{{ lookup('env', 'POSTGRES_PORT') }}"
+rapportnav_api_key: "{{ lookup('env', 'RAPPORTNAV_API_KEY') }}"
 
 ####################MONITORFISH_REMOTE########################
 monitorfish_remote_pwd : "{{ lookup('env', 'MONITORFISH_REMOTE_PWD') }}"
