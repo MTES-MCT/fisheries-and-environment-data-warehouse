@@ -7,7 +7,8 @@ from prefect import task
 
 from forklift.config import (
     PROXIES,
-    RAPPORTNAV_API_ENDPOINT
+    RAPPORTNAV_API_ENDPOINT,
+    RAPPORTNAV_API_TOKEN
 )
 from forklift.pipeline.helpers.generic import load_to_data_warehouse
 
