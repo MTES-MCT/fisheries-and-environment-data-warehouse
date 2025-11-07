@@ -18,9 +18,11 @@ with Flow("RapportNavAnalytics") as flow:
     
         create_database = create_database_if_not_exists("rapportnav")
         mission_ids = extract_missions_ids()
-        aem_analytics = fetch_rapportnav_api.map(
-            path='analytics/v1/patrol',
-            missions_ids=unmapped(extract_missions_ids)
-        )
+        for report_type in ['aem', 'patrol']:
+            df = fetch_rapportnav_api.map(
+                path=f'analytics/v1/{report_type}',
+                missions_ids=unmapped(extract_missions_ids)
+            )
+
 
 flow.file_name = Path(__file__).name
