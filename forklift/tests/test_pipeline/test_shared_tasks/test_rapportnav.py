@@ -25,23 +25,16 @@ def test_fetch_rapportnav_api(mock_requests_post):
                 "idUUID": 1,
                 "serviceId": 1,
                 "startDateTimeUtc": "2024-01-01",
-                "endDateTimeUtc": "2024-12-12",
-                "missionTypes": "missionTypes",
-                "controlUnits": "controlUnits",
-                "facade": "facade",
-                "isDeleted": False,
-                "missionSource": "missionSource",
-                "data": {
-                    "indicateur1": 1,
-                    "indicateur2": 2
-                }
             }
         ]
     }
     
     mock_requests_post.return_value = mock_response
 
-    rows = fetch_rapportnav_api.run(
+    df = fetch_rapportnav_api.run(
         path="/api/v1/items",
         missions_ids=[1, 2]
     )
+
+    assert len(df) > 0
+    assert df.id[0] == 1
