@@ -72,7 +72,7 @@ def fetch_rapportnav_api(
     df = _default_to_df(json_payload["results"])
 
     if not isinstance(df, pd.DataFrame):
-        raise ValueError("`to_df` must return a pandas.DataFrame")
+        raise ValueError("`_default_to_df` must return a pandas.DataFrame")
 
     n_rows = len(df)
     logger.info(f"Fetched {n_rows} rows")
