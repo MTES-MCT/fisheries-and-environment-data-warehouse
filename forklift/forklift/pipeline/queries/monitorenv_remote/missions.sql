@@ -1,0 +1,1 @@
+select DISTINCT(id) from missions;
