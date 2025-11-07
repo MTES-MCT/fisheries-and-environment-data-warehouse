@@ -7,6 +7,7 @@ from forklift.pipeline.shared_tasks.rapportnav import fetch_rapportnav_api, extr
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import (
     create_database_if_not_exists,
+    load_df_to_data_warehouse
 )
 
 
@@ -23,6 +24,7 @@ with Flow("RapportNavAnalytics") as flow:
                 path=f'analytics/v1/{report_type}',
                 missions_ids=unmapped(extract_missions_ids)
             )
+            load_df_to_data_warehouse(df, 'rapportnav', report_type)
 
 
 flow.file_name = Path(__file__).name
