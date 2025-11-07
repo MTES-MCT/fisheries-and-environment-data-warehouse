@@ -7,9 +7,8 @@ from forklift.pipeline.helpers.generic import extract
 
 
 from forklift.config import (
-    PROXIES,
     RAPPORTNAV_API_ENDPOINT,
-    RAPPORTNAV_API_TOKEN
+    RAPPORTNAV_API_KEY
 )
 
 
@@ -53,7 +52,7 @@ def fetch_rapportnav_api(
     resp = requests.post(
             url,
             headers={
-                "x-api-key": RAPPORTNAV_API_TOKEN,
+                "x-api-key": RAPPORTNAV_API_KEY,
                 "Accept": 'application/json'
             },
             json={
