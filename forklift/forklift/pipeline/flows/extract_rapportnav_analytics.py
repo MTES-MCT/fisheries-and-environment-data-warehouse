@@ -4,7 +4,7 @@ from pathlib import Path
 import prefect
 from prefect import Flow, case, unmapped, task
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
-from forklift.pipeline.shared_tasks.generic import create_database_if_not_exists
+from forklift.pipeline.shared_tasks.generic import create_database_if_not_exists, load_df_to_data_warehouse
 from forklift.pipeline.helpers.generic import extract
 from forklift.config import (
     RAPPORTNAV_API_ENDPOINT,
@@ -92,5 +92,6 @@ with Flow("RapportNavAnalytics") as flow:
                 missions_ids=extract_missions_ids
             )
 
-
+            load_df_to_data_warehouse(df, 'rapportnav', report_type)
+            
 flow.file_name = Path(__file__).name
