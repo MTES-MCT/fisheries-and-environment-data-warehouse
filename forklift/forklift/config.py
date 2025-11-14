@@ -42,4 +42,4 @@ DATA_WAREHOUSE_PWD = os.getenv("DATA_WAREHOUSE_PWD")
 
 # Rapportnav API
 RAPPORTNAV_API_ENDPOINT = "https://rapport-nav.din.developpement-durable.gouv.fr/api/"
-RAPPORTNAV_API_KEY = os.getenv("RAPPORTNAV_API_TOKEN")
+RAPPORTNAV_API_KEY = os.getenv("RAPPORTNAV_API_KEY")
