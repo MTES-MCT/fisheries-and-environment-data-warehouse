@@ -1,10 +1,5 @@
 
-import pandas as pd
 from unittest.mock import patch, MagicMock
-
-# Provide HEADERS to avoid NameError in rapportnav.py
-HEADERS = {}
-
 from forklift.pipeline.flows.extract_rapportnav_analytics import fetch_rapportnav_api, extract_missions_ids
 
 
