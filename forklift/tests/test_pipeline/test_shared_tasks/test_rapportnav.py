@@ -5,14 +5,14 @@ from unittest.mock import patch, MagicMock
 # Provide HEADERS to avoid NameError in rapportnav.py
 HEADERS = {}
 
-from forklift.pipeline.shared_tasks.rapportnav import fetch_rapportnav_api, extract_missions_ids
+from forklift.pipeline.flows.extract_rapportnav_analytics import fetch_rapportnav_api, extract_missions_ids
 
 
 def test_extract_missions_ids(add_monitorenv_proxy_database):
     mission_ids = extract_missions_ids.run()
     assert len(mission_ids) > 0 
     
-@patch("forklift.pipeline.shared_tasks.rapportnav.requests.post")
+@patch("forklift.pipeline.flows.extract_rapportnav_analytics.requests.post")
 def test_fetch_rapportnav_api(mock_requests_post):
     # Mock response
     mock_response = MagicMock()
