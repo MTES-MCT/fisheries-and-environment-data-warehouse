@@ -1,7 +1,7 @@
 import pandas as pd
+import prefect
 import requests
 from pathlib import Path
-import prefect
 from prefect import Flow, case, task
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import create_database_if_not_exists, load_df_to_data_warehouse
@@ -10,6 +10,14 @@ from forklift.config import (
     RAPPORTNAV_API_ENDPOINT,
     RAPPORTNAV_API_KEY
 )
+from forklift.pipeline.shared_tasks.generic import (
+    create_database_if_not_exists,
+    drop_table_if_exists,
+    load_df_to_data_warehouse,
+    run_ddl_scripts,
+)
+
+
 
 
 def _default_to_df(json_page: dict) -> pd.DataFrame:
@@ -83,15 +91,36 @@ with Flow("RapportNavAnalytics") as flow:
 
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
-    
-        create_database = create_database_if_not_exists("rapportnav")
+
+        
         mission_ids = extract_missions_ids()
-        for report_type in ['aem', 'patrol']:
+        for report_type in ['patrol']:
             df = fetch_rapportnav_api(
                 path=f'analytics/v1/{report_type}',
                 missions_ids=extract_missions_ids
             )
 
-            load_df_to_data_warehouse(df, 'rapportnav', report_type)
+            destination_database = 'rapportnav'
+            create_database = create_database_if_not_exists("rapportnav")
+
+            drop_table = drop_table_if_exists(
+                destination_database,
+                report_type,
+                upstream_tasks=[create_database],
+            )
+            created_table = run_ddl_scripts(
+                f'rapportnav/create_{report_type}_if_not_exists.sql',
+                database=destination_database,
+                table=report_type,
+                upstream_tasks=[drop_table],
+            )
+
+            loaded_df = load_df_to_data_warehouse(
+                df,
+                destination_database=destination_database,
+                destination_table=report_type,
+                upstream_tasks=[created_table],
+            )
+
             
 flow.file_name = Path(__file__).name
