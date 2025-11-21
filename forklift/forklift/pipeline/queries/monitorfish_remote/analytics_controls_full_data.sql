@@ -1,7 +1,9 @@
 WITH controls_gears AS (
     SELECT
         id,
-        array_agg(COALESCE(gear->>'gearCode', 'Aucun engin')) AS gears
+        array_agg(COALESCE(gear->>'gearCode', 'Aucun engin')) AS gears,
+        array_agg((gear->>'declaredMesh')::DOUBLE PRECISION) FILTER (WHERE gear->>'declaredMesh' IS NOT NULL AND gear->>'declaredMesh' ~ '^\d+\.?\d*$')  AS declared_meshes,
+        array_agg((gear->>'controlledMesh')::DOUBLE PRECISION) FILTER (WHERE gear->>'controlledMesh' IS NOT NULL AND gear->>'controlledMesh' ~ '^\d+\.?\d*$')  AS controlled_meshes
     FROM mission_actions
     LEFT JOIN LATERAL jsonb_array_elements(
         CASE WHEN jsonb_typeof(gear_onboard) = 'array'
@@ -108,6 +110,8 @@ SELECT
     COALESCE(seizure_and_diversion, false) AS seizure_and_diversion,
     COALESCE(species, '{Aucune espèce}'::VARCHAR[]) AS species,
     COALESCE(gears, '{Aucun engin}'::VARCHAR[]) AS gears,
+    COALESCE(declared_meshes, '{}'::DOUBLE PRECISION[]) AS declared_meshes,
+    COALESCE(controlled_meshes, '{}'::DOUBLE PRECISION[]) AS controlled_meshes,
     CASE WHEN a.fao_areas = '{}' THEN '{Aucune zone FAO}' ELSE a.fao_areas END AS fao_areas, 
     COALESCE(segment->>'segment', 'Hors segment') AS segment,
     NULLIF(
@@ -131,5 +135,8 @@ JOIN analytics_missions m ON a.mission_id = m.id
 LEFT JOIN analytics_missions_control_units mcu ON m.id = mcu.mission_id
 LEFT JOIN analytics_control_units cu ON mcu.control_unit_id = cu.id
 LEFT JOIN analytics_administrations adm ON cu.administration_id = adm.id
-WHERE NOT a.is_deleted AND NOT m.deleted
+WHERE
+    NOT a.is_deleted AND
+    NOT m.deleted AND
+    action_type != 'OBSERVATION'
 ORDER BY action_datetime_utc;
