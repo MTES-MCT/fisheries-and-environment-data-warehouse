@@ -18,11 +18,29 @@ from forklift.pipeline.shared_tasks.generic import (
 )
 
 
-
-
 def _default_to_df(json_page: dict) -> pd.DataFrame:
     """Converter from JSON page to DataFrame using pandas.json_normalize."""
     return pd.json_normalize(json_page)
+
+def _process_data(df: pd.DataFrame) -> pd.DataFrame:
+    # Temporary : filter out operational summary and control policies fields
+    cols_to_remove = [
+        c for c in df.columns
+        if any(substr in c for substr in ("operationalSummary.", "controlPolicies."))
+    ]
+    if cols_to_remove:
+        logger.info(f"Removing temporary fields from DataFrame: {cols_to_remove}")
+        df = df.drop(columns=cols_to_remove, errors="ignore")
+
+    df.columns = df.columns.str.replace('.', '_')
+    
+    df['controlUnitsIds'] = df['controlUnits'].apply(lambda x: [y['id'] for y in x], 1)
+    del df["controlUnits"]
+
+    df['startDateTimeUtc'] = pd.to_datetime(df['startDateTimeUtc']) 
+    df['endDateTimeUtc'] = pd.to_datetime(df['endDateTimeUtc']) 
+
+    return df
 
 
 @task(checkpoint=False)
@@ -84,6 +102,7 @@ def fetch_rapportnav_api(
 
     n_rows = len(df)
     logger.info(f"Fetched {n_rows} rows")
+    df = _process_data(df)
     return df
 
 with Flow("RapportNavAnalytics") as flow:    

@@ -1,6 +1,31 @@
 CREATE TABLE IF NOT EXISTS rapportnav.patrol (
     id Int32,
-    startDateTimeUtc DateTime
+    idUUID Nullable(String),
+    serviceId Nullable(Int32),
+    missionTypes Array(String),
+    controlUnitsIds Array(Int32),
+    facade String,
+    startDateTimeUtc DateTime,
+    endDateTimeUtc DateTime,
+    isDeleted UInt8,
+    missionSource String,
+    activity_atSea_navigationDurationInHours Float64,
+    activity_atSea_anchoredDurationInHours Float64,
+    activity_atSea_totalDurationInHours Float64,
+    activity_atSea_nbControls Int32,
+    activity_docked_maintenanceDurationInHours Float64,
+    activity_docked_meteoDurationInHours Float64,
+    activity_docked_representationDurationInHours Float64,
+    activity_docked_adminFormationDurationInHours Float64,
+    activity_docked_mcoDurationInHours Float64,
+    activity_docked_otherDurationInHours Float64,
+    activity_docked_contrPolDurationInHours Float64,
+    activity_docked_totalDurationInHours Float64,
+    activity_docked_nbControls Int32,
+    activity_unavailable_technicalDurationInHours Float64,
+    activity_unavailable_personnelDurationInHours Float64,
+    activity_unavailable_totalDurationInHours Float64,
+    activity_unavailable_nbControls Int32
 )
-ENGINE MergeTree()
+ENGINE = MergeTree()
 ORDER BY id
