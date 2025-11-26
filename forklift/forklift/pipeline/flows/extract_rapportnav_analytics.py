@@ -57,7 +57,7 @@ def extract_missions_ids() -> list:
             f"Found {len(mission_ids)} missions. "
         )
     )
-    return mission_ids
+    return list(mission_ids.id)
 
 @task(checkpoint=False)
 def fetch_rapportnav_api(
