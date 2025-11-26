@@ -14,6 +14,7 @@ def post_rapportnav_mock_factory():
 def test_extract_missions_ids(add_monitorenv_proxy_database):
     mission_ids = extract_missions_ids.run()
     assert len(mission_ids) > 0 
+    assert isinstance(mission_ids, list)
     
 def test_fetch_rapportnav_api():
     with patch('forklift.pipeline.flows.extract_rapportnav_analytics.requests.post') as mock_post:

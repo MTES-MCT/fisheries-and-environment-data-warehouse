@@ -57,12 +57,12 @@ def extract_missions_ids() -> list:
             f"Found {len(mission_ids)} missions. "
         )
     )
-    return mission_ids
+    return list(mission_ids.id)
 
 @task(checkpoint=False)
 def fetch_rapportnav_api(
     path: str,
-    missions_ids: list
+    mission_ids: list
 ):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
@@ -82,7 +82,7 @@ def fetch_rapportnav_api(
                 "Accept": 'application/json'
             },
             json={
-                "missionIds": missions_ids
+                "missionIds": mission_ids
             }
         )
 
