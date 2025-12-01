@@ -61,7 +61,7 @@ services:
     command: migrate -password=postgres -schemas=public -user=postgres -url=jdbc:postgresql://monitorfish-db:5432/monitorfish_test_db
     volumes:
       - ../../forklift/tests/test_data/external/monitorfish/backend/src/main/resources/db/migration:/flyway/sql/schema
-      - ../../forklift/tests/test_data/external/monitorfish/datascience/tests/test_data/remote_database/:/flyway/sql/test_data
+      - ../../forklift/tests/test_data/external/monitorfish/pipeline/tests/test_data/remote_database/:/flyway/sql/test_data
       - ../../forklift/tests/test_data/monitorfish/remote_database/:/flyway/sql/extra_test_data
     depends_on:
       monitorfish-db:
