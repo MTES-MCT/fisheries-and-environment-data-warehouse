@@ -60,14 +60,13 @@ def chunk_missions(mission_ids: list, batch_size: int = 100) -> list:
 
 @task(checkpoint=False)
 def concat_dfs(dfs: list) -> pd.DataFrame:
-    """Concatenate a list of DataFrames inside the flow runtime.
-
-    
+    """
+    Concatenate a list of DataFrames inside the flow runtime.
     """
     # Filter out any None values
     dfs = [d for d in dfs if d is not None]
     if not dfs:
-        raise SKIP("Condition not met, skipping flow")
+        raise SKIP("Dataframe vide. Fin du flow...")
     return pd.concat(dfs, ignore_index=True)
 
 
