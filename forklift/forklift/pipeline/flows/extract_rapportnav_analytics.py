@@ -2,7 +2,7 @@ import pandas as pd
 import prefect
 import requests
 from pathlib import Path
-from prefect import Flow, case, task
+from prefect import Flow, case, task, unmapped
 from prefect.engine.signals import SKIP
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import create_database_if_not_exists, load_df_to_data_warehouse
@@ -64,7 +64,7 @@ def concat_dfs(dfs: list) -> pd.DataFrame:
     Concatenate a list of DataFrames inside the flow runtime.
     """
     # Filter out any None values
-    dfs = [d for d in dfs if d is not None]
+    dfs = [d for d in dfs if not d.empty]
     if not dfs:
         raise SKIP("Dataframe vide. Fin du flow...")
     return pd.concat(dfs, ignore_index=True)
@@ -129,7 +129,9 @@ def fetch_rapportnav_api(
 
     n_rows = len(df)
     logger.info(f"Fetched {n_rows} rows")
-    df = _process_data(df)
+
+    if n_rows:
+        df = _process_data(df)
     return df
 
 with Flow("RapportNavAnalytics") as flow:    
@@ -146,7 +148,7 @@ with Flow("RapportNavAnalytics") as flow:
         for report_type in ['patrol']:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
-                path=f'analytics/v1/{report_type}',
+                path=unmapped(f'analytics/v1/{report_type}'),
                 missions_ids=mission_ids_batches
             )
 
