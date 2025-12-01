@@ -48,5 +48,8 @@ data_warehouse_pwd: "{{ lookup('env', 'DATA_WAREHOUSE_PWD') }}"
 
 ###########################API_KEY###########################
 api_key_datagouv: "{{ lookup('env', 'DATAGOUV_API_KEY') }}"
+rapportnav_api_key: "{{ lookup('env', 'RAPPORTNAV_API_KEY') }}"
 
+###########################API_URL###########################
+rapportnav_api_url: "{{ lookup('env', 'RAPPORTNAV_API_URL') }}"
 prefect_server_url: "{{ lookup('env', 'PREFECT_SERVER_URL') }}"
