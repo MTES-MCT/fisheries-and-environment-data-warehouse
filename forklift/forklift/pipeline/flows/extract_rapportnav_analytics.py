@@ -3,6 +3,7 @@ import prefect
 import requests
 from pathlib import Path
 from prefect import Flow, case, task
+from prefect.engine.signals import SKIP
 from forklift.pipeline.shared_tasks.control_flow import check_flow_not_running
 from forklift.pipeline.shared_tasks.generic import create_database_if_not_exists, load_df_to_data_warehouse
 from forklift.pipeline.helpers.generic import extract
@@ -16,6 +17,11 @@ from forklift.pipeline.shared_tasks.generic import (
     load_df_to_data_warehouse,
     run_ddl_scripts,
 )
+
+def chunk_list(items, batch_size):
+    """Split list into batches"""
+    for i in range(0, len(items), batch_size):
+        yield items[i:i + batch_size]
 
 
 def _default_to_df(json_page: dict) -> pd.DataFrame:
@@ -41,6 +47,28 @@ def _process_data(df: pd.DataFrame) -> pd.DataFrame:
     df['endDateTimeUtc'] = pd.to_datetime(df['endDateTimeUtc']) 
 
     return df
+
+
+
+@task(checkpoint=False)
+def chunk_missions(mission_ids: list, batch_size: int = 100) -> list:
+    """Task wrapper around chunk_list so chunking happens at runtime inside the flow."""
+    if not mission_ids:
+        return []
+    return list(chunk_list(mission_ids, batch_size))
+
+
+@task(checkpoint=False)
+def concat_dfs(dfs: list) -> pd.DataFrame:
+    """Concatenate a list of DataFrames inside the flow runtime.
+
+    
+    """
+    # Filter out any None values
+    dfs = [d for d in dfs if d is not None]
+    if not dfs:
+        raise SKIP("Condition not met, skipping flow")
+    return pd.concat(dfs, ignore_index=True)
 
 
 @task(checkpoint=False)
@@ -111,13 +139,21 @@ with Flow("RapportNavAnalytics") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
 
-        
         mission_ids = extract_missions_ids()
+
+        # Chunk mission ids at runtime using a Prefect task so we can map over batches
+        mission_ids_batches = chunk_missions(mission_ids, 100)
+
         for report_type in ['patrol']:
-            df = fetch_rapportnav_api(
+            # Map fetch_rapportnav_api over the batches produced by chunk_missions
+            df_batch = fetch_rapportnav_api.map(
                 path=f'analytics/v1/{report_type}',
-                missions_ids=extract_missions_ids
+                missions_ids=mission_ids_batches
             )
+
+            # Concatenate mapped DataFrames at runtime
+            # If dataframe is empty, stopping the flow here
+            df = concat_dfs(df_batch)
 
             destination_database = 'rapportnav'
             create_database = create_database_if_not_exists("rapportnav")
@@ -141,5 +177,5 @@ with Flow("RapportNavAnalytics") as flow:
                 upstream_tasks=[created_table],
             )
 
-            
+                
 flow.file_name = Path(__file__).name
