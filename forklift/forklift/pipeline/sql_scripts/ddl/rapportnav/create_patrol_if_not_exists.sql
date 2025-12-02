@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.patrol (
     serviceId Nullable(Int32),
     missionTypes Array(String),
     controlUnitsIds Array(Int32),
-    facade String Default "Non renseigné",
+    facade String,
     startDateTimeUtc DateTime,
     endDateTimeUtc DateTime,
     isDeleted UInt8,
