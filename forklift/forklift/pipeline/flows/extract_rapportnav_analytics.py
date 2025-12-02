@@ -35,7 +35,7 @@ def _process_data(df: pd.DataFrame) -> pd.DataFrame:
         if any(substr in c for substr in ("operationalSummary.", "controlPolicies."))
     ]
     if cols_to_remove:
-        logger.info(f"Removing temporary fields from DataFrame: {cols_to_remove}")
+        logger.info("Removing temporary fields from DataFrame")
         df = df.drop(columns=cols_to_remove, errors="ignore")
 
     df.columns = df.columns.str.replace('.', '_')
@@ -45,6 +45,9 @@ def _process_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df['startDateTimeUtc'] = pd.to_datetime(df['startDateTimeUtc']) 
     df['endDateTimeUtc'] = pd.to_datetime(df['endDateTimeUtc']) 
+
+    # Deal with potential null values
+    df['facade'] = df['facade'].fillna('NON_RESEIGNE')
 
     return df
 
@@ -68,7 +71,6 @@ def concat_dfs(dfs: list) -> pd.DataFrame:
     if not dfs:
         raise SKIP("Dataframe vide. Fin du flow...")
     return pd.concat(dfs, ignore_index=True)
-
 
 @task(checkpoint=False)
 def extract_missions_ids() -> list:
@@ -149,6 +151,7 @@ with Flow("RapportNavAnalytics") as flow:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
                 path=unmapped(f'analytics/v1/{report_type}'),
+
                 missions_ids=mission_ids_batches
             )
 
@@ -170,7 +173,7 @@ with Flow("RapportNavAnalytics") as flow:
                 table=report_type,
                 upstream_tasks=[drop_table],
             )
-
+            
             loaded_df = load_df_to_data_warehouse(
                 df,
                 destination_database=destination_database,
