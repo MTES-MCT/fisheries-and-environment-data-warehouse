@@ -1,1 +1,1 @@
-select DISTINCT(id) from missions;
+select DISTINCT(id) from missions where start_datetime_utc >= '2025-12-01';

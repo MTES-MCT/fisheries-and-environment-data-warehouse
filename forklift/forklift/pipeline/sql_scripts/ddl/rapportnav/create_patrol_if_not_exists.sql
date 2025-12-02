@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.patrol (
     endDateTimeUtc DateTime,
     isDeleted UInt8,
     missionSource String,
+    activity_atSea_nbOfDaysAtSea Float64,
     activity_atSea_navigationDurationInHours Float64,
     activity_atSea_anchoredDurationInHours Float64,
     activity_atSea_totalDurationInHours Float64,
