@@ -79,6 +79,7 @@ def extract_missions_ids() -> list:
     mission_ids = extract(
         db_name="monitorenv_remote",
         query_filepath="monitorenv_remote/missions.sql",
+        parse_dates=['start_datetime_utc']
     )
 
     logger.info(
