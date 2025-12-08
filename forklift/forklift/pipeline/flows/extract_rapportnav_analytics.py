@@ -89,15 +89,20 @@ def extract_missions_ids() -> list:
 
 
 @task(checkpoint=False)
-def fetch_rapportnav_api(path: str, missions_ids: list):
+def fetch_rapportnav_api(
+    report_type: str,
+    missions_ids: list
+):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
     Args:
-        path (str): API path to call (e.g. '/api/v1/missions')
+        report_type (str): Endpoint aem or patrol
     Returns:
         int: number of rows loaded
     """
     logger = prefect.context.get("logger")
+
+    path = f'analytics/v1/{report_type}'
     url = RAPPORTNAV_API_ENDPOINT.rstrip("/") + ("/" + path.lstrip("/") if path else "")
 
     logger.info(f"Fetching data from {url}")
@@ -142,8 +147,8 @@ with Flow("RapportNavAnalytics") as flow:
         for report_type in ["patrol"]:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
-                path=unmapped(f"analytics/v1/{report_type}"),
-                missions_ids=mission_ids_batches,
+                report_type=unmapped(report_type),
+                missions_ids=mission_ids_batches
             )
 
             # Concatenate mapped DataFrames at runtime
