@@ -32,7 +32,7 @@ def _process_data(df: pd.DataFrame) -> pd.DataFrame:
     # Temporary : filter out operational summary and control policies fields
     cols_to_remove = [
         c for c in df.columns
-        if any(substr in c for substr in ("operationalSummary.", "controlPolicies."))
+        if any(substr in c for substr in ("operationalSummary.", "controlPolicies.")) and 'total' not in c
     ]
     if cols_to_remove:
         logger.info("Removing temporary fields from DataFrame")
