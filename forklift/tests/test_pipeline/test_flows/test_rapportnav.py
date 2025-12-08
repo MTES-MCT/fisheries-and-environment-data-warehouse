@@ -1,14 +1,56 @@
 
 from unittest.mock import patch, MagicMock
-from forklift.pipeline.flows.extract_rapportnav_analytics import extract_missions_ids, flow, chunk_list
+from forklift.pipeline.flows.extract_rapportnav_analytics import extract_missions_ids, flow, _process_data
 from forklift.db_engines import create_datawarehouse_client
-from datetime import datetime
 from tests.mocks import replace_check_flow_not_running
+import pandas.api.types as ptypes
+import pandas as pd
 
 replace_check_flow_not_running(flow)
 
 def post_rapportnav_mock_factory():
     return {}
+
+def test__process_data():
+    data = {
+        "controlUnits": [[{"id": 10121, "name": "A"}, {"id": 20222, "name": "B"}]],
+        "startDateTimeUtc": ["2025-01-06T07:00:00Z"],
+        "endDateTimeUtc": ["2025-01-17T17:00:00Z"],
+        "facade": [None],
+        # Columns that should be removed (contain operationalSummary. / controlPolicies. and no 'total')
+        "operationalSummary.foo": [1],
+        "controlPolicies.bar": [2],
+        # Column that contains 'total' should NOT be removed
+        "operationalSummary.totalDuration": [999],
+        # Column with dots that should be converted to underscores
+        "activity.atSea.nbControls": [16.0],
+    }
+
+    df = pd.DataFrame(data)
+
+    out = _process_data(df)
+
+    # Removed temporary fields should not be present (after replacement dots->underscores)
+    assert "operationalSummary_foo" not in out.columns
+    assert "controlPolicies_bar" not in out.columns
+
+    # Fields containing 'total' must be kept and dots replaced by underscores
+    assert "operationalSummary_totalDuration" in out.columns
+    assert out["operationalSummary_totalDuration"].iloc[0] == 999
+
+    # Dots in column names should be replaced by underscores
+    assert "activity_atSea_nbControls" in out.columns
+
+    # controlUnits should be removed and controlUnitsIds created from the list of dicts
+    assert "controlUnits" not in out.columns
+    assert out["controlUnitsIds"].iloc[0] == [10121, 20222]
+
+    # Datetime columns must be converted to pandas datetime dtype (tz-aware or tz-naive)
+    assert ptypes.is_datetime64_any_dtype(out["startDateTimeUtc"]) or ptypes.is_datetime64tz_dtype(out["startDateTimeUtc"])
+    assert ptypes.is_datetime64_any_dtype(out["endDateTimeUtc"]) or ptypes.is_datetime64tz_dtype(out["endDateTimeUtc"])
+
+    # Facade nulls should be filled with the placeholder
+    assert out["facade"].iloc[0] == "NON_RESEIGNE"
 
 def test_extract_missions_ids():
     """
