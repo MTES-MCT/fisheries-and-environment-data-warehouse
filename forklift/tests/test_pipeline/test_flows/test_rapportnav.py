@@ -2,7 +2,6 @@
 from unittest.mock import patch, MagicMock
 from forklift.pipeline.flows.extract_rapportnav_analytics import extract_missions_ids, flow, _process_data
 from forklift.db_engines import create_datawarehouse_client
-from datetime import datetime
 from tests.mocks import replace_check_flow_not_running
 import pandas.api.types as ptypes
 import pandas as pd
