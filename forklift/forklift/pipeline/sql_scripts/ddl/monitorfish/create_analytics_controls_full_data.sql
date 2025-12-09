@@ -29,6 +29,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     seizure_and_diversion UInt8,
     species Array(String),
     gears Array(String),
+    declared_meshes Array(Float64),
+    controlled_meshes Array(Float64),
     fao_areas Array(String),
     segment LowCardinality(String),
     comments Nullable(String),
