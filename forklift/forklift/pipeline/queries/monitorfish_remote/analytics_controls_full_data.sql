@@ -1,7 +1,9 @@
 WITH controls_gears AS (
     SELECT
         id,
-        array_agg(COALESCE(gear->>'gearCode', 'Aucun engin')) AS gears
+        array_agg(COALESCE(gear->>'gearCode', 'Aucun engin')) AS gears,
+        COALESCE(array_agg((gear->>'declaredMesh')::DOUBLE PRECISION) FILTER (WHERE gear->>'declaredMesh' IS NOT NULL), '{}'::DOUBLE PRECISION[]) AS declared_meshes,
+        COALESCE(array_agg((gear->>'controlledMesh')::DOUBLE PRECISION) FILTER (WHERE gear->>'controlledMesh' IS NOT NULL), '{}'::DOUBLE PRECISION[]) AS controlled_meshes
     FROM mission_actions
     LEFT JOIN LATERAL jsonb_array_elements(
         CASE WHEN jsonb_typeof(gear_onboard) = 'array'
@@ -30,19 +32,13 @@ action_infractions AS (
     SELECT
         id,
         jsonb_array_elements(
-            CASE WHEN jsonb_typeof(logbook_infractions) = 'array' THEN logbook_infractions ELSE '[]' END ||
-            CASE WHEN jsonb_typeof(gear_infractions) = 'array' THEN gear_infractions ELSE '[]' END ||
-            CASE WHEN jsonb_typeof(species_infractions) = 'array' THEN species_infractions ELSE '[]' END ||
-            CASE WHEN jsonb_typeof(other_infractions) = 'array' THEN other_infractions ELSE '[]' END
+            CASE WHEN jsonb_typeof(infractions) = 'array' THEN infractions ELSE '[]' END
         ) AS mission_infraction
     FROM mission_actions
     WHERE
         action_type IN ('SEA_CONTROL', 'LAND_CONTROL', 'AIR_CONTROL') AND
         jsonb_array_length(
-            CASE WHEN jsonb_typeof(logbook_infractions) = 'array' THEN logbook_infractions ELSE '[]' END ||
-            CASE WHEN jsonb_typeof(gear_infractions) = 'array' THEN gear_infractions ELSE '[]' END ||
-            CASE WHEN jsonb_typeof(species_infractions) = 'array' THEN species_infractions ELSE '[]' END ||
-            CASE WHEN jsonb_typeof(other_infractions) = 'array' THEN other_infractions ELSE '[]' END
+            CASE WHEN jsonb_typeof(infractions) = 'array' THEN infractions ELSE '[]' END
         ) > 0
 ),
 
@@ -106,9 +102,11 @@ SELECT
     COALESCE(infraction_categories, '{Aucune infraction}'::VARCHAR[]) AS infraction_categories,
     COALESCE(infraction_natinfs, '{Aucune infraction}'::VARCHAR[]) AS infraction_natinfs,
     COALESCE(seizure_and_diversion, false) AS seizure_and_diversion,
-    COALESCE(species, '{Aucune espèce}'::VARCHAR[]) AS species,
-    COALESCE(gears, '{Aucun engin}'::VARCHAR[]) AS gears,
-    CASE WHEN a.fao_areas = '{}' THEN '{Aucune zone FAO}' ELSE a.fao_areas END AS fao_areas, 
+    species,
+    gears,
+    declared_meshes,
+    controlled_meshes,
+    CASE WHEN a.fao_areas = '{}' THEN '{Aucune zone FAO}' ELSE a.fao_areas END AS fao_areas,
     COALESCE(segment->>'segment', 'Hors segment') AS segment,
     NULLIF(
         (
@@ -131,5 +129,8 @@ JOIN analytics_missions m ON a.mission_id = m.id
 LEFT JOIN analytics_missions_control_units mcu ON m.id = mcu.mission_id
 LEFT JOIN analytics_control_units cu ON mcu.control_unit_id = cu.id
 LEFT JOIN analytics_administrations adm ON cu.administration_id = adm.id
-WHERE NOT a.is_deleted AND NOT m.deleted
-ORDER BY action_datetime_utc;
+WHERE
+    NOT a.is_deleted AND
+    NOT m.deleted AND
+    action_type != 'OBSERVATION'
+ORDER BY action_datetime_utc
