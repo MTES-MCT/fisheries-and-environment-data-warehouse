@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS rapportnav.aem (
     missionTypes Array(String),
     facade String,
     startDateTimeUtc DateTime,
-    endDateTimeUtc DateTime
+    endDateTimeUtc DateTime,
+    1_1_1_nombre_d_heures_de_mer Int32
 )
 ENGINE = MergeTree()
 ORDER BY id
