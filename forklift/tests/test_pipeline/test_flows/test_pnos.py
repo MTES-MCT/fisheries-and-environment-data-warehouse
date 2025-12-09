@@ -108,7 +108,8 @@ def test_extract_pnos(expected_pnos):
 
 
 def test_extract_manual_pnos():
-    now = datetime.utcnow()
+    now = datetime.now(datetime.timezone.utc)
+
     start_date = now.date().replace(day=1) - relativedelta(months=3)
 
     pnos = extract_manual_pnos.run(month_start=start_date)
