@@ -3,10 +3,9 @@ from pathlib import Path
 import pandas as pd
 import prefect
 import requests
-from unidecode import unidecode
-from pathlib import Path
 from prefect import Flow, case, task, unmapped
 from prefect.engine.signals import SKIP
+from unidecode import unidecode
 
 from forklift.config import RAPPORTNAV_API_ENDPOINT, RAPPORTNAV_API_KEY
 from forklift.pipeline.helpers.generic import extract
@@ -24,25 +23,26 @@ def chunk_list(items, batch_size):
     for i in range(0, len(items), batch_size):
         yield items[i : i + batch_size]
 
-def _process_data(df: pd.DataFrame, report_type:str) -> pd.DataFrame:
-    if report_type == 'patrol':
+
+def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
+    if report_type == "patrol":
         df = _process_data_patrol(df)
-    elif report_type == 'aem':
+    elif report_type == "aem":
         df = _process_data_aem(df)
     else:
-        logger.error('Invalid report type')
+        logger.error("Invalid report type")
         return pd.DataFrame()
-    
-    df['controlUnitsIds'] = df['controlUnits'].apply(lambda x: [y['id'] for y in x], 1)
-    del df["controlUnits"]
-    
-    df.columns = df.columns.str.replace('.', '_').str.replace(' ', '_')
 
-    df['startDateTimeUtc'] = pd.to_datetime(df['startDateTimeUtc']) 
-    df['endDateTimeUtc'] = pd.to_datetime(df['endDateTimeUtc']) 
+    if not df.empty:
+        df.columns = (
+            df.columns.str.replace(".", "_").str.replace(" ", "_").str.replace("'", "_")
+        )
 
-    # Deal with potential null values
-    df['facade'] = df['facade'].fillna('NON_RESEIGNE')
+        df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"])
+        df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"])
+
+        # Deal with potential null values
+        df["facade"] = df["facade"].fillna("NON_RESEIGNE")
     return df
 
 
@@ -51,14 +51,17 @@ def _process_data_patrol(df: pd.DataFrame) -> pd.DataFrame:
     cols_to_remove = [
         c
         for c in df.columns
-        if any(substr in c for substr in ("operationalSummary.", "controlPolicies."))
-        and "total" not in c
+        if any(substr in c for substr in ("operationalSummary", "controlPolicies"))
     ]
     if cols_to_remove:
         logger.info("Removing temporary fields from DataFrame")
         df = df.drop(columns=cols_to_remove, errors="ignore")
 
+    df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
+    del df["controlUnits"]
+
     return df
+
 
 def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
     """Expand the `data` column (a list of dicts) into individual columns.
@@ -72,7 +75,7 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
 
     expanded_rows = []
     for _, row in df.iterrows():
-        data_list = row.get('data')
+        data_list = row.get("data")
         # Ensure we have a list to iterate
         if data_list is None:
             expanded_rows.append({})
@@ -82,6 +85,7 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
         if isinstance(data_list, str):
             try:
                 import json
+
                 data_list = json.loads(data_list)
             except Exception:
                 data_list = []
@@ -91,18 +95,18 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
             for item in data_list:
                 if not isinstance(item, dict):
                     continue
-                _id = item.get('id', '')
-                _title = item.get('title', '')
+                _id = item.get("id", "")
+                _title = item.get("title", "")
                 _title = unidecode(_title).lower()
                 # Build column name as id+title (use underscore between to be safe)
-                col_name = f"{_id}_{_title}" if _id or _title else ''
+                col_name = f"{_id}_{_title}" if _id or _title else ""
                 if not col_name:
                     continue
 
-                val = item.get('value')
+                val = item.get("value")
                 # Unpack nested {'value': ...} structures
-                if isinstance(val, dict) and 'value' in val:
-                    val = val.get('value')
+                if isinstance(val, dict) and "value" in val:
+                    val = val.get("value")
 
                 row_expanded[col_name] = val
 
@@ -112,7 +116,19 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
     df_expanded = pd.DataFrame(expanded_rows, index=df.index)
 
     # Drop original data column and concat expanded columns
-    df = pd.concat([df.drop(columns=['data'], errors='ignore'), df_expanded], axis=1)
+    df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)
+    if not df.empty:
+        columns_to_keep = [
+            "id",
+            "idUUID",
+            "serviceId",
+            "missionTypes",
+            "facade",
+            "startDateTimeUtc",
+            "endDateTimeUtc",
+            "1.1.1_nombre d'heures de mer",
+        ]
+        df = df[columns_to_keep]
     return df
 
 
@@ -151,10 +167,7 @@ def extract_missions_ids() -> list:
 
 
 @task(checkpoint=False)
-def fetch_rapportnav_api(
-    report_type: str,
-    missions_ids: list
-):
+def fetch_rapportnav_api(report_type: str, missions_ids: list):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
     Args:
@@ -164,7 +177,7 @@ def fetch_rapportnav_api(
     """
     logger = prefect.context.get("logger")
 
-    path = f'analytics/v1/{report_type}'
+    path = f"analytics/v1/{report_type}"
     url = RAPPORTNAV_API_ENDPOINT.rstrip("/") + ("/" + path.lstrip("/") if path else "")
 
     logger.info(f"Fetching data from {url}")
@@ -198,6 +211,7 @@ def fetch_rapportnav_api(
 
 with Flow("RapportNavAnalytics") as flow:
     logger = prefect.context.get("logger")
+    report_types = ["patrol", "aem"]
 
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
@@ -206,11 +220,10 @@ with Flow("RapportNavAnalytics") as flow:
         # Chunk mission ids at runtime using a Prefect task so we can map over batches
         mission_ids_batches = chunk_missions(mission_ids, 100)
 
-        for report_type in ["patrol"]:
+        for report_type in report_types:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
-                report_type=unmapped(report_type),
-                missions_ids=mission_ids_batches
+                report_type=unmapped(report_type), missions_ids=mission_ids_batches
             )
 
             # Concatenate mapped DataFrames at runtime
