@@ -3,6 +3,8 @@ from pathlib import Path
 import pandas as pd
 import prefect
 import requests
+from unidecode import unidecode
+from pathlib import Path
 from prefect import Flow, case, task, unmapped
 from prefect.engine.signals import SKIP
 
@@ -22,13 +24,29 @@ def chunk_list(items, batch_size):
     for i in range(0, len(items), batch_size):
         yield items[i : i + batch_size]
 
+def _process_data(df: pd.DataFrame, report_type:str) -> pd.DataFrame:
+    if report_type == 'patrol':
+        df = _process_data_patrol(df)
+    elif report_type == 'aem':
+        df = _process_data_aem(df)
+    else:
+        logger.error('Invalid report type')
+        return pd.DataFrame()
+    
+    df['controlUnitsIds'] = df['controlUnits'].apply(lambda x: [y['id'] for y in x], 1)
+    del df["controlUnits"]
+    
+    df.columns = df.columns.str.replace('.', '_').str.replace(' ', '_')
 
-def _default_to_df(json_page: dict) -> pd.DataFrame:
-    """Converter from JSON page to DataFrame using pandas.json_normalize."""
-    return pd.json_normalize(json_page)
+    df['startDateTimeUtc'] = pd.to_datetime(df['startDateTimeUtc']) 
+    df['endDateTimeUtc'] = pd.to_datetime(df['endDateTimeUtc']) 
+
+    # Deal with potential null values
+    df['facade'] = df['facade'].fillna('NON_RESEIGNE')
+    return df
 
 
-def _process_data(df: pd.DataFrame) -> pd.DataFrame:
+def _process_data_patrol(df: pd.DataFrame) -> pd.DataFrame:
     # Temporary : filter out operational summary and control policies fields
     cols_to_remove = [
         c
@@ -40,17 +58,61 @@ def _process_data(df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Removing temporary fields from DataFrame")
         df = df.drop(columns=cols_to_remove, errors="ignore")
 
-    df.columns = df.columns.str.replace(".", "_")
+    return df
 
-    df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
-    del df["controlUnits"]
+def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
+    """Expand the `data` column (a list of dicts) into individual columns.
 
-    df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"])
-    df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"])
+    For each element in the list we create a column named "{id}_{title}" and set
+    its value to the element's `value` (unpacking nested dicts if necessary).
+    """
+    # If data is a column of JSON strings, try to normalize it first
+    if df.empty:
+        return df
 
-    # Deal with potential null values
-    df["facade"] = df["facade"].fillna("NON_RESEIGNE")
+    expanded_rows = []
+    for _, row in df.iterrows():
+        data_list = row.get('data')
+        # Ensure we have a list to iterate
+        if data_list is None:
+            expanded_rows.append({})
+            continue
 
+        # If the cell is a JSON string, attempt to parse it
+        if isinstance(data_list, str):
+            try:
+                import json
+                data_list = json.loads(data_list)
+            except Exception:
+                data_list = []
+
+        row_expanded = {}
+        if isinstance(data_list, list):
+            for item in data_list:
+                if not isinstance(item, dict):
+                    continue
+                _id = item.get('id', '')
+                _title = item.get('title', '')
+                _title = unidecode(_title).lower()
+                # Build column name as id+title (use underscore between to be safe)
+                col_name = f"{_id}_{_title}" if _id or _title else ''
+                if not col_name:
+                    continue
+
+                val = item.get('value')
+                # Unpack nested {'value': ...} structures
+                if isinstance(val, dict) and 'value' in val:
+                    val = val.get('value')
+
+                row_expanded[col_name] = val
+
+        expanded_rows.append(row_expanded)
+
+    # Create a DataFrame from the expanded columns and align index with original df
+    df_expanded = pd.DataFrame(expanded_rows, index=df.index)
+
+    # Drop original data column and concat expanded columns
+    df = pd.concat([df.drop(columns=['data'], errors='ignore'), df_expanded], axis=1)
     return df
 
 
@@ -89,15 +151,20 @@ def extract_missions_ids() -> list:
 
 
 @task(checkpoint=False)
-def fetch_rapportnav_api(path: str, missions_ids: list):
+def fetch_rapportnav_api(
+    report_type: str,
+    missions_ids: list
+):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
     Args:
-        path (str): API path to call (e.g. '/api/v1/missions')
+        report_type (str): Endpoint aem or patrol
     Returns:
         int: number of rows loaded
     """
     logger = prefect.context.get("logger")
+
+    path = f'analytics/v1/{report_type}'
     url = RAPPORTNAV_API_ENDPOINT.rstrip("/") + ("/" + path.lstrip("/") if path else "")
 
     logger.info(f"Fetching data from {url}")
@@ -116,7 +183,7 @@ def fetch_rapportnav_api(path: str, missions_ids: list):
     json_payload = resp.json()
 
     # Convert payload to DataFrame
-    df = _default_to_df(json_payload["results"])
+    df = pd.json_normalize(json_payload["results"])
 
     if not isinstance(df, pd.DataFrame):
         raise ValueError("`_default_to_df` must return a pandas.DataFrame")
@@ -125,7 +192,7 @@ def fetch_rapportnav_api(path: str, missions_ids: list):
     logger.info(f"Fetched {n_rows} rows")
 
     if n_rows:
-        df = _process_data(df)
+        df = _process_data(df, report_type)
     return df
 
 
@@ -142,8 +209,8 @@ with Flow("RapportNavAnalytics") as flow:
         for report_type in ["patrol"]:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
-                path=unmapped(f"analytics/v1/{report_type}"),
-                missions_ids=mission_ids_batches,
+                report_type=unmapped(report_type),
+                missions_ids=mission_ids_batches
             )
 
             # Concatenate mapped DataFrames at runtime

@@ -35,7 +35,7 @@ def test__process_data():
 
     df = pd.DataFrame(data)
 
-    out = _process_data(df)
+    out = _process_data(df, 'patrol')
 
     # Removed temporary fields should not be present (after replacement dots->underscores)
     assert "operationalSummary_foo" not in out.columns
@@ -63,6 +63,36 @@ def test__process_data():
     # Facade nulls should be filled with the placeholder
     assert out["facade"].iloc[0] == "NON_RESEIGNE"
 
+def test__process_data_aem():
+    """Test that `_process_data_aem` expands the `data` list into id_title columns."""
+    from forklift.pipeline.flows.extract_rapportnav_analytics import _process_data_aem
+
+    # Row 0 has two items, row 1 has none
+    data = [
+        [
+            {"id": "123", "title": "speed", "value": {"value": 12}},
+            {"id": "456", "title": "depth", "value": 34},
+        ],
+        [],
+    ]
+
+    df = pd.DataFrame({"data": data})
+
+    out = _process_data_aem(df)
+
+    # Original 'data' column must be dropped
+    assert "data" not in out.columns
+
+    # New columns should be present with names id_title (underscore separator)
+    assert "123_speed" in out.columns
+    assert "456_depth" in out.columns
+
+    # Values should be extracted and unwrapped when nested under {'value': ...}
+    assert out.loc[0, "123_speed"] == 12
+    assert out.loc[0, "456_depth"] == 34
+
+    # Second row had empty list -> columns should exist but contain NaN
+    assert pd.isna(out.loc[1, "123_speed"]) and pd.isna(out.loc[1, "456_depth"]) 
 
 def test_extract_missions_ids():
     """
