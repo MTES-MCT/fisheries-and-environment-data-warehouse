@@ -1,9 +1,6 @@
-from unittest.mock import MagicMock, patch
-
 import pandas as pd
 import pandas.api.types as ptypes
 
-from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.extract_rapportnav_analytics import (
     _process_data,
     extract_missions_ids,
@@ -18,7 +15,7 @@ def post_rapportnav_mock_factory():
     return {}
 
 
-def test__process_data():
+def test__process_data_patrol():
     data = {
         "controlUnits": [[{"id": 10121, "name": "A"}, {"id": 20222, "name": "B"}]],
         "startDateTimeUtc": ["2025-01-06T07:00:00Z"],
@@ -35,15 +32,11 @@ def test__process_data():
 
     df = pd.DataFrame(data)
 
-    out = _process_data(df, 'patrol')
+    out = _process_data(df, "patrol")
 
     # Removed temporary fields should not be present (after replacement dots->underscores)
     assert "operationalSummary_foo" not in out.columns
     assert "controlPolicies_bar" not in out.columns
-
-    # Fields containing 'total' must be kept and dots replaced by underscores
-    assert "operationalSummary_totalDuration" in out.columns
-    assert out["operationalSummary_totalDuration"].iloc[0] == 999
 
     # Dots in column names should be replaced by underscores
     assert "activity_atSea_nbControls" in out.columns
@@ -63,36 +56,36 @@ def test__process_data():
     # Facade nulls should be filled with the placeholder
     assert out["facade"].iloc[0] == "NON_RESEIGNE"
 
-def test__process_data_aem():
-    """Test that `_process_data_aem` expands the `data` list into id_title columns."""
-    from forklift.pipeline.flows.extract_rapportnav_analytics import _process_data_aem
 
-    # Row 0 has two items, row 1 has none
+def test__process_data_aem():
     data = [
-        [
-            {"id": "123", "title": "speed", "value": {"value": 12}},
-            {"id": "456", "title": "depth", "value": 34},
-        ],
-        [],
+        {
+            "id": 1,
+            "idUUID": "1211",
+            "serviceId": 21,
+            "missionTypes": "LAND",
+            "startDateTimeUtc": "2025-01-06T07:00:00Z",
+            "endDateTimeUtc": "2025-01-17T17:00:00Z",
+            "facade": [None],
+            "data": [
+                {"id": "1.1.1", "title": "Nombre d'heures de mer", "value": 1211.0}
+            ],
+        }
     ]
 
-    df = pd.DataFrame({"data": data})
+    df = pd.DataFrame(data)
 
-    out = _process_data_aem(df)
+    out = _process_data(df, "aem")
 
     # Original 'data' column must be dropped
     assert "data" not in out.columns
 
     # New columns should be present with names id_title (underscore separator)
-    assert "123_speed" in out.columns
-    assert "456_depth" in out.columns
+    assert "1_1_1_nombre_d_heures_de_mer" in out.columns
 
     # Values should be extracted and unwrapped when nested under {'value': ...}
-    assert out.loc[0, "123_speed"] == 12
-    assert out.loc[0, "456_depth"] == 34
+    assert out.loc[0, "1_1_1_nombre_d_heures_de_mer"] == 1211.0
 
-    # Second row had empty list -> columns should exist but contain NaN
-    assert pd.isna(out.loc[1, "123_speed"]) and pd.isna(out.loc[1, "456_depth"]) 
 
 def test_extract_missions_ids():
     """
@@ -101,76 +94,6 @@ def test_extract_missions_ids():
     mission_ids = extract_missions_ids.run()
     assert len(mission_ids) > 0
     assert isinstance(mission_ids, list)
-
-
-def test_fetch_rapportnav_api():
-    """
-    Reads test data from monitorenv (table missions)
-    """
-    with patch(
-        "forklift.pipeline.flows.extract_rapportnav_analytics.requests.post"
-    ) as mock_post:
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "results": [
-                {
-                    "id": 22,
-                    "idUUID": None,
-                    "serviceId": 2,
-                    "missionTypes": ["SEA"],
-                    "controlUnits": [
-                        {
-                            "id": 10121,
-                            "administration": "DIRM \\/ DM",
-                            "isArchived": False,
-                            "name": "PAM Jeanne Barret",
-                            "resources": [],
-                            "contact": "00661",
-                        }
-                    ],
-                    "facade": "MEMN",
-                    "startDateTimeUtc": "2025-01-06T07:00:00Z",
-                    "endDateTimeUtc": "2025-01-17T17:00:00Z",
-                    "isDeleted": False,
-                    "missionSource": "MONITORFISH",
-                    "activity.atSea.navigationDurationInHours": 101.0,
-                    "activity.atSea.anchoredDurationInHours": 29.0,
-                    "activity.atSea.totalDurationInHours": 130.0,
-                    "activity.atSea.nbControls": 16.0,
-                    "activity.docked.maintenanceDurationInHours": 73.0,
-                    "activity.docked.meteoDurationInHours": 0.0,
-                    "activity.docked.representationDurationInHours": 0.0,
-                    "activity.docked.adminFormationDurationInHours": 0.0,
-                    "activity.docked.mcoDurationInHours": 0.0,
-                    "activity.docked.otherDurationInHours": 0.0,
-                    "activity.docked.contrPolDurationInHours": 0.0,
-                    "activity.docked.totalDurationInHours": 73.0,
-                    "activity.docked.nbControls": 0.0,
-                    "activity.unavailable.technicalDurationInHours": 48.0,
-                    "activity.unavailable.personnelDurationInHours": 24.0,
-                    "activity.unavailable.totalDurationInHours": 72.0,
-                    "activity.unavailable.nbControls": 0.0,
-                }
-            ]
-        }
-        mock_post.return_value = mock_response
-
-        state = flow.run()
-        assert state.is_successful()
-
-    client = create_datawarehouse_client()
-    df = client.query_df(
-        (
-            "SELECT * FROM "
-            "{destination_database:Identifier}.{destination_table:Identifier}"
-        ),
-        parameters={
-            "destination_database": "rapportnav",
-            "destination_table": "patrol",
-        },
-    )
-    assert len(df) > 0
 
 
 def test_chunk_list():

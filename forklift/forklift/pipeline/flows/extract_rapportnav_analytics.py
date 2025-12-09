@@ -33,16 +33,16 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         logger.error("Invalid report type")
         return pd.DataFrame()
 
-    df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
-    del df["controlUnits"]
+    if not df.empty:
+        df.columns = (
+            df.columns.str.replace(".", "_").str.replace(" ", "_").str.replace("'", "_")
+        )
 
-    df.columns = df.columns.str.replace(".", "_").str.replace(" ", "_")
+        df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"])
+        df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"])
 
-    df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"])
-    df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"])
-
-    # Deal with potential null values
-    df["facade"] = df["facade"].fillna("NON_RESEIGNE")
+        # Deal with potential null values
+        df["facade"] = df["facade"].fillna("NON_RESEIGNE")
     return df
 
 
@@ -51,12 +51,14 @@ def _process_data_patrol(df: pd.DataFrame) -> pd.DataFrame:
     cols_to_remove = [
         c
         for c in df.columns
-        if any(substr in c for substr in ("operationalSummary.", "controlPolicies."))
-        and "total" not in c
+        if any(substr in c for substr in ("operationalSummary", "controlPolicies"))
     ]
     if cols_to_remove:
         logger.info("Removing temporary fields from DataFrame")
         df = df.drop(columns=cols_to_remove, errors="ignore")
+
+    df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
+    del df["controlUnits"]
 
     return df
 
@@ -115,16 +117,18 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
 
     # Drop original data column and concat expanded columns
     df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)
-    columns_to_keep = [
-        "id",
-        "idUUID",
-        "serviceId",
-        "missionTypes",
-        "facade",
-        "startDateTimeUtc",
-        "endDateTimeUtc",
-    ]
-    df = df[columns_to_keep]
+    if not df.empty:
+        columns_to_keep = [
+            "id",
+            "idUUID",
+            "serviceId",
+            "missionTypes",
+            "facade",
+            "startDateTimeUtc",
+            "endDateTimeUtc",
+            "1.1.1_nombre d'heures de mer",
+        ]
+        df = df[columns_to_keep]
     return df
 
 
@@ -207,6 +211,7 @@ def fetch_rapportnav_api(report_type: str, missions_ids: list):
 
 with Flow("RapportNavAnalytics") as flow:
     logger = prefect.context.get("logger")
+    report_types = ["patrol", "aem"]
 
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
@@ -215,7 +220,7 @@ with Flow("RapportNavAnalytics") as flow:
         # Chunk mission ids at runtime using a Prefect task so we can map over batches
         mission_ids_batches = chunk_missions(mission_ids, 100)
 
-        for report_type in ["patrol", "aem"]:
+        for report_type in report_types:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
                 report_type=unmapped(report_type), missions_ids=mission_ids_batches
