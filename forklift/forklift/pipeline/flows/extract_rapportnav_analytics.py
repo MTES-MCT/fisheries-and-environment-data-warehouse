@@ -115,6 +115,16 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
 
     # Drop original data column and concat expanded columns
     df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)
+    columns_to_keep = [
+        "id",
+        "idUUID",
+        "serviceId",
+        "missionTypes",
+        "facade",
+        "startDateTimeUtc",
+        "endDateTimeUtc",
+    ]
+    df = df[columns_to_keep]
     return df
 
 
