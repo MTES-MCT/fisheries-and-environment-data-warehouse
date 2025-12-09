@@ -1,15 +1,22 @@
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import patch, MagicMock
-from forklift.pipeline.flows.extract_rapportnav_analytics import extract_missions_ids, flow, _process_data
-from forklift.db_engines import create_datawarehouse_client
-from tests.mocks import replace_check_flow_not_running
-import pandas.api.types as ptypes
 import pandas as pd
+import pandas.api.types as ptypes
+
+from forklift.db_engines import create_datawarehouse_client
+from forklift.pipeline.flows.extract_rapportnav_analytics import (
+    _process_data,
+    extract_missions_ids,
+    flow,
+)
+from tests.mocks import replace_check_flow_not_running
 
 replace_check_flow_not_running(flow)
 
+
 def post_rapportnav_mock_factory():
     return {}
+
 
 def test__process_data():
     data = {
@@ -46,64 +53,81 @@ def test__process_data():
     assert out["controlUnitsIds"].iloc[0] == [10121, 20222]
 
     # Datetime columns must be converted to pandas datetime dtype (tz-aware or tz-naive)
-    assert ptypes.is_datetime64_any_dtype(out["startDateTimeUtc"]) or ptypes.is_datetime64tz_dtype(out["startDateTimeUtc"])
-    assert ptypes.is_datetime64_any_dtype(out["endDateTimeUtc"]) or ptypes.is_datetime64tz_dtype(out["endDateTimeUtc"])
+    assert ptypes.is_datetime64_any_dtype(
+        out["startDateTimeUtc"]
+    ) or ptypes.is_datetime64tz_dtype(out["startDateTimeUtc"])
+    assert ptypes.is_datetime64_any_dtype(
+        out["endDateTimeUtc"]
+    ) or ptypes.is_datetime64tz_dtype(out["endDateTimeUtc"])
 
     # Facade nulls should be filled with the placeholder
     assert out["facade"].iloc[0] == "NON_RESEIGNE"
+
 
 def test_extract_missions_ids():
     """
     Reads test data from monitorenv (table missions)
     """
     mission_ids = extract_missions_ids.run()
-    assert len(mission_ids) > 0 
+    assert len(mission_ids) > 0
     assert isinstance(mission_ids, list)
-    
+
+
 def test_fetch_rapportnav_api():
     """
     Reads test data from monitorenv (table missions)
     """
-    with patch('forklift.pipeline.flows.extract_rapportnav_analytics.requests.post') as mock_post:
+    with patch(
+        "forklift.pipeline.flows.extract_rapportnav_analytics.requests.post"
+    ) as mock_post:
         # Mock response
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "results": [
                 {
-                    "id":22,
-                    "idUUID":None,
-                    "serviceId":2,
-                    "missionTypes":["SEA"],
-                    "controlUnits":[{"id":10121,"administration":"DIRM \\/ DM","isArchived":False,"name":"PAM Jeanne Barret","resources":[],"contact":"00661"}],
-                    "facade":"MEMN",
-                    "startDateTimeUtc":"2025-01-06T07:00:00Z",
-                    "endDateTimeUtc":"2025-01-17T17:00:00Z",
-                    "isDeleted":False,
-                    "missionSource":"MONITORFISH",
-                    "activity.atSea.navigationDurationInHours":101.0,
-                    "activity.atSea.anchoredDurationInHours":29.0,
-                    "activity.atSea.totalDurationInHours":130.0,
-                    "activity.atSea.nbControls":16.0,
-                    "activity.docked.maintenanceDurationInHours":73.0,
-                    "activity.docked.meteoDurationInHours":0.0,
-                    "activity.docked.representationDurationInHours":0.0,
-                    "activity.docked.adminFormationDurationInHours":0.0,
-                    "activity.docked.mcoDurationInHours":0.0,
-                    "activity.docked.otherDurationInHours":0.0,
-                    "activity.docked.contrPolDurationInHours":0.0,
-                    "activity.docked.totalDurationInHours":73.0,
-                    "activity.docked.nbControls":0.0,
-                    "activity.unavailable.technicalDurationInHours":48.0,
-                    "activity.unavailable.personnelDurationInHours":24.0,
-                    "activity.unavailable.totalDurationInHours":72.0,
-                    "activity.unavailable.nbControls":0.0,
+                    "id": 22,
+                    "idUUID": None,
+                    "serviceId": 2,
+                    "missionTypes": ["SEA"],
+                    "controlUnits": [
+                        {
+                            "id": 10121,
+                            "administration": "DIRM \\/ DM",
+                            "isArchived": False,
+                            "name": "PAM Jeanne Barret",
+                            "resources": [],
+                            "contact": "00661",
+                        }
+                    ],
+                    "facade": "MEMN",
+                    "startDateTimeUtc": "2025-01-06T07:00:00Z",
+                    "endDateTimeUtc": "2025-01-17T17:00:00Z",
+                    "isDeleted": False,
+                    "missionSource": "MONITORFISH",
+                    "activity.atSea.navigationDurationInHours": 101.0,
+                    "activity.atSea.anchoredDurationInHours": 29.0,
+                    "activity.atSea.totalDurationInHours": 130.0,
+                    "activity.atSea.nbControls": 16.0,
+                    "activity.docked.maintenanceDurationInHours": 73.0,
+                    "activity.docked.meteoDurationInHours": 0.0,
+                    "activity.docked.representationDurationInHours": 0.0,
+                    "activity.docked.adminFormationDurationInHours": 0.0,
+                    "activity.docked.mcoDurationInHours": 0.0,
+                    "activity.docked.otherDurationInHours": 0.0,
+                    "activity.docked.contrPolDurationInHours": 0.0,
+                    "activity.docked.totalDurationInHours": 73.0,
+                    "activity.docked.nbControls": 0.0,
+                    "activity.unavailable.technicalDurationInHours": 48.0,
+                    "activity.unavailable.personnelDurationInHours": 24.0,
+                    "activity.unavailable.totalDurationInHours": 72.0,
+                    "activity.unavailable.nbControls": 0.0,
                 }
             ]
         }
         mock_post.return_value = mock_response
-        
+
         state = flow.run()
-        assert state.is_successful() 
+        assert state.is_successful()
 
     client = create_datawarehouse_client()
     df = client.query_df(
@@ -143,4 +167,3 @@ def test_chunk_list():
     # empty input
     batches = list(chunk_list([], 5))
     assert batches == []
-
