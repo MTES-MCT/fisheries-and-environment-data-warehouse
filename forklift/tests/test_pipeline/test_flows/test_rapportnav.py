@@ -67,9 +67,7 @@ def test__process_data_aem():
             "startDateTimeUtc": "2025-01-06T07:00:00Z",
             "endDateTimeUtc": "2025-01-17T17:00:00Z",
             "facade": [None],
-            "data": [
-                {"id": "1.1.1", "title": "Nombre d'heures de mer", "value": 1211.0}
-            ],
+            "data": [{"id": "1.1.1", "title": "Nombre d'heures de mer", "value": 1211}],
         }
     ]
 
@@ -84,7 +82,7 @@ def test__process_data_aem():
     assert "1_1_1_nombre_d_heures_de_mer" in out.columns
 
     # Values should be extracted and unwrapped when nested under {'value': ...}
-    assert out.loc[0, "1_1_1_nombre_d_heures_de_mer"] == 1211.0
+    assert out.loc[0, "1_1_1_nombre_d_heures_de_mer"] == 1211
 
 
 def test_extract_missions_ids():
