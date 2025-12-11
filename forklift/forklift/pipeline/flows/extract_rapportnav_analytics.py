@@ -48,17 +48,17 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
 
 def _process_data_patrol(df: pd.DataFrame) -> pd.DataFrame:
     # Temporary : filter out operational summary and control policies fields
-    cols_to_remove = [
-        c
-        for c in df.columns
-        if any(substr in c for substr in ("operationalSummary", "controlPolicies"))
-    ]
+    cols_to_remove = [c for c in df.columns if "operationalSummary" in c]
     if cols_to_remove:
         logger.info("Removing temporary fields from DataFrame")
         df = df.drop(columns=cols_to_remove, errors="ignore")
 
     df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
     del df["controlUnits"]
+
+    # Process null values for control policies
+    cols = [col for col in df.columns if "controlPolicies" in col]
+    df[cols] = df[cols].fillna(0)
 
     return df
 
