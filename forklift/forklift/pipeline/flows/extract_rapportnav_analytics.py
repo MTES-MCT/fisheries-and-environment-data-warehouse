@@ -17,6 +17,72 @@ from forklift.pipeline.shared_tasks.generic import (
     run_ddl_scripts,
 )
 
+col_patrol = [
+    "id",
+    "idUUID",
+    "serviceId",
+    "missionTypes",
+    "controlUnitsIds",
+    "facade",
+    "startDateTimeUtc",
+    "endDateTimeUtc",
+    "isDeleted",
+    "missionSource",
+    "activity_atSea_nbOfDaysAtSea",
+    "activity_atSea_navigationDurationInHours",
+    "activity_atSea_anchoredDurationInHours",
+    "activity_atSea_totalDurationInHours",
+    "activity_atSea_nbControls",
+    "activity_docked_maintenanceDurationInHours",
+    "activity_docked_meteoDurationInHours",
+    "activity_docked_representationDurationInHours",
+    "activity_docked_adminFormationDurationInHours",
+    "activity_docked_mcoDurationInHours",
+    "activity_docked_otherDurationInHours",
+    "activity_docked_contrPolDurationInHours",
+    "activity_docked_totalDurationInHours",
+    "activity_docked_nbControls",
+    "activity_unavailable_technicalDurationInHours",
+    "activity_unavailable_personnelDurationInHours",
+    "activity_unavailable_totalDurationInHours",
+    "activity_unavailable_nbControls",
+    "controlPolicies_proFishing_nbControls",
+    "controlPolicies_proFishing_nbControlsSea",
+    "controlPolicies_proFishing_nbControlsLand",
+    "controlPolicies_proFishing_nbInfractionsWithRecord",
+    "controlPolicies_proFishing_nbInfractionsWithoutRecord",
+    "controlPolicies_security_nbControls",
+    "controlPolicies_security_nbControlsSea",
+    "controlPolicies_security_nbControlsLand",
+    "controlPolicies_security_nbInfractionsWithRecord",
+    "controlPolicies_security_nbInfractionsWithoutRecord",
+    "controlPolicies_navigation_nbControls",
+    "controlPolicies_navigation_nbControlsSea",
+    "controlPolicies_navigation_nbControlsLand",
+    "controlPolicies_navigation_nbInfractionsWithRecord",
+    "controlPolicies_navigation_nbInfractionsWithoutRecord",
+    "controlPolicies_gensDeMer_nbControls",
+    "controlPolicies_gensDeMer_nbControlsSea",
+    "controlPolicies_gensDeMer_nbControlsLand",
+    "controlPolicies_gensDeMer_nbInfractionsWithRecord",
+    "controlPolicies_gensDeMer_nbInfractionsWithoutRecord",
+    "controlPolicies_administrative_nbControls",
+    "controlPolicies_administrative_nbControlsSea",
+    "controlPolicies_administrative_nbControlsLand",
+    "controlPolicies_administrative_nbInfractionsWithRecord",
+    "controlPolicies_administrative_nbInfractionsWithoutRecord",
+    "controlPolicies_envPollution_nbControls",
+    "controlPolicies_envPollution_nbControlsSea",
+    "controlPolicies_envPollution_nbControlsLand",
+    "controlPolicies_envPollution_nbInfractionsWithRecord",
+    "controlPolicies_envPollution_nbInfractionsWithoutRecord",
+    "controlPolicies_other_nbControls",
+    "controlPolicies_other_nbControlsSea",
+    "controlPolicies_other_nbControlsLand",
+    "controlPolicies_other_nbInfractionsWithRecord",
+    "controlPolicies_other_nbInfractionsWithoutRecord",
+]
+
 
 def chunk_list(items, batch_size):
     """Split list into batches"""
@@ -25,40 +91,36 @@ def chunk_list(items, batch_size):
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
-    if report_type == "patrol":
-        df = _process_data_patrol(df)
-    elif report_type == "aem":
-        df = _process_data_aem(df)
-    else:
-        logger.error("Invalid report type")
-        return pd.DataFrame()
-
+    df.columns = (
+        df.columns.str.replace(".", "_").str.replace(" ", "_").str.replace("'", "_")
+    )
     if not df.empty:
-        df.columns = (
-            df.columns.str.replace(".", "_").str.replace(" ", "_").str.replace("'", "_")
-        )
-
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"])
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"])
 
         # Deal with potential null values
         df["facade"] = df["facade"].fillna("NON_RESEIGNE")
-    return df
+
+        if report_type == "patrol":
+            df = _process_data_patrol(df)
+        elif report_type == "aem":
+            df = _process_data_aem(df)
+        return df
+    else:
+        logger.error("Invalid report type")
+        return pd.DataFrame()
 
 
 def _process_data_patrol(df: pd.DataFrame) -> pd.DataFrame:
-    # Temporary : filter out operational summary and control policies fields
-    cols_to_remove = [
-        c
-        for c in df.columns
-        if any(substr in c for substr in ("operationalSummary", "controlPolicies"))
-    ]
-    if cols_to_remove:
-        logger.info("Removing temporary fields from DataFrame")
-        df = df.drop(columns=cols_to_remove, errors="ignore")
-
     df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
     del df["controlUnits"]
+
+    # Process null values for control policies
+    cols = [col for col in df.columns if "controlPolicies" in col]
+    df[cols] = df[cols].fillna(0)
+
+    # Filter columns
+    df = df.loc[:, df.columns.isin(col_patrol)]
 
     return df
 
@@ -95,9 +157,21 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
             for item in data_list:
                 if not isinstance(item, dict):
                     continue
-                _id = item.get("id", "")
+                _id = (
+                    item.get("id", "")
+                    .replace(".", "_")
+                    .replace(" ", "_")
+                    .replace("'", "_")
+                )
                 _title = item.get("title", "")
-                _title = unidecode(_title).lower()
+                _title = (
+                    unidecode(_title)
+                    .lower()
+                    .replace(".", "_")
+                    .replace(" ", "_")
+                    .replace("'", "_")
+                )
+
                 # Build column name as id+title (use underscore between to be safe)
                 col_name = f"{_id}_{_title}" if _id or _title else ""
                 if not col_name:
@@ -126,7 +200,7 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
             "facade",
             "startDateTimeUtc",
             "endDateTimeUtc",
-            "1.1.1_nombre d'heures de mer",
+            "1_1_1_nombre_d_heures_de_mer",
         ]
         df = df[columns_to_keep]
     return df
