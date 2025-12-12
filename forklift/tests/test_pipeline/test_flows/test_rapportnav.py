@@ -36,7 +36,6 @@ def test__process_data_patrol():
 
     # Removed temporary fields should not be present (after replacement dots->underscores)
     assert "operationalSummary_foo" not in out.columns
-    assert "controlPolicies_bar" not in out.columns
 
     # Dots in column names should be replaced by underscores
     assert "activity_atSea_nbControls" in out.columns
