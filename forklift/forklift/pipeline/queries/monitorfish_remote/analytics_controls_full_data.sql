@@ -11,7 +11,7 @@ WITH controls_gears AS (
         END
     ) AS gear
     ON true
-    WHERE action_type IN ('SEA_CONTROL', 'LAND_CONTROL', 'AIR_CONTROL') GROUP BY id
+    WHERE action_type  != 'OBSERVATION' GROUP BY id
 ),
 
 controls_species AS (
@@ -25,7 +25,7 @@ controls_species AS (
         END
     ) AS species
     ON true
-    WHERE action_type IN ('SEA_CONTROL', 'LAND_CONTROL', 'AIR_CONTROL') GROUP BY id
+    WHERE action_type  != 'OBSERVATION' GROUP BY id
 ),
 
 action_infractions AS (
@@ -36,7 +36,7 @@ action_infractions AS (
         ) AS mission_infraction
     FROM mission_actions
     WHERE
-        action_type IN ('SEA_CONTROL', 'LAND_CONTROL', 'AIR_CONTROL') AND
+        action_type  != 'OBSERVATION' AND
         jsonb_array_length(
             CASE WHEN jsonb_typeof(infractions) = 'array' THEN infractions ELSE '[]' END
         ) > 0
