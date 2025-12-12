@@ -95,8 +95,8 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         df.columns.str.replace(".", "_").str.replace(" ", "_").str.replace("'", "_")
     )
     if not df.empty:
-        df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"])
-        df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"])
+        df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
+        df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
 
         # Deal with potential null values
         df["facade"] = df["facade"].fillna("NON_RESEIGNE")
