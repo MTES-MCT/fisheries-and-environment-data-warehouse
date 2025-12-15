@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -247,7 +248,7 @@ def extract_missions_ids() -> list:
     return list(mission_ids.id)
 
 
-@task(checkpoint=False, max_retries=4, retry_delay=5)
+@task(checkpoint=False, max_retries=4, retry_delay=datetime.timedelta(seconds=10))
 def fetch_rapportnav_api(report_type: str, missions_ids: list):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
