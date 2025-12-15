@@ -240,7 +240,7 @@ def extract_missions_ids() -> list:
     return list(mission_ids.id)
 
 
-@task(checkpoint=False)
+@task(checkpoint=False, retries=4, retry_delay_seconds=5)
 def fetch_rapportnav_api(report_type: str, missions_ids: list):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
