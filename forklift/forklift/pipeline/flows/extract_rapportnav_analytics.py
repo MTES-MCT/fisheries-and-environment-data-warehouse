@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -5,6 +6,8 @@ import prefect
 import requests
 from prefect import Flow, case, task, unmapped
 from prefect.engine.signals import SKIP
+from prefect.engine.state import Failed
+from prefect.triggers import all_finished
 from unidecode import unidecode
 
 from forklift.config import RAPPORTNAV_API_ENDPOINT, RAPPORTNAV_API_KEY
@@ -214,11 +217,16 @@ def chunk_missions(mission_ids: list, batch_size: int = 100) -> list:
     return list(chunk_list(mission_ids, batch_size))
 
 
-@task(checkpoint=False)
+@task(checkpoint=False, trigger=all_finished)
 def concat_dfs(dfs: list) -> pd.DataFrame:
     """
     Concatenate a list of DataFrames inside the flow runtime.
     """
+    if isinstance(dfs, Failed):
+        logger.error(
+            "Aucune tâche fetch_rapportnav_api n a fonctionné. Aucune donnéee disponible"
+        )
+        return None
     # Filter out any None values
     dfs = [d for d in dfs if not d.empty]
     if not dfs:
@@ -240,7 +248,7 @@ def extract_missions_ids() -> list:
     return list(mission_ids.id)
 
 
-@task(checkpoint=False)
+@task(checkpoint=False, max_retries=4, retry_delay=datetime.timedelta(seconds=10))
 def fetch_rapportnav_api(report_type: str, missions_ids: list):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
