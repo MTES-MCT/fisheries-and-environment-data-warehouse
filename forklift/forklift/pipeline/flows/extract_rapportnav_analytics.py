@@ -206,6 +206,12 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
             "1_1_1_nombre_d_heures_de_mer",
         ]
         df = df[columns_to_keep]
+
+    # Fill empty values with -1 or '' for strings
+    for str_col in ["idUUID", "facade", "missionTypes"]:
+        df[str_col] = df[str_col].fillna("")
+    df = df.fillna(-1)
+
     return df
 
 
