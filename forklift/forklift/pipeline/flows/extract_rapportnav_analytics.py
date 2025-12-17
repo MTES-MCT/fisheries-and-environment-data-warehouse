@@ -299,7 +299,7 @@ def fetch_rapportnav_api(report_type: str, missions_ids: list):
 
 with Flow("RapportNavAnalytics") as flow:
     logger = prefect.context.get("logger")
-    report_types = ["patrol", "aem"]
+    report_types = ["aem"]
 
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
