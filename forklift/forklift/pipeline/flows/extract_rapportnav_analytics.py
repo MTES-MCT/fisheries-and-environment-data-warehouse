@@ -229,8 +229,11 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
             "isDeleted",
             "missionSource",
         ]
-        for col in columns_to_del:
-            del df[col]
+        try:
+            for col in columns_to_del:
+                del df[col]
+        except KeyError:
+            pass
 
     # Fill empty values with -1 or '' for strings
     for str_col in ["idUUID", "facade", "missionTypes"]:
