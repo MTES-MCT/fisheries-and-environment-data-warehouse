@@ -128,15 +128,22 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
     return s
 
 
+def _extract_control_unit_ids(x):
+    if not x:
+        return []
+    try:
+        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y]
+    except TypeError:
+        return []
+
+
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
     if not df.empty:
         # Normalize column names using the shared cleaning function
         df.columns = [_clean_str(c, lower=False) for c in df.columns]
 
-        df["controlUnitsIds"] = df["controlUnits"].apply(
-            lambda x: [y["id"] for y in x], 1
-        )
-        del df["controlUnits"]
+        df["controlUnitsIds"] = df["controlUnits"].apply(_extract_control_unit_ids)
+        df.drop(columns=["controlUnits"], inplace=True)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
