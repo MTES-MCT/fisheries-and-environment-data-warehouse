@@ -62,6 +62,7 @@ def test__process_data_aem():
             "id": 1,
             "idUUID": "1211",
             "serviceId": 21,
+            "controlUnits": [{"id": 1}],
             "missionTypes": "LAND",
             "startDateTimeUtc": "2025-01-06T07:00:00Z",
             "endDateTimeUtc": "2025-01-17T17:00:00Z",
