@@ -1,4 +1,5 @@
 import datetime
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -93,11 +94,50 @@ def chunk_list(items, batch_size):
         yield items[i : i + batch_size]
 
 
-def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
-    df.columns = (
-        df.columns.str.replace(".", "_").str.replace(" ", "_").str.replace("'", "_")
+def _clean_str(s: str, *, lower: bool = True) -> str:
+    """Normalize a string for use as a column or identifier.
+
+    - applies `unidecode` to remove accents
+    - optionally lowercases
+    - replaces punctuation and spaces with underscores
+    - removes parentheses and slashes
+    - collapses multiple underscores and strips leading/trailing underscores
+    """
+    if s is None:
+        return ""
+    s = str(s)
+    s = unidecode(s)
+    if lower:
+        s = s.lower()
+
+    # replace dots, whitespace and single quotes with underscore
+    s = re.sub(r"[\.\s']+", "_", s)
+
+    # replace comma and dash by underscore, remove parentheses and slashes
+    s = (
+        s.replace(",", "_")
+        .replace("-", "_")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("/", "")
     )
+
+    # collapse multiple underscores and trim
+    s = re.sub(r"_+", "_", s).strip("_")
+
+    return s
+
+
+def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
     if not df.empty:
+        # Normalize column names using the shared cleaning function
+        df.columns = [_clean_str(c, lower=False) for c in df.columns]
+
+        df["controlUnitsIds"] = df["controlUnits"].apply(
+            lambda x: [y["id"] for y in x], 1
+        )
+        del df["controlUnits"]
+
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
 
@@ -115,9 +155,6 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
 
 
 def _process_data_patrol(df: pd.DataFrame) -> pd.DataFrame:
-    df["controlUnitsIds"] = df["controlUnits"].apply(lambda x: [y["id"] for y in x], 1)
-    del df["controlUnits"]
-
     # Process null values for control policies
     cols = [col for col in df.columns if "controlPolicies" in col]
     df[cols] = df[cols].fillna(0)
@@ -160,20 +197,8 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
             for item in data_list:
                 if not isinstance(item, dict):
                     continue
-                _id = (
-                    item.get("id", "")
-                    .replace(".", "_")
-                    .replace(" ", "_")
-                    .replace("'", "_")
-                )
-                _title = item.get("title", "")
-                _title = (
-                    unidecode(_title)
-                    .lower()
-                    .replace(".", "_")
-                    .replace(" ", "_")
-                    .replace("'", "_")
-                )
+                _id = _clean_str(item.get("id", ""), lower=False)
+                _title = _clean_str(item.get("title", ""), lower=True)
 
                 # Build column name as id+title (use underscore between to be safe)
                 col_name = f"{_id}_{_title}" if _id or _title else ""
@@ -198,22 +223,19 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
     # Drop original data column and concat expanded columns
     df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)
     if not df.empty:
-        columns_to_keep = [
-            "id",
-            "idUUID",
-            "serviceId",
-            "missionTypes",
-            "facade",
-            "annee",
-            "1_1_1_nombre_d_heures_de_mer",
+        columns_to_del = [
+            "endDateTimeUtc",
+            "startDateTimeUtc",
+            "isDeleted",
+            "missionSource",
         ]
-        df = df[columns_to_keep]
+        for col in columns_to_del:
+            del df[col]
 
     # Fill empty values with -1 or '' for strings
     for str_col in ["idUUID", "facade", "missionTypes"]:
         df[str_col] = df[str_col].fillna("")
     df = df.fillna(-1)
-
     return df
 
 
