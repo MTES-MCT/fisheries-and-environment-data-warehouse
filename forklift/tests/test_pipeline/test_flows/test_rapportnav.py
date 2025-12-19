@@ -85,6 +85,30 @@ def test__process_data_aem():
     assert out.loc[0, "1_1_1_nombre_d_heures_de_mer"] == 1211
 
 
+def test_extract_control_unit_ids():
+    from forklift.pipeline.flows.extract_rapportnav_analytics import (
+        _extract_control_unit_ids,
+    )
+
+    # None or empty -> empty list
+    assert _extract_control_unit_ids(None) == []
+    assert _extract_control_unit_ids([]) == []
+
+    # Normal list of dicts
+    assert _extract_control_unit_ids(
+        [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
+    ) == [101, 202]
+
+    # Mixed contents -> only dicts with 'id' are returned
+    assert _extract_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
+        1,
+        4,
+    ]
+
+    # Non-iterable input should be handled and return empty list
+    assert _extract_control_unit_ids(123) == []
+
+
 def test_extract_missions_ids():
     """
     Reads test data from monitorenv (table missions)
