@@ -79,10 +79,10 @@ def test__process_data_aem():
     assert "data" not in out.columns
 
     # New columns should be present with names id_title (underscore separator)
-    assert "1_1_1" in out.columns
+    assert "1_1_1_nombre_d_heures_de_mer " in out.columns
 
     # Values should be extracted and unwrapped when nested under {'value': ...}
-    assert out.loc[0, "1_1_1"] == 1211
+    assert out.loc[0, "1_1_1nombre_d_heures_de_mer "] == 1211
 
 
 def test_extract_control_unit_ids():
