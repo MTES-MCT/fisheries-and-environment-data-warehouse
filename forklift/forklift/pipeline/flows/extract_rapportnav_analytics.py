@@ -205,7 +205,6 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
                 if not isinstance(item, dict):
                     continue
                 _id = _clean_str(item.get("id", ""), lower=False)
-                _title = _clean_str(item.get("title", ""), lower=True)
 
                 # Build column name as id
                 col_name = _id + "_" + _title if _id else ""
