@@ -63,7 +63,7 @@ def get_flows_to_register():
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
     vms_flow = deepcopy(vms.flow)
 
-    activities_flow.schedule = CronSchedule("46 4 * * *")
+    activities_flow.schedule = CronSchedule("26 4 * * *")
     catches_flow.schedule = CronSchedule("44 4 * * *")
     cps_flow.schedule = CronSchedule("41 4 * * *")
     discards_flow.schedule = CronSchedule("35 4 * * *")
