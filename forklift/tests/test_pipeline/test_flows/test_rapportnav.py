@@ -1,10 +1,10 @@
 import pandas as pd
 import pandas.api.types as ptypes
 
-from forklift.pipeline.flows.extract_rapportnav_analytics import (
+from forklift.pipeline.flows.rapportnav_historical import flow
+from forklift.pipeline.shared_tasks.rapportnav import (
     _process_data,
     extract_missions_ids,
-    flow,
 )
 from tests.mocks import replace_check_flow_not_running
 
@@ -86,9 +86,7 @@ def test__process_data_aem():
 
 
 def test_extract_control_unit_ids():
-    from forklift.pipeline.flows.extract_rapportnav_analytics import (
-        _extract_control_unit_ids,
-    )
+    from forklift.pipeline.flows.rapportnav_historical import _extract_control_unit_ids
 
     # None or empty -> empty list
     assert _extract_control_unit_ids(None) == []
@@ -120,7 +118,7 @@ def test_extract_missions_ids():
 
 def test_chunk_list():
     """Unit test for chunk_list helper used to batch mission ids."""
-    from forklift.pipeline.flows.extract_rapportnav_analytics import chunk_list
+    from forklift.pipeline.flows.rapportnav_historical import chunk_list
 
     # Regular splitting
     items = list(range(1, 11))
