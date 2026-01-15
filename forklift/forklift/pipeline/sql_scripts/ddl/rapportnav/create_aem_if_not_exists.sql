@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.aem (
     controlUnitsIds Array(Int32),
     facade String,
     annee Int32,
+    mois Int32,
     1_1_1_nombre_d_heures_de_mer Int32,
     1_1_3_nombre_d_operations_conduites Int32,
     1_1_4_nombre_de_personnes_secourues Int32, 
