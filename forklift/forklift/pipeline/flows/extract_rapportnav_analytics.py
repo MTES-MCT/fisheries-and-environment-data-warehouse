@@ -227,8 +227,9 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
     # Create a DataFrame from the expanded columns and align index with original df
     df_expanded = pd.DataFrame(expanded_rows, index=df.index)
 
-    # Extract year from datetime
+    # Extract year and month from datetime
     df["annee"] = df["startDateTimeUtc"].dt.year
+    df["mois"] = df["startDateTimeUtc"].dt.month
 
     # Drop original data column and concat expanded columns
     df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)

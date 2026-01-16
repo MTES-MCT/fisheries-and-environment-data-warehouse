@@ -84,6 +84,10 @@ def test__process_data_aem():
     # Values should be extracted and unwrapped when nested under {'value': ...}
     assert out.loc[0, "1_1_1_nombre_d_heures_de_mer"] == 1211
 
+    # Year and month should be extracted from date
+    assert out.loc[0, "annee"] == 2025
+    assert out.loc[0, "mois"] == 1
+
 
 def test_extract_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
