@@ -26,6 +26,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     infraction_report UInt8,
     infraction_categories Array(String),
     infraction_natinfs Array(String),
+    infraction_threats Array(String),
+    infraction_threat_characterizations Array(String),
     seizure_and_diversion UInt8,
     species Array(String),
     gears Array(String),
