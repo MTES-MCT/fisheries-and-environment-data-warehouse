@@ -21,7 +21,7 @@ services:
       retries: 30
 
   monitorenv-db:
-    image: ghcr.io/mtes-mct/monitorenv/monitorenv-database:pg11-ts1.7.4-postgis3.3.2
+    image: ghcr.io/mtes-mct/monitorenv/monitorenv-database:pg17-postgis3.6.1-timescale2.24.0-contrib
     container_name: monitorenv_database
     environment:
       - POSTGRES_USER=postgres
@@ -73,7 +73,7 @@ services:
     command: migrate -password=postgres -schemas=public -user=postgres -url=jdbc:postgresql://monitorenv-db:5432/monitorenv_test_db
     volumes:
       - ../../forklift/tests/test_data/external/monitorenv/backend/src/main/resources/db/migration:/flyway/sql/schema
-      - ../../forklift/tests/test_data/external/monitorenv/datascience/tests/test_data/remote_database/:/flyway/sql/test_data
+      - ../../forklift/tests/test_data/external/monitorenv/pipeline/tests/test_data/remote_database/:/flyway/sql/test_data
       - ../../forklift/tests/test_data/monitorenv/remote_database/:/flyway/sql/extra_test_data
     depends_on:
       monitorenv-db:
