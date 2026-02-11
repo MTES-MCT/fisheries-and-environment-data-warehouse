@@ -47,7 +47,9 @@ controls_infractions_details AS (
         id,
         mission_infraction->>'natinf' AS infraction_natinf,
         mission_infraction->>'infractionType' AS infraction_type,
-        mission_infraction->>'comments' AS infraction_comments
+        mission_infraction->>'comments' AS infraction_comments,
+        mission_infraction->>'threat' AS infraction_threat,
+        mission_infraction->>'threatCharacterization' AS infraction_threat_characterization
     FROM action_infractions
 ),
 
@@ -68,6 +70,8 @@ controls_infraction_natinfs_array AS (
         ARRAY_AGG(DISTINCT infraction_category) FILTER (WHERE infraction_category IS NOT NULL) AS infraction_categories,
         ARRAY_AGG(DISTINCT infraction_natinf) FILTER (WHERE infraction_natinf IS NOT NULL) AS infraction_natinfs,
         ARRAY_AGG(DISTINCT infraction_type) FILTER (WHERE infraction_type IS NOT NULL) AS infraction_types,
+        ARRAY_AGG(DISTINCT infraction_threat) FILTER (WHERE infraction_threat IS NOT NULL) AS infraction_threats,
+        ARRAY_AGG(DISTINCT infraction_threat_characterization) FILTER (WHERE infraction_threat_characterization IS NOT NULL) AS infraction_threat_characterizations,
         STRING_AGG(NULLIF(infraction_comments, ''), ' - ') AS infraction_comments
     FROM controls_infraction_natinf_category
     GROUP BY id
@@ -101,6 +105,8 @@ SELECT
     COALESCE('WITH_RECORD' = ANY(inf.infraction_types), false) AS infraction_report,
     COALESCE(infraction_categories, '{Aucune infraction}'::VARCHAR[]) AS infraction_categories,
     COALESCE(infraction_natinfs, '{Aucune infraction}'::VARCHAR[]) AS infraction_natinfs,
+    COALESCE(infraction_threats, '{Aucune infraction}'::VARCHAR[]) AS infraction_threats,
+    COALESCE(infraction_threat_characterizations, '{Aucune infraction}'::VARCHAR[]) AS infraction_threat_characterizations,
     COALESCE(seizure_and_diversion, false) AS seizure_and_diversion,
     species,
     gears,
