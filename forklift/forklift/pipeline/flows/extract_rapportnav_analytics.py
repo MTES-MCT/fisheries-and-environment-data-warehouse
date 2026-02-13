@@ -148,6 +148,15 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
+        df.drop(
+            columns=[
+                "isMissionFinished",
+                "completenessForStats_status",
+                "completenessForStats_sources",
+            ],
+            inplace=True,
+        )
+
         df["controlUnitsIds"] = df["controlUnits"].apply(_extract_control_unit_ids)
         df.drop(columns=["controlUnits"], inplace=True)
 
