@@ -3,15 +3,15 @@ updates:
   - package-ecosystem: "pip"
     directory: "/forklift"
     assignees:
-      - "vincentchery"
+      - "VincentAntoine"
     schedule:
       interval: "monthly"
+    commit-message:
+      prefix: "[Tech] "
     groups:
-      non-major-dependencies:
+      version-updates:
         applies-to: version-updates
-        dependency-type: production
         update-types: ["minor", "patch"]
-      non-major-dev-dependencies:
-        applies-to: version-updates
-        dependency-type: development
+      security-updates:
+        applies-to: security-updates
         update-types: ["minor", "patch"]
