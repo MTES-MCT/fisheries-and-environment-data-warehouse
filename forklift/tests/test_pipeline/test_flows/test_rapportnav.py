@@ -28,6 +28,8 @@ def test__process_data_patrol():
         "operationalSummary.totalDuration": [999],
         # Column with dots that should be converted to underscores
         "activity.atSea.nbControls": [16.0],
+        "completenessForStats.status": ["COMPLETE"],
+        "isMissionFinished": [True],
     }
 
     df = pd.DataFrame(data)
@@ -68,6 +70,8 @@ def test__process_data_aem():
             "endDateTimeUtc": "2025-01-17T17:00:00Z",
             "facade": [None],
             "data": [{"id": "1.1.1", "title": "Nombre d'heures de mer", "value": 1211}],
+            "completenessForStats.status": "COMPLETE",
+            "isMissionFinished": True,
         }
     ]
 
@@ -87,6 +91,29 @@ def test__process_data_aem():
     # Year and month should be extracted from date
     assert out.loc[0, "annee"] == 2025
     assert out.loc[0, "mois"] == 1
+
+
+def test__process_data_with_complete_and_finished_attributes():
+    """Test that complete and finished attributes from RapportNav API are preserved."""
+    data = {
+        "id": [1, 2],
+        "idUUID": ["uuid-1", "uuid-2"],
+        "serviceId": [21, 22],
+        "controlUnits": [[{"id": 1}], [{"id": 2}]],
+        "missionTypes": ["LAND", "SEA"],
+        "startDateTimeUtc": ["2025-01-06T07:00:00Z", "2025-01-07T08:00:00Z"],
+        "endDateTimeUtc": ["2025-01-17T17:00:00Z", "2025-01-18T18:00:00Z"],
+        "facade": ["SA", "NAMO"],
+        "completenessForStats.status": ["COMPLETE", "INCOMPLETE"],
+        "isMissionFinished": [True, False],
+    }
+
+    df = pd.DataFrame(data)
+
+    out = _process_data(df, "patrol")
+
+    # Only mission which are finished and comlpete should be extracted
+    assert len(out) == 1
 
 
 def test_extract_control_unit_ids():

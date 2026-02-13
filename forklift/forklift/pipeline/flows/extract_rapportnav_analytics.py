@@ -142,6 +142,12 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         # Normalize column names using the shared cleaning function
         df.columns = [_clean_str(c, lower=False) for c in df.columns]
 
+        # Filter non finished and non complete missions
+        df = df[
+            (df.isMissionFinished == True)
+            & (df.completenessForStats_status == "COMPLETE")
+        ]
+
         df["controlUnitsIds"] = df["controlUnits"].apply(_extract_control_unit_ids)
         df.drop(columns=["controlUnits"], inplace=True)
 
@@ -292,7 +298,7 @@ def extract_missions_ids() -> list:
     return list(mission_ids.id)
 
 
-@task(checkpoint=False, max_retries=4, retry_delay=datetime.timedelta(seconds=10))
+@task(checkpoint=True, max_retries=4, retry_delay=datetime.timedelta(seconds=10))
 def fetch_rapportnav_api(report_type: str, missions_ids: list):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
