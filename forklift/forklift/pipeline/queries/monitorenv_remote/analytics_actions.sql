@@ -70,13 +70,15 @@ WITH tmp AS (
                                                      WHEN jsonb_array_length(a.value -> 'infractions') > 0 THEN true
                                                      ELSE false END END                                         AS infraction,
            (a.value ->> 'actionNumberOfControls')::DOUBLE PRECISION                                             AS number_of_controls,
-           (a.value -> 'awareness' ->> 'nbPerson')::DOUBLE PRECISION                                            AS number_of_awareness,
+           (awareness ->> 'nbPerson')::DOUBLE PRECISION                                                         AS number_of_awareness,
            CASE
                WHEN action_type = 'SURVEILLANCE' THEN
                    EXTRACT(epoch FROM a.action_end_datetime_utc - a.action_start_datetime_utc) /
                    3600.0 END                                                                                   AS surveillance_duration,
-           m.observations_cacem
+           m.observations_cacem,
+           (a.value ->> 'observations')                                                                         AS action_observation
     FROM env_actions a
+             LEFT JOIN LATERAL jsonb_array_elements(a.value -> 'awareness' -> 'details') AS awareness ON TRUE
              LEFT JOIN ST_Dump(a.geom) AS geom_element
                        ON true
              LEFT JOIN themes_env_actions on env_actions_id = a.id
@@ -115,4 +117,5 @@ WHERE NOT (
     tmp.theme_level_2 = 'Aucun sous-thème' AND
     atws.theme_level_1 IS NOT NULL
 )
-ORDER BY action_start_datetime_utc DESC;
+ORDER BY action_start_datetime_utc DESC
+;

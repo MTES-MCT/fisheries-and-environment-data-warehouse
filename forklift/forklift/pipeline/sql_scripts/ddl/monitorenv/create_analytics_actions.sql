@@ -28,7 +28,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     number_of_controls Nullable(Float64),
     number_of_awareness Nullable(Float64),
     surveillance_duration Nullable(Float64),
-    observations_cacem Nullable(String)
+    observations_cacem Nullable(String),
+    action_observation Nullable(String)
 )
 ENGINE MergeTree
 ORDER BY action_start_datetime_utc
