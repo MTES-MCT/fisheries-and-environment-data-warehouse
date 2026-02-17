@@ -54,9 +54,6 @@ def test__process_data_patrol():
         out["endDateTimeUtc"]
     ) or ptypes.is_datetime64tz_dtype(out["endDateTimeUtc"])
 
-    # Facade nulls should be filled with the placeholder
-    assert out["facade"].iloc[0] == "NON_RESEIGNE"
-
 
 def test__process_data_aem():
     data = [
@@ -116,28 +113,46 @@ def test__process_data_with_complete_and_finished_attributes():
     assert len(out) == 1
 
 
-def test_extract_control_unit_ids():
+def test_process_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
-        _extract_control_unit_ids,
+        _process_control_unit_ids,
+        _process_mission_interservices,
     )
 
     # None or empty -> empty list
-    assert _extract_control_unit_ids(None) == []
-    assert _extract_control_unit_ids([]) == []
+    assert _process_control_unit_ids(None) == []
+    assert _process_mission_interservices(None) == False
+    assert _process_control_unit_ids([]) == []
+    assert _process_mission_interservices([]) == False
 
-    # Normal list of dicts
-    assert _extract_control_unit_ids(
+    # Normal list of dicts with single control unit
+    assert _process_control_unit_ids([{"id": 101, "name": "A"}]) == [101]
+    assert _process_mission_interservices([{"id": 101, "name": "A"}]) == False
+
+    # Normal list of dicts with multiple control units
+    assert _process_control_unit_ids(
         [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
     ) == [101, 202]
+    assert (
+        _process_mission_interservices(
+            [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
+        )
+        == True
+    )
 
     # Mixed contents -> only dicts with 'id' are returned
-    assert _extract_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
+    assert _process_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
         1,
         4,
     ]
+    assert (
+        _process_mission_interservices([{"id": 1}, "str", {"no_id": 3}, {"id": 4}])
+        == True
+    )
 
     # Non-iterable input should be handled and return empty list
-    assert _extract_control_unit_ids(123) == []
+    assert _process_control_unit_ids(123) == []
+    assert _process_mission_interservices(123) == False
 
 
 def test_extract_missions_ids():

@@ -174,13 +174,24 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
     return s
 
 
-def _extract_control_unit_ids(x):
+def _process_control_unit_ids(x):
+    # Extract the id from the control unit object
     if not x:
         return []
     try:
         return [y.get("id") for y in x if isinstance(y, dict) and "id" in y]
     except TypeError:
         return []
+
+
+def _process_mission_interservices(x):
+    # Exract the information of a mission with one or multiple unit (missions interservices)
+    if not x:
+        return False
+    try:
+        return len(x) > 1
+    except TypeError:
+        return False
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
@@ -194,14 +205,14 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
-        df["controlUnitsIds"] = df["controlUnits"].apply(_extract_control_unit_ids)
+        df["controlUnitsIds"] = df["controlUnits"].apply(_process_control_unit_ids)
+        df["missionInterservice"] = df["controlUnits"].apply(
+            _process_mission_interservices
+        )
         df.drop(columns=["controlUnits"], inplace=True)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
-
-        # Deal with potential null values
-        df["facade"] = df["facade"].fillna("NON_RESEIGNE")
 
         if report_type == "patrol":
             df = _process_data_patrol(df)

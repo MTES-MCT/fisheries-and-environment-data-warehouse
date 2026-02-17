@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.aem (
     idUUID String,
     serviceId Int32,
     controlUnitsIds Array(Int32),
+    missionInterService bool,
     annee Int32,
     mois Int32,
     1_1_1_nombre_d_heures_de_mer Int32,
