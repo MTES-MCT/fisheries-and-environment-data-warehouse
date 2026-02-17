@@ -116,28 +116,48 @@ def test__process_data_with_complete_and_finished_attributes():
     assert len(out) == 1
 
 
-def test_extract_control_unit_ids():
+def test_process_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
-        _extract_control_unit_ids,
+        _process_control_unit_ids,
     )
 
     # None or empty -> empty list
-    assert _extract_control_unit_ids(None) == []
-    assert _extract_control_unit_ids([]) == []
+    control_unit_ids, missions_interservices = _process_control_unit_ids(None)
+    assert control_unit_ids == []
+    assert missions_interservices == False
+    control_unit_ids, missions_interservices = _process_control_unit_ids([])
+    assert control_unit_ids == []
+    assert missions_interservices == False
 
-    # Normal list of dicts
-    assert _extract_control_unit_ids(
+    # Normal list of dicts with single control unit
+    control_unit_ids, missions_interservices = _process_control_unit_ids(
+        [{"id": 101, "name": "A"}]
+    )
+    assert control_unit_ids == [101]
+    assert missions_interservices == False
+
+    # Normal list of dicts with multiple control units
+    control_unit_ids, missions_interservices = _process_control_unit_ids(
         [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
-    ) == [101, 202]
+    )
+    assert control_unit_ids == [101, 202]
+    assert missions_interservices == True
 
     # Mixed contents -> only dicts with 'id' are returned
-    assert _extract_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
+    control_unit_ids, missions_interservices = _process_control_unit_ids(
+        [{"id": 1}, "str", {"no_id": 3}, {"id": 4}]
+    )
+
+    assert control_unit_ids == [
         1,
         4,
     ]
+    assert missions_interservices == True
 
     # Non-iterable input should be handled and return empty list
-    assert _extract_control_unit_ids(123) == []
+    control_unit_ids, missions_interservices = _process_control_unit_ids(123)
+    assert control_unit_ids == []
+    assert missions_interservices == False
 
 
 def test_extract_missions_ids():

@@ -174,13 +174,15 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
     return s
 
 
-def _extract_control_unit_ids(x):
+def _process_control_unit_ids(x):
+    # Extract the id from the control unit object
+    # Exract the information of a mission with one or multiple unit (missions interservices)
     if not x:
-        return []
+        return [], False
     try:
-        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y]
+        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y], len(x) > 1
     except TypeError:
-        return []
+        return [], False
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
@@ -194,7 +196,9 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
-        df["controlUnitsIds"] = df["controlUnits"].apply(_extract_control_unit_ids)
+        df["controlUnitsIds"], df["missionInterservice"] = df["controlUnits"].apply(
+            _process_control_unit_ids
+        )
         df.drop(columns=["controlUnits"], inplace=True)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
