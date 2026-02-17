@@ -204,9 +204,6 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
 
-        # Deal with potential null values
-        df["facade"] = df["facade"].fillna("NON_RESEIGNE")
-
         if report_type == "patrol":
             df = _process_data_patrol(df)
         elif report_type == "aem":
