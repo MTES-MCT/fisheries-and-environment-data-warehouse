@@ -87,6 +87,52 @@ col_patrol = [
     "controlPolicies_other_nbInfractionsWithoutRecord",
 ]
 
+col_aem = [
+    "id",
+    "idUUID",
+    "serviceIdmissionTypesfacadestartDateTimeUtcendDateTimeUtc",
+    "controlUnitsIds",
+    "annee",
+    "mois",
+    "1_1_1_nombre_d_heures_de_mer",
+    "1_1_3_nombre_d_operations_conduites",
+    "1_1_4_nombre_de_personnes_secourues",
+    "1_2_1_nombre_d_heures_de_mer",
+    "1_2_3_nombre_d_operations_conduites",
+    "1_2_4_sar_migrants_nombre_d_embarcations",
+    "1_2_5_sar_migrantsnombre_d_embarcations_",
+    "1_2_6_sar_migrants_nombre_d_operations_d",
+    "1_2_7_sar_migrantsnombre_de_personnes_se",
+    "2_1_nombre_d_heures_de_mer",
+    "2_3_nombre_d_operations_aned_mise_en_oeu",
+    "2_4_nombre_d_intervention_faisant_suite_",
+    "2_7_nombre_de_remorquages",
+    "3_3_1_nombre_d_heures_de_mer",
+    "3_3_3_nombre_de_navires_ou_embarcations_",
+    "3_3_4_nombre_de_saisies",
+    "4_1_1_nombre_d_heures_de_mer_de_surveill",
+    "4_1_3_nombre_d_operations_de_surveillanc",
+    "4_1_4_nombre_d_infractions_a_la_reglemen",
+    "4_1_5_nombre_de_proces_verbaux_dresses_e",
+    "4_2_1_nombre_d_heures_de_mer_surveillanc",
+    "4_2_3_participation_a_une_operation_de_l",
+    "4_2_4_deploiement_d_un_dispositif_de_lut",
+    "4_2_5_nombre_d_infractions_constatees",
+    "4_2_6_nombre_de_proces_verbaux_dresses",
+    "4_2_7_nombre_de_deroutements_effectues",
+    "4_2_8_nombre_de_pollutions_detectees_eto",
+    "4_3_1_nombre_d_heures_de_mer_surveillanc",
+    "4_3_3_nombre_d_operations_polpeche",
+    "4_3_5_nombre_de_navires_inspectes_en_mer",
+    "4_3_6_nombre_de_proces_verbaux_dresses_e",
+    "4_3_7_nombre_d_infractions_constatees_en",
+    "4_3_8_nombre_de_navires_accompagnes_ou_d",
+    "4_3_9_quantite_de_produits_de_la_peche_s",
+    "7_1_nombre_d_heures_de_mer_de_surveillan",
+    "7_3_nombre_total_de_navires_reconnus_dan",
+    "7_4_nombre_de_controles_en_mer_de_navire",
+]
+
 
 def chunk_list(items, batch_size):
     """Split list into batches"""
@@ -239,21 +285,13 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
 
     # Drop original data column and concat expanded columns
     df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)
+
+    # Filter columns
     if not df.empty:
-        columns_to_del = [
-            "endDateTimeUtc",
-            "startDateTimeUtc",
-            "isDeleted",
-            "missionSource",
-        ]
-        try:
-            for col in columns_to_del:
-                del df[col]
-        except KeyError:
-            pass
+        df = df.loc[:, df.columns.isin(col_aem)]
 
     # Fill empty values with -1 or '' for strings
-    for str_col in ["idUUID", "facade", "missionTypes"]:
+    for str_col in ["idUUID"]:
         df[str_col] = df[str_col].fillna("")
     df = df.fillna(-1)
     return df
