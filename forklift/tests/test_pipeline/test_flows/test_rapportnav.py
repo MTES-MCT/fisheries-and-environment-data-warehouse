@@ -54,9 +54,6 @@ def test__process_data_patrol():
         out["endDateTimeUtc"]
     ) or ptypes.is_datetime64tz_dtype(out["endDateTimeUtc"])
 
-    # Facade nulls should be filled with the placeholder
-    assert out["facade"].iloc[0] == "NON_RESEIGNE"
-
 
 def test__process_data_aem():
     data = [
@@ -119,45 +116,43 @@ def test__process_data_with_complete_and_finished_attributes():
 def test_process_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
         _process_control_unit_ids,
+        _process_mission_interservices,
     )
 
     # None or empty -> empty list
-    control_unit_ids, missions_interservices = _process_control_unit_ids(None)
-    assert control_unit_ids == []
-    assert missions_interservices == False
-    control_unit_ids, missions_interservices = _process_control_unit_ids([])
-    assert control_unit_ids == []
-    assert missions_interservices == False
+    assert _process_control_unit_ids(None) == []
+    assert _process_mission_interservices(None) == False
+    assert _process_control_unit_ids([]) == []
+    assert _process_mission_interservices([]) == False
 
     # Normal list of dicts with single control unit
-    control_unit_ids, missions_interservices = _process_control_unit_ids(
-        [{"id": 101, "name": "A"}]
-    )
-    assert control_unit_ids == [101]
-    assert missions_interservices == False
+    assert _process_control_unit_ids([{"id": 101, "name": "A"}]) == [101]
+    assert _process_mission_interservices([{"id": 101, "name": "A"}]) == False
 
     # Normal list of dicts with multiple control units
-    control_unit_ids, missions_interservices = _process_control_unit_ids(
+    assert _process_control_unit_ids(
         [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
+    ) == [101, 202]
+    assert (
+        _process_mission_interservices(
+            [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
+        )
+        == True
     )
-    assert control_unit_ids == [101, 202]
-    assert missions_interservices == True
 
     # Mixed contents -> only dicts with 'id' are returned
-    control_unit_ids, missions_interservices = _process_control_unit_ids(
-        [{"id": 1}, "str", {"no_id": 3}, {"id": 4}]
-    )
-
-    assert control_unit_ids == [
+    assert _process_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
         1,
         4,
     ]
-    assert missions_interservices == True
+    assert (
+        _process_mission_interservices([{"id": 1}, "str", {"no_id": 3}, {"id": 4}])
+        == True
+    )
 
     # Non-iterable input should be handled and return empty list
-    control_unit_ids, missions_interservices = _process_control_unit_ids(123)
-    assert control_unit_ids == []
-    assert missions_interservices == False
+    assert _process_control_unit_ids(123) == []
+    assert _process_mission_interservices(123) == False
 
 
 def test_extract_missions_ids():

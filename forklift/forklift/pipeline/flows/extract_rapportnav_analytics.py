@@ -176,13 +176,22 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
 
 def _process_control_unit_ids(x):
     # Extract the id from the control unit object
+    if not x:
+        return []
+    try:
+        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y]
+    except TypeError:
+        return []
+
+
+def _process_mission_interservices(x):
     # Exract the information of a mission with one or multiple unit (missions interservices)
     if not x:
-        return [], False
+        return False
     try:
-        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y], len(x) > 1
+        return len(x) > 1
     except TypeError:
-        return [], False
+        return False
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
@@ -196,8 +205,9 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
-        df["controlUnitsIds"], df["missionInterservice"] = df["controlUnits"].apply(
-            _process_control_unit_ids
+        df["controlUnitsIds"] = df["controlUnits"].apply(_process_control_unit_ids)
+        df["missionInterservice"] = df["controlUnits"].apply(
+            _process_mission_interservices
         )
         df.drop(columns=["controlUnits"], inplace=True)
 
