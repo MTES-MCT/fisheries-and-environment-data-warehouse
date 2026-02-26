@@ -184,14 +184,18 @@ def _process_control_unit_ids(x):
         return []
 
 
-def _process_mission_interservices(x):
-    # Exract the information of a mission with one or multiple unit (missions interservices)
+def _is_mission_interservices(x):
+    # Extract the information of a mission with one or multiple unit (missions interservices)
     if not x:
         return False
     try:
         return len(x) > 1
     except TypeError:
         return False
+
+
+def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
+    return df.explode("controlUnitsIds")
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
@@ -206,10 +210,10 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         ]
 
         df["controlUnitsIds"] = df["controlUnits"].apply(_process_control_unit_ids)
-        df["missionInterservice"] = df["controlUnits"].apply(
-            _process_mission_interservices
-        )
+        df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
         df.drop(columns=["controlUnits"], inplace=True)
+
+        df = _split_missions_interservices(df)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
