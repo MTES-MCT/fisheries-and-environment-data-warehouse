@@ -134,6 +134,98 @@ col_aem = [
 ]
 
 
+mapper_facade_control = {
+    10192: {"name": "ULAM 2B", "service_type": "ULAM", "unite": "2B", "facade": ""},
+    10420: {
+        "name": "ULAM 34/30",
+        "service_type": "ULAM",
+        "unite": "34/30",
+        "facade": "",
+    },
+    10430: {
+        "name": "ULAM 975 Saint-Pierre et Miquelon",
+        "service_type": "ULAM",
+        "unite": "975 Saint",
+        "facade": "",
+    },
+    10047: {
+        "name": "ULAM 976 Mayotte",
+        "service_type": "ULAM",
+        "unite": "976 Mayotte",
+        "facade": "",
+    },
+    10039: {"name": "ULAM 13", "service_type": "ULAM", "unite": "13", "facade": ""},
+    10050: {"name": "ULAM 59", "service_type": "ULAM", "unite": "59", "facade": ""},
+    10074: {"name": "ULAM 2A", "service_type": "ULAM", "unite": "2A", "facade": ""},
+    10169: {
+        "name": "ULAM 971 Guadeloupe",
+        "service_type": "ULAM",
+        "unite": "971",
+        "facade": "",
+    },
+    10171: {"name": "ULAM 85", "service_type": "ULAM", "unite": "85", "facade": ""},
+    10166: {"name": "ULAM 83", "service_type": "ULAM", "unite": "83", "facade": ""},
+    10183: {
+        "name": "ULAM 974 Réunion",
+        "service_type": "ULAM",
+        "unite": "974",
+        "facade": "",
+    },
+    10210: {"name": "ULAM 50", "service_type": "ULAM", "unite": "50", "facade": ""},
+    10225: {"name": "ULAM 33", "service_type": "ULAM", "unite": "33", "facade": ""},
+    10255: {"name": "ULAM 17", "service_type": "ULAM", "unite": "17", "facade": ""},
+    10194: {"name": "ULAM 06", "service_type": "ULAM", "unite": "6", "facade": ""},
+    10176: {"name": "ULAM 35", "service_type": "ULAM", "unite": "35", "facade": ""},
+    10265: {
+        "name": "ULAM 973 Guyane",
+        "service_type": "ULAM",
+        "unite": "973",
+        "facade": "",
+    },
+    10318: {
+        "name": "ULAM 62/80",
+        "service_type": "ULAM",
+        "unite": "62/80",
+        "facade": "",
+    },
+    10327: {
+        "name": "ULAM 972 Martinique",
+        "service_type": "ULAM",
+        "unite": "972",
+        "facade": "",
+    },
+    10364: {
+        "name": "ULAM 64/40",
+        "service_type": "ULAM",
+        "unite": "64/40",
+        "facade": "",
+    },
+    10452: {"name": "ULAM 14", "service_type": "ULAM", "unite": "14", "facade": ""},
+    10449: {"name": "ULAM 56", "service_type": "	ULAM", "unite": "56", "facade": ""},
+    10457: {
+        "name": "ULAM 29 Brest",
+        "service_type": "ULAM",
+        "unite": "	29 Br",
+        "facade": "",
+    },
+    10303: {
+        "name": "ULAM 66/11",
+        "service_type": "ULAM",
+        "unite": "66/11",
+        "facade": "",
+    },
+    10204: {"name": "ULAM 22", "service_type": "ULAM", "unite": "22", "facade": ""},
+    10288: {
+        "name": "ULAM 29 Douarnenez",
+        "service_type": "ULAM",
+        "unite": "29 Dz",
+        "facade": "",
+    },
+    10428: {"name": "ULAM 44", "service_type": "ULAM", "unite": "44", "facade": ""},
+    10423: {"name": "ULAM 76", "service_type": "ULAM", "unite": "76", "facade": ""},
+}
+
+
 def chunk_list(items, batch_size):
     """Split list into batches"""
     for i in range(0, len(items), batch_size):
@@ -174,14 +266,15 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
     return s
 
 
-def _process_control_unit_ids(x):
+def _map_control_unit(x, col_name: str = "name"):
     # Extract the id from the control unit object
-    if not x:
-        return []
-    try:
-        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y]
-    except TypeError:
-        return []
+    if x:
+        if "id" in x:
+            if isinstance(x, dict):
+                id = x.get("id")
+                if id in mapper_facade_control and mapper_facade_control[id][col_name]:
+                    return mapper_facade_control[id][col_name]
+    return None
 
 
 def _is_mission_interservices(x):
@@ -195,7 +288,22 @@ def _is_mission_interservices(x):
 
 
 def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
-    return df.explode("controlUnitsIds")
+    return df.explode("controlUnits")
+
+
+def _process_control_unit(df: pd.DataFrame) -> pd.DataFrame:
+    df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
+    df = _split_missions_interservices(df)
+    df["control_unit_name"] = df["controlUnits"].apply(
+        lambda x: _map_control_unit(x, "name")
+    )
+    df["control_unit_service_type"] = df["controlUnits"].apply(
+        lambda x: _map_control_unit(x, "service_type")
+    )
+    df["unite"] = df["controlUnits"].apply(lambda x: _map_control_unit(x, "unite"))
+    df["facade"] = df["controlUnits"].apply(lambda x: _map_control_unit(x, "facade"))
+    df.drop(columns=["controlUnits"], inplace=True)
+    return df
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
@@ -209,11 +317,7 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
-        df["controlUnitsIds"] = df["controlUnits"].apply(_process_control_unit_ids)
-        df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
-        df.drop(columns=["controlUnits"], inplace=True)
-
-        df = _split_missions_interservices(df)
+        df = _process_control_unit(df)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
