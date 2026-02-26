@@ -141,18 +141,18 @@ def test__split_missions_interservices():
 def test_process_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
         _is_mission_interservices,
-        _process_control_unit,
+        _map_control_unit,
     )
 
     # None or empty -> empty list
-    assert not _process_control_unit(None)
+    assert not _map_control_unit(None)
     assert _is_mission_interservices(None) == False
-    assert not _process_control_unit([])
+    assert not _map_control_unit([])
     assert _is_mission_interservices([]) == False
 
     # Normal list of dicts with single control unit
 
-    assert _process_control_unit({"id": 101, "name": "A"}, "name") == "A"
+    assert _map_control_unit({"id": 101, "name": "A"}, "name") == "A"
     assert _is_mission_interservices([{"id": 101, "name": "A"}]) == False
 
     assert (

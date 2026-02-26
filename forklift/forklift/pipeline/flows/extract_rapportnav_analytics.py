@@ -266,7 +266,7 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
     return s
 
 
-def _process_control_unit(x, col_name: str = "name"):
+def _map_control_unit(x, col_name: str = "name"):
     # Extract the id from the control unit object
     if x:
         if "id" in x:
@@ -291,6 +291,21 @@ def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
     return df.explode("controlUnits")
 
 
+def _process_control_unit(df: pd.DataFrame) -> pd.DataFrame:
+    df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
+    df = _split_missions_interservices(df)
+    df["control_unit_name"] = df["controlUnits"].apply(
+        lambda x: _map_control_unit(x, "name")
+    )
+    df["control_unit_service_type"] = df["controlUnits"].apply(
+        lambda x: _map_control_unit(x, "service_type")
+    )
+    df["unite"] = df["controlUnits"].apply(lambda x: _map_control_unit(x, "unite"))
+    df["facade"] = df["controlUnits"].apply(lambda x: _map_control_unit(x, "facade"))
+    df.drop(columns=["controlUnits"], inplace=True)
+    return df
+
+
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
     if not df.empty:
         # Normalize column names using the shared cleaning function
@@ -302,21 +317,7 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
-        df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
-        df = _split_missions_interservices(df)
-        df["control_unit_name"] = df["controlUnits"].apply(
-            lambda x: _process_control_unit(x, "name")
-        )
-        df["control_unit_service_type"] = df["controlUnits"].apply(
-            lambda x: _process_control_unit(x, "service_type")
-        )
-        df["unite"] = df["controlUnits"].apply(
-            lambda x: _process_control_unit(x, "unite")
-        )
-        df["facade"] = df["controlUnits"].apply(
-            lambda x: _process_control_unit(x, "facade")
-        )
-        df.drop(columns=["controlUnits"], inplace=True)
+        df = _process_control_unit(df)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
