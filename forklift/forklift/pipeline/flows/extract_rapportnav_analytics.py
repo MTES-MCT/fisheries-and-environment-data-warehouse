@@ -266,14 +266,15 @@ def _clean_str(s: str, *, lower: bool = True) -> str:
     return s
 
 
-def _extract_control_unit_ids(x):
+def _process_control_unit(x, col_name: str = "name"):
     # Extract the id from the control unit object
-    if not x:
-        return []
-    try:
-        return [y.get("id") for y in x if isinstance(y, dict) and "id" in y]
-    except TypeError:
-        return []
+    if x:
+        if "id" in x:
+            if isinstance(x, dict):
+                id = x.get("id")
+                if id in mapper_facade_control and mapper_facade_control[id][col_name]:
+                    return mapper_facade_control[id][col_name]
+    return None
 
 
 def _is_mission_interservices(x):
@@ -287,7 +288,7 @@ def _is_mission_interservices(x):
 
 
 def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
-    return df.explode("controlUnitsIds")
+    return df.explode("controlUnits")
 
 
 def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
@@ -301,11 +302,21 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             & (df.completenessForStats_status == "COMPLETE")
         ]
 
-        df["controlUnitsIds"] = df["controlUnits"].apply(_extract_control_unit_ids)
         df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
-        df.drop(columns=["controlUnits"], inplace=True)
-
         df = _split_missions_interservices(df)
+        df["control_unit_name"] = df["controlUnits"].apply(
+            lambda x: _process_control_unit(x, "name")
+        )
+        df["control_unit_service_type"] = df["controlUnits"].apply(
+            lambda x: _process_control_unit(x, "service_type")
+        )
+        df["unite"] = df["controlUnits"].apply(
+            lambda x: _process_control_unit(x, "unite")
+        )
+        df["facade"] = df["controlUnits"].apply(
+            lambda x: _process_control_unit(x, "facade")
+        )
+        df.drop(columns=["controlUnits"], inplace=True)
 
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
