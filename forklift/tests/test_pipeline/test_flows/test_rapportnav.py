@@ -132,22 +132,22 @@ def test__split_missions_interservices():
 
 def test_process_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
+        _extract_control_unit_ids,
         _is_mission_interservices,
-        _process_control_unit_ids,
     )
 
     # None or empty -> empty list
-    assert _process_control_unit_ids(None) == []
+    assert _extract_control_unit_ids(None) == []
     assert _is_mission_interservices(None) == False
-    assert _process_control_unit_ids([]) == []
+    assert _extract_control_unit_ids([]) == []
     assert _is_mission_interservices([]) == False
 
     # Normal list of dicts with single control unit
-    assert _process_control_unit_ids([{"id": 101, "name": "A"}]) == [101]
+    assert _extract_control_unit_ids([{"id": 101, "name": "A"}]) == [101]
     assert _is_mission_interservices([{"id": 101, "name": "A"}]) == False
 
     # Normal list of dicts with multiple control units
-    assert _process_control_unit_ids(
+    assert _extract_control_unit_ids(
         [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
     ) == [101, 202]
     assert (
@@ -156,7 +156,7 @@ def test_process_control_unit_ids():
     )
 
     # Mixed contents -> only dicts with 'id' are returned
-    assert _process_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
+    assert _extract_control_unit_ids([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == [
         1,
         4,
     ]
@@ -165,7 +165,7 @@ def test_process_control_unit_ids():
     )
 
     # Non-iterable input should be handled and return empty list
-    assert _process_control_unit_ids(123) == []
+    assert _extract_control_unit_ids(123) == []
     assert _is_mission_interservices(123) == False
 
 
