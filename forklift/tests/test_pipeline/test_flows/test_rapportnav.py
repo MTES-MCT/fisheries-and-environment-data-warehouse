@@ -44,7 +44,7 @@ def test__process_data_patrol():
 
     # controlUnits should be removed and controlUnitsIds created from the list of dicts
     assert "controlUnits" not in out.columns
-    assert out["controlUnitsIds"].iloc[0] == [10121, 20222]
+    assert out["controlUnitsIds"].iloc[0] == 10121
 
     # Datetime columns must be converted to pandas datetime dtype (tz-aware or tz-naive)
     assert ptypes.is_datetime64_any_dtype(
@@ -113,30 +113,45 @@ def test__process_data_with_complete_and_finished_attributes():
     assert len(out) == 1
 
 
+def test__split_missions_interservices():
+    from forklift.pipeline.flows.extract_rapportnav_analytics import (
+        _split_missions_interservices,
+    )
+
+    data = {
+        "id": [1, 2],
+        "controlUnitsIds": [[{"id": 1}, {"id": 2}], [{"id": 3}]],
+    }
+
+    df = pd.DataFrame(data)
+    out = _split_missions_interservices(df)
+
+    # Missions with multiple controlUnitsIds should split into new lines
+    assert len(out) == 3
+
+
 def test_process_control_unit_ids():
     from forklift.pipeline.flows.extract_rapportnav_analytics import (
+        _is_mission_interservices,
         _process_control_unit_ids,
-        _process_mission_interservices,
     )
 
     # None or empty -> empty list
     assert _process_control_unit_ids(None) == []
-    assert _process_mission_interservices(None) == False
+    assert _is_mission_interservices(None) == False
     assert _process_control_unit_ids([]) == []
-    assert _process_mission_interservices([]) == False
+    assert _is_mission_interservices([]) == False
 
     # Normal list of dicts with single control unit
     assert _process_control_unit_ids([{"id": 101, "name": "A"}]) == [101]
-    assert _process_mission_interservices([{"id": 101, "name": "A"}]) == False
+    assert _is_mission_interservices([{"id": 101, "name": "A"}]) == False
 
     # Normal list of dicts with multiple control units
     assert _process_control_unit_ids(
         [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
     ) == [101, 202]
     assert (
-        _process_mission_interservices(
-            [{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]
-        )
+        _is_mission_interservices([{"id": 101, "name": "A"}, {"id": 202, "name": "B"}])
         == True
     )
 
@@ -146,13 +161,12 @@ def test_process_control_unit_ids():
         4,
     ]
     assert (
-        _process_mission_interservices([{"id": 1}, "str", {"no_id": 3}, {"id": 4}])
-        == True
+        _is_mission_interservices([{"id": 1}, "str", {"no_id": 3}, {"id": 4}]) == True
     )
 
     # Non-iterable input should be handled and return empty list
     assert _process_control_unit_ids(123) == []
-    assert _process_mission_interservices(123) == False
+    assert _is_mission_interservices(123) == False
 
 
 def test_extract_missions_ids():
