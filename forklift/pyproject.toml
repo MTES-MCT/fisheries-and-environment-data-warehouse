@@ -8,7 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "3.13.7"
 prefect = "~1.4.1"
-pandas = {extras = ["postgresql"], version = "^2.3.2"}
+pandas = {extras = ["postgresql"], version = "^3.0.1"}
 duckdb = "^1.4.4"
 black = "^25.1.0"
 isort = "^6.0.1"
