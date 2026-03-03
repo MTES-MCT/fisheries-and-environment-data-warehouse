@@ -91,7 +91,11 @@ col_aem = [
     "id",
     "idUUID",
     "serviceIdmissionTypesfacadestartDateTimeUtcendDateTimeUtc",
-    "controlUnitsIds",
+    "control_unit_name",
+    "control_unit_service_type",
+    "unite",
+    "facade",
+    "mission_inter_service",
     "annee",
     "mois",
     "1_1_1_nombre_d_heures_de_mer",
@@ -292,7 +296,7 @@ def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _process_control_unit(df: pd.DataFrame) -> pd.DataFrame:
-    df["missionInterservice"] = df["controlUnits"].apply(_is_mission_interservices)
+    df["mission_inter_service"] = df["controlUnits"].apply(_is_mission_interservices)
     df = _split_missions_interservices(df)
     df["control_unit_name"] = df["controlUnits"].apply(
         lambda x: _map_control_unit(x, "name")
