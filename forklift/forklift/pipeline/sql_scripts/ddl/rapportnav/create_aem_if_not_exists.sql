@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.aem (
     control_unit_service_type String,
     unite String,
     facade String,
-    missionInterService bool,
+    mission_inter_service bool,
     annee Int32,
     mois Int32,
     1_1_1_nombre_d_heures_de_mer Int32,
