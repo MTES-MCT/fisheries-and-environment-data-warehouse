@@ -386,6 +386,7 @@ def _process_control_unit(df: pd.DataFrame) -> pd.DataFrame:
     )
     df["unite"] = df["controlUnits"].apply(lambda x: _map_control_unit(x, "unite"))
     df["facade"] = df["controlUnits"].apply(lambda x: _map_control_unit(x, "facade"))
+
     df.drop(columns=["controlUnits"], inplace=True)
     return df
 
@@ -494,13 +495,20 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
         df = df.loc[:, df.columns.isin(col_aem)]
 
     # Fill empty values with -1 or '' for strings
-    for str_col in ["idUUID"]:
+    for str_col in [
+        "idUUID",
+        "facade",
+        "control_unit_name",
+        "control_unit_service_type",
+        "unite",
+    ]:
         df[str_col] = df[str_col].fillna("")
     df = df.fillna(-1)
+
     return df
 
 
-@task(checkpoint=False)
+@task()
 def chunk_missions(mission_ids: list, batch_size: int = 100) -> list:
     """Task wrapper around chunk_list so chunking happens at runtime inside the flow."""
     if not mission_ids:
@@ -508,7 +516,7 @@ def chunk_missions(mission_ids: list, batch_size: int = 100) -> list:
     return list(chunk_list(mission_ids, batch_size))
 
 
-@task(checkpoint=False, trigger=all_finished)
+@task(trigger=all_finished)
 def concat_dfs(dfs: list) -> pd.DataFrame:
     """
     Concatenate a list of DataFrames inside the flow runtime.
@@ -525,7 +533,7 @@ def concat_dfs(dfs: list) -> pd.DataFrame:
     return pd.concat(dfs, ignore_index=True)
 
 
-@task(checkpoint=False)
+@task()
 def extract_missions_ids() -> list:
     logger = prefect.context.get("logger")
 
@@ -539,7 +547,7 @@ def extract_missions_ids() -> list:
     return list(mission_ids.id)
 
 
-@task(checkpoint=True, max_retries=4, retry_delay=datetime.timedelta(seconds=10))
+@task(max_retries=4, retry_delay=datetime.timedelta(seconds=10))
 def fetch_rapportnav_api(report_type: str, missions_ids: list):
     """Fetch results from a RapportNav API and returns it as a DataFrame.
 
