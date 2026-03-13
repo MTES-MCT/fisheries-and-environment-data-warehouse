@@ -17,7 +17,7 @@ WITH rtps AS (
         p.port_name,
         p.latitude AS port_latitude,
         p.longitude AS port_longitude,
-        logbook_reports.value->>'reasonOfReturn' AS reason_of_return
+        COALESCE(logbook_reports.value->>'reasonOfReturn', 'UNK') AS reason_of_return
     FROM logbook_reports
     LEFT JOIN vessels v
     ON v.cfr = logbook_reports.cfr
