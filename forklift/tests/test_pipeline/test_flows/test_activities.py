@@ -185,7 +185,7 @@ def expected_activities() -> pd.DataFrame:
         }
     ).astype(
         {
-            "operation_datetime_utc": "datetime64[s]",
+            "operation_datetime_utc": "datetime64[ns]",
             "activity_datetime_utc": "datetime64[ns]",
             "cfr": "string[python]",
             "trip_number": "string[python]",

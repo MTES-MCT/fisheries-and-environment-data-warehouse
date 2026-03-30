@@ -1,4 +1,4 @@
-FROM python:3.12.10-slim-bookworm AS base
+FROM python:3.13.7-slim-trixie AS base
 
 ENV VIRTUAL_ENV="/opt/venv" \
     # paths

@@ -18,16 +18,20 @@ from forklift.pipeline.flows import (
     activities,
     catches,
     clean_flow_runs,
+    coe,
     compute_sacrois_segments,
+    cox,
     cps,
     discards,
     drop_table,
     enrich_monitorfish_catches,
+    extract_rapportnav_analytics,
     import_sacrois_data,
     landings,
     pnos,
     reset_dictionary,
     reset_proxy_pg_database,
+    rtps,
     sync_geo_table_to_h3_table,
     sync_table_from_db_connection,
     sync_table_with_pandas,
@@ -47,26 +51,33 @@ def get_flows_to_register():
     catches_flow = deepcopy(catches.flow)
     clean_flow_runs_flow = deepcopy(clean_flow_runs.flow)
     compute_sacrois_segments_flow = deepcopy(compute_sacrois_segments.flow)
+    coe_flow = deepcopy(coe.flow)
+    cox_flow = deepcopy(cox.flow)
     cps_flow = deepcopy(cps.flow)
     discards_flow = deepcopy(discards.flow)
     drop_table_flow = deepcopy(drop_table.flow)
     enrich_monitorfish_catches_flow = deepcopy(enrich_monitorfish_catches.flow)
-    reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
+    extract_rapportnav_analytics_flow = deepcopy(extract_rapportnav_analytics.flow)
     import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
     landings_flow = deepcopy(landings.flow)
     pnos_flow = deepcopy(pnos.flow)
     reset_dictionary_flow = deepcopy(reset_dictionary.flow)
+    reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
+    rtps_flow = deepcopy(rtps.flow)
     sync_geo_table_to_h3_table_flow = deepcopy(sync_geo_table_to_h3_table.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
     vms_flow = deepcopy(vms.flow)
 
-    activities_flow.schedule = CronSchedule("46 4 * * *")
+    activities_flow.schedule = CronSchedule("26 4 * * *")
     catches_flow.schedule = CronSchedule("44 4 * * *")
+    clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
     cps_flow.schedule = CronSchedule("41 4 * * *")
+    coe_flow.schedule = CronSchedule("16 4 * * *")
+    cox_flow.schedule = CronSchedule("12 4 * * *")
     discards_flow.schedule = CronSchedule("35 4 * * *")
     enrich_monitorfish_catches_flow.schedule = CronSchedule("14 5 * * *")
-    clean_flow_runs_flow.schedule = CronSchedule("8,18,28,38,48,58 * * * *")
+    extract_rapportnav_analytics_flow.schedule = CronSchedule("56 4 * * *")
     landings_flow.schedule = CronSchedule("54 4 * * *")
     pnos_flow.schedule = CronSchedule("55 4 * * *")
     reset_dictionary_flow.schedule = Schedule(
@@ -105,6 +116,7 @@ def get_flows_to_register():
             ),
         ]
     )
+    rtps_flow.schedule = CronSchedule("58 4 * * *")
     sync_geo_table_to_h3_table_flow.schedule = Schedule(
         clocks=[
             clocks.CronClock(
@@ -191,16 +203,19 @@ def get_flows_to_register():
         catches_flow,
         clean_flow_runs_flow,
         compute_sacrois_segments_flow,
-        catches_flow,
-        drop_table_flow,
+        coe_flow,
+        cox_flow,
         cps_flow,
         discards_flow,
+        drop_table_flow,
         enrich_monitorfish_catches_flow,
-        reset_proxy_pg_database_flow,
+        extract_rapportnav_analytics_flow,
         import_sacrois_data_flow,
         landings_flow,
         pnos_flow,
         reset_dictionary_flow,
+        reset_proxy_pg_database_flow,
+        rtps_flow,
         sync_geo_table_to_h3_table_flow,
         sync_table_from_db_connection_flow,
         sync_table_with_pandas_flow,

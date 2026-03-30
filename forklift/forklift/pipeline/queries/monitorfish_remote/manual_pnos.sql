@@ -34,4 +34,8 @@ ON p.locode = value->>'port'
 JOIN jsonb_array_elements(value->'catchOnboard') catch ON true
 WHERE
     created_at >= :min_date AND
-    created_at < :max_date
+    created_at < :max_date AND
+    (
+        manual_prior_notifications.value->>'isInvalidated' IS NULL OR
+        manual_prior_notifications.value->>'isInvalidated' = 'false'
+    )
