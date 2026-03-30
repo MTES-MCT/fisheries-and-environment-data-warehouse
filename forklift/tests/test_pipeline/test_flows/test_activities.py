@@ -182,6 +182,7 @@ def expected_activities() -> pd.DataFrame:
                 "21",
                 "15",
             ],
+            "status": ["ACCEPTED"] * 16,
         }
     ).astype(
         {
