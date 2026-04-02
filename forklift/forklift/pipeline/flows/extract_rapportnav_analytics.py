@@ -26,6 +26,7 @@ col_patrol = [
     "idUUID",
     "serviceId",
     "missionTypes",
+    "mission_inter_service",
     "controlUnitsIds",
     "facade",
     "startDateTimeUtc",
