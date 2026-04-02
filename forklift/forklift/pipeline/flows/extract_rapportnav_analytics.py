@@ -26,10 +26,13 @@ col_patrol = [
     "idUUID",
     "serviceId",
     "missionTypes",
+    "mission_inter_service",
     "controlUnitsIds",
     "facade",
     "startDateTimeUtc",
     "endDateTimeUtc",
+    "annee",
+    "mois",
     "isDeleted",
     "missionSource",
     "activity_atSea_nbOfDaysAtSea",
@@ -407,6 +410,10 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
 
+        # Extract year and month from datetime
+        df["annee"] = df["startDateTimeUtc"].dt.year
+        df["mois"] = df["startDateTimeUtc"].dt.month
+
         if report_type == "patrol":
             df = _process_data_patrol(df)
         elif report_type == "aem":
@@ -482,10 +489,6 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
 
     # Create a DataFrame from the expanded columns and align index with original df
     df_expanded = pd.DataFrame(expanded_rows, index=df.index)
-
-    # Extract year and month from datetime
-    df["annee"] = df["startDateTimeUtc"].dt.year
-    df["mois"] = df["startDateTimeUtc"].dt.month
 
     # Drop original data column and concat expanded columns
     df = pd.concat([df.drop(columns=["data"], errors="ignore"), df_expanded], axis=1)
@@ -592,7 +595,7 @@ def fetch_rapportnav_api(report_type: str, missions_ids: list):
 
 with Flow("RapportNavAnalytics") as flow:
     logger = prefect.context.get("logger")
-    report_types = ["aem"]
+    report_types = ["aem", "patrol"]
 
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
