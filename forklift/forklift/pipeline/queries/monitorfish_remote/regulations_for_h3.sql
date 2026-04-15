@@ -10,8 +10,7 @@ SELECT
             WHEN ST_NPoints(geometry_simplified) < 50000 THEN ST_MakeValid(ST_SimplifyPreserveTopology(ST_CurveToLine(geometry), 0.001))
             ELSE ST_MakeValid(ST_SimplifyPreserveTopology(ST_CurveToLine(geometry), 0.01))
         END
-    ) AS geometry_simplified,
-    jsonb_build_object('references', NULLIF(NULLIF(regulatory_references, 'null'), '{}')) AS regulatory_references
+    ) AS geometry_simplified
 FROM regulations
 WHERE
     geometry_simplified IS NOT NULL

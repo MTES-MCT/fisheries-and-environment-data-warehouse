@@ -4,7 +4,8 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     topic String,
     zone String,
     region LowCardinality(Nullable(String)),
-    geometry_simplified String
+    geometry_simplified String,
+    regulatory_references JSON
 )
 ENGINE MergeTree
 ORDER BY id
