@@ -4,7 +4,7 @@ SELECT
     topic,
     zone,
     region,
-    ST_CollectionExtract(
+    ST_Multi(
         CASE
             WHEN ST_NPoints(geometry_simplified) < 10000 THEN geometry_simplified
             WHEN ST_NPoints(geometry_simplified) < 50000 THEN ST_MakeValid(ST_SimplifyPreserveTopology(ST_CurveToLine(geometry), 0.001))
