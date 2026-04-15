@@ -126,7 +126,7 @@ def get_flows_to_register():
                 "8 5 3,10,17,24 * *",
                 parameter_defaults={
                     "source_database": "monitorfish_remote",
-                    "query_filepath": "monitorfish_remote/regulations.sql",
+                    "query_filepath": "monitorfish_remote/regulations_for_h3.sql",
                     "geometry_column": "geometry_simplified",
                     "crs": 4326,
                     "resolution": 8,

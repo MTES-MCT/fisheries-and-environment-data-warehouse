@@ -15,7 +15,7 @@ replace_check_flow_not_running(flow)
     [
         (
             "monitorfish_remote",
-            "monitorfish_remote/regulations.sql",
+            "monitorfish_remote/regulations_for_h3.sql",
             "geometry_simplified",
             5,
             "monitorfish/create_regulations_h3.sql",
