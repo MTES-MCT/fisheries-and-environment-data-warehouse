@@ -310,6 +310,30 @@ mapper_facade_control = {
         "unite": "76",
         "facade": "Manche-Mer Du Nord",
     },
+    10404: {
+        "name": "PAM Iris",
+        "service_type": "PAM",
+        "unite": "17",
+        "facade": "Atlantique",
+    },
+    10080: {
+        "name": "PAM Themis",
+        "service_type": "PAM",
+        "unite": "29",
+        "facade": "Atlantique",
+    },
+    10141: {
+        "name": "PAM Gyptis",
+        "service_type": "PAM",
+        "unite": "13",
+        "facade": "Méditerranée",
+    },
+    10121: {
+        "name": "PAM Jeanne Barret",
+        "service_type": "PAM",
+        "unite": "76",
+        "facade": "Manche-Mer Du Nord",
+    },
 }
 
 
@@ -570,7 +594,7 @@ def fetch_rapportnav_api(report_type: str, missions_ids: list):
         headers={"x-api-key": RAPPORTNAV_API_KEY, "Accept": "application/json"},
         json={"missionIds": missions_ids},
     )
-
+    breakpoint()
     try:
         resp.raise_for_status()
     except Exception as e:
