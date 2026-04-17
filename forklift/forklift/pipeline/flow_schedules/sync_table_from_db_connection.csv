@@ -12,3 +12,8 @@
 "monitorfish_proxy","districts",,"monitorfish","districts",,"district_code","50 4 * * *"
 "monitorfish_proxy","threats",,"monitorfish","threats",,"name","52 4 * * *"
 "monitorfish_proxy","threat_characterizations",,"monitorfish","threat_characterizations",,"name","54 4 * * *"
+"monitorfish_proxy","fishing_gear_codes",,"monitorfish","fishing_gear_codes",,"fishing_gear_code","56 4 * * *"
+"monitorfish_proxy","fishing_gear_codes_groups",,"monitorfish","fishing_gear_codes_groups",,"fishing_gear_code","58 4 * * *"
+"monitorfish_proxy","fishing_gear_groups",,"monitorfish","fishing_gear_groups",,"id","0 5 * * *"
+"monitorfish_proxy","species_codes_groups",,"monitorfish","species_codes_groups",,"species_code","2 5 * * *"
+"monitorfish_proxy","species_groups",,"monitorfish","species_groups",,"id","4 5 * * *"
