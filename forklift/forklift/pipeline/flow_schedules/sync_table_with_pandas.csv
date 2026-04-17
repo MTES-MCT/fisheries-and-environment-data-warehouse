@@ -11,3 +11,4 @@
 "monitorfish_remote","monitorfish_remote/non_overlapping_fao_areas.sql",,,"geopandas","geometry","monitorfish","non_overlapping_fao_areas_tmp","monitorfish/create_non_overlapping_fao_areas_tmp.sql","monitorfish/post_process_non_overlapping_fao_areas.sql","non_overlapping_fao_areas","42 1 1 * *"
 "monitorfish_remote","monitorfish_remote/ports.sql",,,"pandas",,"monitorfish","ports","monitorfish/create_ports.sql",,,"44 1 1 * *"
 "monitorfish_remote","monitorfish_remote/pno_type_rules_unnested.sql",,,"pandas",,"monitorfish","pno_type_rules_unnested","monitorfish/create_pno_type_rules_unnested.sql",,,"46 1 1 * *"
+"monitorfish_remote","monitorfish_remote/vessel_profiles.sql",,,"pandas",,"monitorfish","vessel_profiles","monitorfish/create_vessel_profiles_if_not_exists.sql",,,"48 1 1 * *"
