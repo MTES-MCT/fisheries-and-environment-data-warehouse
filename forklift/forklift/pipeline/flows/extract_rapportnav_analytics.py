@@ -418,6 +418,17 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             df = _process_data_patrol(df)
         elif report_type == "aem":
             df = _process_data_aem(df)
+
+        # Fill empty values with -1 or '' for strings
+        for str_col in [
+            "idUUID",
+            "facade",
+            "control_unit_name",
+            "control_unit_service_type",
+            "unite",
+        ]:
+            df[str_col] = df[str_col].fillna("")
+        df = df.fillna(-1)
         return df
     else:
         logger.error("Invalid report type")
@@ -496,17 +507,6 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
     # Filter columns
     if not df.empty:
         df = df.loc[:, df.columns.isin(col_aem)]
-
-    # Fill empty values with -1 or '' for strings
-    for str_col in [
-        "idUUID",
-        "facade",
-        "control_unit_name",
-        "control_unit_service_type",
-        "unite",
-    ]:
-        df[str_col] = df[str_col].fillna("")
-    df = df.fillna(-1)
 
     return df
 
