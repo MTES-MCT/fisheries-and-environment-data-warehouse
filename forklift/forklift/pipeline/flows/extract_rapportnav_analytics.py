@@ -270,7 +270,7 @@ mapper_facade_control = {
     },
     10449: {
         "name": "ULAM 56",
-        "service_type": "	ULAM",
+        "service_type": "ULAM",
         "unite": "56",
         "facade": "Manche-Mer Du Nord",
     },
@@ -594,7 +594,6 @@ def fetch_rapportnav_api(report_type: str, missions_ids: list):
         headers={"x-api-key": RAPPORTNAV_API_KEY, "Accept": "application/json"},
         json={"missionIds": missions_ids},
     )
-    breakpoint()
     try:
         resp.raise_for_status()
     except Exception as e:

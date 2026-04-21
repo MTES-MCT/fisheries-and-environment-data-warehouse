@@ -1,4 +1,5 @@
 
+-- Aggregation des actions provenants de MonitorFish, MonitorEnv, RapportNav
 WITH all_actions AS (
     SELECT rapportnav_proxy.mission_action.mission_id::Int32 as mission_id,
         'from_rapportnav' as source
@@ -46,4 +47,5 @@ FROM monitorenv_proxy.missions
 LEFT JOIN rapportnav_proxy.mission_general_info on rapportnav_proxy.mission_general_info.mission_id = monitorenv_proxy.missions.id
 LEFT JOIN aggregated_actions_by_missions on aggregated_actions_by_missions.mission_id = monitorenv_proxy.missions.id
 LEFT JOIN service_detailed on service_detailed.id = rapportnav_proxy.mission_general_info.service_id
+WHERE unite is not null and unite != ''
 ;
