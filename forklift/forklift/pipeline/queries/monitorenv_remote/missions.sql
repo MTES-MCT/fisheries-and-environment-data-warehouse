@@ -1,1 +1,1 @@
-select DISTINCT(id) from missions where start_datetime_utc >= '2025-01-01';
+select DISTINCT(id) from monitorenv_proxy.missions where start_datetime_utc >= '2025-01-01';

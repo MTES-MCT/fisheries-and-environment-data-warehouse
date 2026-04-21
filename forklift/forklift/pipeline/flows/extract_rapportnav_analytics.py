@@ -270,7 +270,7 @@ mapper_facade_control = {
     },
     10449: {
         "name": "ULAM 56",
-        "service_type": "	ULAM",
+        "service_type": "ULAM",
         "unite": "56",
         "facade": "Manche-Mer Du Nord",
     },
@@ -307,6 +307,30 @@ mapper_facade_control = {
     10423: {
         "name": "ULAM 76",
         "service_type": "ULAM",
+        "unite": "76",
+        "facade": "Manche-Mer Du Nord",
+    },
+    10404: {
+        "name": "PAM Iris",
+        "service_type": "PAM",
+        "unite": "17",
+        "facade": "Atlantique",
+    },
+    10080: {
+        "name": "PAM Themis",
+        "service_type": "PAM",
+        "unite": "29",
+        "facade": "Atlantique",
+    },
+    10141: {
+        "name": "PAM Gyptis",
+        "service_type": "PAM",
+        "unite": "13",
+        "facade": "Méditerranée",
+    },
+    10121: {
+        "name": "PAM Jeanne Barret",
+        "service_type": "PAM",
         "unite": "76",
         "facade": "Manche-Mer Du Nord",
     },
@@ -418,6 +442,17 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             df = _process_data_patrol(df)
         elif report_type == "aem":
             df = _process_data_aem(df)
+
+        # Fill empty values with -1 or '' for strings
+        for str_col in [
+            "idUUID",
+            "facade",
+            "control_unit_name",
+            "control_unit_service_type",
+            "unite",
+        ]:
+            df[str_col] = df[str_col].fillna("")
+        df = df.fillna(-1)
         return df
     else:
         logger.error("Invalid report type")
@@ -497,17 +532,6 @@ def _process_data_aem(df: pd.DataFrame) -> pd.DataFrame:
     if not df.empty:
         df = df.loc[:, df.columns.isin(col_aem)]
 
-    # Fill empty values with -1 or '' for strings
-    for str_col in [
-        "idUUID",
-        "facade",
-        "control_unit_name",
-        "control_unit_service_type",
-        "unite",
-    ]:
-        df[str_col] = df[str_col].fillna("")
-    df = df.fillna(-1)
-
     return df
 
 
@@ -570,7 +594,6 @@ def fetch_rapportnav_api(report_type: str, missions_ids: list):
         headers={"x-api-key": RAPPORTNAV_API_KEY, "Accept": "application/json"},
         json={"missionIds": missions_ids},
     )
-
     try:
         resp.raise_for_status()
     except Exception as e:
