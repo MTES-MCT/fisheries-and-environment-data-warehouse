@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.patrol (
     mois Int32,
     isDeleted UInt8,
     missionSource String,
+    generalInfos_data_nbrOfRecognizedVessel,
     activity_atSea_nbOfDaysAtSea Float64,
     activity_atSea_navigationDurationInHours Float64,
     activity_atSea_anchoredDurationInHours Float64,
