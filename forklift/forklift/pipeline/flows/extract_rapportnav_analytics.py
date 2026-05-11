@@ -584,7 +584,21 @@ def extract_missions_ids() -> list:
         parse_dates=["start_datetime_utc"],
     )
 
-    logger.info((f"Found {len(mission_ids)} missions. "))
+    logger.info(f"Found {len(mission_ids)} missions.")
+    return list(mission_ids.id)
+
+
+@task()
+def extract_pam_missions_ids() -> list:
+    logger = prefect.context.get("logger")
+
+    mission_ids = extract(
+        db_name="monitorenv_remote",
+        query_filepath="monitorenv_remote/missions_pam.sql",
+        parse_dates=["start_datetime_utc"],
+    )
+
+    logger.info(f"Found {len(mission_ids)} PAM missions.")
     return list(mission_ids.id)
 
 
@@ -637,14 +651,21 @@ with Flow("RapportNavAnalytics") as flow:
     flow_not_running = check_flow_not_running()
     with case(flow_not_running, True):
         mission_ids = extract_missions_ids()
+        pam_mission_ids = extract_pam_missions_ids()
 
-        # Chunk mission ids at runtime using a Prefect task so we can map over batches
         mission_ids_batches = chunk_missions(mission_ids, 100)
+        pam_mission_ids_batches = chunk_missions(pam_mission_ids, 100)
+
+        ids_by_report_type = {
+            "aem": mission_ids_batches,
+            "patrol": pam_mission_ids_batches,
+        }
 
         for report_type in report_types:
             # Map fetch_rapportnav_api over the batches produced by chunk_missions
             df_batch = fetch_rapportnav_api.map(
-                report_type=unmapped(report_type), missions_ids=mission_ids_batches
+                report_type=unmapped(report_type),
+                missions_ids=ids_by_report_type[report_type],
             )
 
             # Concatenate mapped DataFrames at runtime
