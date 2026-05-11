@@ -38,6 +38,7 @@ col_patrol = [
     "mois",
     "isDeleted",
     "missionSource",
+    "generalInfos_data_nbrOfRecognizedVessel",
     "activity_atSea_nbOfDaysAtSea",
     "activity_atSea_navigationDurationInHours",
     "activity_atSea_anchoredDurationInHours",
