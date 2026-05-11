@@ -437,6 +437,10 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
         df["startDateTimeUtc"] = pd.to_datetime(df["startDateTimeUtc"], errors="coerce")
         df["endDateTimeUtc"] = pd.to_datetime(df["endDateTimeUtc"], errors="coerce")
 
+        nat_mask = df["startDateTimeUtc"].isna() | df["endDateTimeUtc"].isna()
+        if nat_mask.any():
+            df = df[~nat_mask]
+
         # Extract year and month from datetime
         df["annee"] = df["startDateTimeUtc"].dt.year
         df["mois"] = df["startDateTimeUtc"].dt.month
@@ -455,7 +459,8 @@ def _process_data(df: pd.DataFrame, report_type: str) -> pd.DataFrame:
             "unite",
         ]:
             df[str_col] = df[str_col].fillna("")
-        df = df.fillna(-1)
+        numeric_cols = df.select_dtypes(include="number").columns
+        df[numeric_cols] = df[numeric_cols].fillna(-1)
         return df
     else:
         logger.error("Invalid report type")
@@ -564,6 +569,12 @@ def concat_dfs(dfs: list) -> pd.DataFrame:
 
 
 @task()
+def check_df_not_empty(df: pd.DataFrame):
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        raise SKIP("Dataframe vide. Fin du flow...")
+
+
+@task()
 def extract_missions_ids() -> list:
     logger = prefect.context.get("logger")
 
@@ -655,11 +666,13 @@ with Flow("RapportNavAnalytics") as flow:
                 upstream_tasks=[drop_table],
             )
 
+            df_not_empty = check_df_not_empty(df)
+
             loaded_df = load_df_to_data_warehouse(
                 df,
                 destination_database=destination_database,
                 destination_table=report_type,
-                upstream_tasks=[created_table],
+                upstream_tasks=[created_table, df_not_empty],
             )
 
 
