@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS rapportnav.patrol (
     controlPolicies_other_nbControlsLand Int32,
     controlPolicies_other_nbInfractionsWithRecord Int32,
     controlPolicies_other_nbInfractionsWithoutRecord Int32
+    operationalSummary_envSummary_totalSurveillanceDurationInHours Int32
 )
 ENGINE = MergeTree()
 ORDER BY id

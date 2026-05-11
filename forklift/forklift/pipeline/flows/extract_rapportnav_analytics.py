@@ -91,6 +91,7 @@ col_patrol = [
     "controlPolicies_other_nbControlsLand",
     "controlPolicies_other_nbInfractionsWithRecord",
     "controlPolicies_other_nbInfractionsWithoutRecord",
+    "operationalSummary_envSummary_totalSurveillanceDurationInHours",
 ]
 
 col_aem = [
