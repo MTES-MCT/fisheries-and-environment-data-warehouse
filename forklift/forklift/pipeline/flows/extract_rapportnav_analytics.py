@@ -411,7 +411,9 @@ def _is_mission_interservices(x):
 
 
 def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
-    return df.explode("controlUnits")
+    df = df.explode("controlUnits")
+    df["is_split_row"] = df.index.duplicated(keep="first")
+    return df
 
 
 def _process_control_unit(df: pd.DataFrame) -> pd.DataFrame:
