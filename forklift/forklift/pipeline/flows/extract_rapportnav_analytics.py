@@ -680,6 +680,7 @@ with Flow("RapportNavAnalytics") as flow:
             # Concatenate mapped DataFrames at runtime
             # If dataframe is empty, stopping the flow here
             df = concat_dfs(df_batch)
+            df_not_empty = check_df_not_empty(df)
 
             destination_database = "rapportnav"
             create_database = create_database_if_not_exists("rapportnav")
@@ -695,8 +696,6 @@ with Flow("RapportNavAnalytics") as flow:
                 table=report_type,
                 upstream_tasks=[drop_table],
             )
-
-            df_not_empty = check_df_not_empty(df)
 
             loaded_df = load_df_to_data_warehouse(
                 df,
