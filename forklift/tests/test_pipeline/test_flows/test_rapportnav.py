@@ -25,6 +25,8 @@ def post_rapportnav_mock_factory():
 
 def test__process_data_patrol():
     data = {
+        "id": [1],
+        "idUUID": ["uuid-1"],
         "controlUnits": [[{"id": 101, "name": "A"}, {"id": 202, "name": "B"}]],
         "startDateTimeUtc": ["2025-01-06T07:00:00Z"],
         "endDateTimeUtc": ["2025-01-17T17:00:00Z"],
@@ -136,6 +138,10 @@ def test__split_missions_interservices():
 
     # Missions with multiple controlUnitsIds should split into new lines
     assert len(out) == 3
+
+    # First row of each original mission is not a split row
+    # Second (and further) rows created by the split are labeled
+    assert list(out["is_split_row"]) == [False, True, False]
 
 
 def test_process_control_unit_ids():

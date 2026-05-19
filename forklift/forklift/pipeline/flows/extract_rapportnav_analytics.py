@@ -411,7 +411,9 @@ def _is_mission_interservices(x):
 
 
 def _split_missions_interservices(df: pd.DataFrame) -> pd.DataFrame:
-    return df.explode("controlUnits")
+    df = df.explode("controlUnits")
+    df["is_split_row"] = df.index.duplicated(keep="first")
+    return df
 
 
 def _process_control_unit(df: pd.DataFrame) -> pd.DataFrame:
@@ -680,6 +682,7 @@ with Flow("RapportNavAnalytics") as flow:
             # Concatenate mapped DataFrames at runtime
             # If dataframe is empty, stopping the flow here
             df = concat_dfs(df_batch)
+            df_not_empty = check_df_not_empty(df)
 
             destination_database = "rapportnav"
             create_database = create_database_if_not_exists("rapportnav")
@@ -695,8 +698,6 @@ with Flow("RapportNavAnalytics") as flow:
                 table=report_type,
                 upstream_tasks=[drop_table],
             )
-
-            df_not_empty = check_df_not_empty(df)
 
             loaded_df = load_df_to_data_warehouse(
                 df,
