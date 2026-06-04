@@ -1,7 +1,6 @@
 CREATE TABLE monitorenv.regulations_cacem_h3 (
     id Integer CODEC(Delta, ZSTD),
     h3 UInt64 CODEC(Delta, ZSTD),
-    entity_name LowCardinality(String),
     layer_name LowCardinality(String),
     facade LowCardinality(String),
     type LowCardinality(String),
@@ -11,7 +10,6 @@ CREATE TABLE monitorenv.regulations_cacem_h3 (
             facade,
             type,
             layer_name,
-            entity_name,
             id
     )
 )
