@@ -4,6 +4,7 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     mission_id Int32,
     control_unit_id Int32,
     control_type LowCardinality(String),
+    is_under_jdp Boolean,
     control_datetime_utc DateTime,
     control_year Int32,
     control_unit LowCardinality(String),
