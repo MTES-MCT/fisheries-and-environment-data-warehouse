@@ -19,3 +19,4 @@
 "monitorfish_proxy","species_groups",,"monitorfish","species_groups",,"id","4 5 * * *"
 "monitorfish_proxy","beacons",,"monitorfish","beacons",,"beacon_number","6 5 * * *"
 "monitorfish_proxy","beacon_malfunctions",,"monitorfish","beacon_malfunctions",,"id","8 5 * * *"
+"monitorenv_proxy","natinfs",,"monitorenv","natinfs",,"natinf_code","10 5 * * *"
