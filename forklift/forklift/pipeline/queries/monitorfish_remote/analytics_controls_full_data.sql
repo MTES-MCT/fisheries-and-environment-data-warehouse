@@ -83,6 +83,7 @@ SELECT
     a.mission_id,
     cu.id AS control_unit_id,
     action_type AS control_type,
+    m.is_under_jdp,
     action_datetime_utc AS control_datetime_utc,
     EXTRACT(year FROM action_datetime_utc) AS control_year,
     cu.name AS control_unit,
