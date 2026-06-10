@@ -33,6 +33,7 @@ from forklift.pipeline.flows import (
     reset_dictionary,
     reset_proxy_pg_database,
     rtps,
+    sales_notes,
     sync_geo_table_to_h3_table,
     sync_table_from_db_connection,
     sync_table_with_pandas,
@@ -66,6 +67,7 @@ def get_flows_to_register():
     reset_dictionary_flow = deepcopy(reset_dictionary.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
     rtps_flow = deepcopy(rtps.flow)
+    sales_notes_flow = deepcopy(sales_notes.flow)
     sync_geo_table_to_h3_table_flow = deepcopy(sync_geo_table_to_h3_table.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
     sync_table_with_pandas_flow = deepcopy(sync_table_with_pandas.flow)
@@ -120,6 +122,7 @@ def get_flows_to_register():
         ]
     )
     rtps_flow.schedule = CronSchedule("58 4 * * *")
+    sales_notes_flow.schedule = CronSchedule("46 4 * * *")
     sync_geo_table_to_h3_table_flow.schedule = Schedule(
         clocks=[
             clocks.CronClock(
@@ -220,6 +223,7 @@ def get_flows_to_register():
         reset_dictionary_flow,
         reset_proxy_pg_database_flow,
         rtps_flow,
+        sales_notes_flow,
         sync_geo_table_to_h3_table_flow,
         sync_table_from_db_connection_flow,
         sync_table_with_pandas_flow,
