@@ -2,9 +2,7 @@ SELECT
     operation_number,
     operation_country,
     operation_datetime_utc,
-    operation_type,
     report_id,
-    referenced_report_id,
     report_datetime_utc,
     cfr,
     ircs,
@@ -64,10 +62,17 @@ SELECT
     (product->>'effortZone') AS product_effort_zone,
     (product->>'packaging') AS product_packaging,
     (product->>'conversionFactor') AS product_conversion_factor
-FROM sales_notes
-LEFT JOIN LATERAL jsonb_array_elements(
-    CASE WHEN jsonb_typeof(products) = 'array' THEN products ELSE NULL END
-) AS product ON TRUE
+FROM sales_notes, jsonb_array_elements(products) product
 WHERE
     operation_datetime_utc >= :min_date AND
-    operation_datetime_utc < :max_date
+    operation_datetime_utc < :max_date AND
+    operation_type IN ('DAT', 'COR') AND
+    report_id NOT IN (
+        SELECT referenced_report_id
+        FROM sales_notes
+        WHERE operation_datetime_utc >= :min_date AND operation_type = 'DEL'
+        UNION ALL
+        SELECT referenced_report_id
+        FROM sales_notes
+        WHERE operation_datetime_utc >= :min_date AND operation_type = 'COR'
+    )

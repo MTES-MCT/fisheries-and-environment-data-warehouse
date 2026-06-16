@@ -30,9 +30,7 @@ def expected_sales_notes_apr_2026() -> pd.DataFrame:
                 pd.Timestamp("2026-04-10 08:47:00"),
                 pd.Timestamp("2026-04-27 09:45:00"),
             ],
-            "operation_type": ["DAT", "DAT"],
             "report_id": ["FRA20260410510469", "NND20260427987885"],
-            "referenced_report_id": [None, None],
             "report_datetime_utc": [
                 pd.Timestamp("2026-04-10 07:05:00"),
                 pd.Timestamp("2026-04-27 09:45:00"),
@@ -114,7 +112,7 @@ def test_extract_sales_notes(expected_sales_notes_apr_2026):
         check_dtype=False,
     )
 
-    assert len(extract_sales_notes.run(month_start=datetime(2017, 5, 1))) == 20
+    assert len(extract_sales_notes.run(month_start=datetime(2017, 5, 1))) == 12
     assert len(extract_sales_notes.run(month_start=datetime(2022, 1, 1))) == 32
 
     empty = extract_sales_notes.run(month_start=datetime(2024, 11, 1))
