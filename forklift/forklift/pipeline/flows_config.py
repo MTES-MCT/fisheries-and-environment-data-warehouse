@@ -29,6 +29,7 @@ from forklift.pipeline.flows import (
     extract_rapportnav_analytics,
     import_sacrois_data,
     landings,
+    matomo_stats,
     pnos,
     reset_dictionary,
     reset_proxy_pg_database,
@@ -63,6 +64,7 @@ def get_flows_to_register():
     extract_rapportnav_analytics_flow = deepcopy(extract_rapportnav_analytics.flow)
     import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
     landings_flow = deepcopy(landings.flow)
+    matomo_stats_flow = deepcopy(matomo_stats.flow)
     pnos_flow = deepcopy(pnos.flow)
     reset_dictionary_flow = deepcopy(reset_dictionary.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
@@ -84,6 +86,7 @@ def get_flows_to_register():
     enrich_monitorfish_catches_flow.schedule = CronSchedule("14 5 * * *")
     extract_rapportnav_analytics_flow.schedule = CronSchedule("56 4 * * *")
     landings_flow.schedule = CronSchedule("54 4 * * *")
+    matomo_stats_flow.schedule = CronSchedule("50 4 1 * *")
     pnos_flow.schedule = CronSchedule("55 4 * * *")
     reset_dictionary_flow.schedule = Schedule(
         clocks=[
@@ -219,6 +222,7 @@ def get_flows_to_register():
         extract_rapportnav_analytics_flow,
         import_sacrois_data_flow,
         landings_flow,
+        matomo_stats_flow,
         pnos_flow,
         reset_dictionary_flow,
         reset_proxy_pg_database_flow,
