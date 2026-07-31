@@ -1,7 +1,5 @@
 -- =====================================================================
--- Une ligne par mission = TOUS les indicateurs AEM (AEMTableExport),
--- colonnes renommées pour alignement 1:1 avec le référentiel officiel
--- (colonne "Indicateur" du tableau de règles de calcul).
+-- Une ligne par mission = TOUS les indicateurs AEM 
 --
 -- Bases/schemas :
 --   rapportnav_proxy  (mission_action, target_2, mission_general_info)
@@ -9,66 +7,15 @@
 --                       missions_control_units, control_units)
 --   monitorfish_proxy (mission_actions)
 --
--- Hypothèses non vérifiables sans accès direct aux bases :
---   - `value` (env_actions) et `infractions` (mission_actions) supposées
---     de type String contenant du JSON brut.
---   - noms de clé JSON en camelCase (sérialisation Jackson côté backend).
---
 -- Points de vigilance :
--- 1) [tech: env] monitorenv_proxy.env_actions : tout le détail métier est
---    dans la colonne `value` (JSON), pas en colonnes.
--- 2) [tech: fish] monitorfish_proxy.mission_actions : colonnes plates sauf
---    `infractions` (array JSON directement, pas imbriqué sous une clé).
--- 3) [tech: nav/env/fish] Rapprochement mission_id entre rapportnav /
---    monitorenv / monitorfish : pas le même référentiel d'ID a priori --
---    jointure directe à sécuriser.
--- 4) [tech: env/nav] TODO backend jamais implémentés, toujours 0 :
+-- 4) [tech: env/nav] harcodé à 0, vérifier avec ENV
 --    envTraffic.nbrOfRedirectShip (3.3.3), envTraffic.nbrOfSeizure (3.3.4),
---    7.5/7.6 piraterie-brigandage (indicateurs nouveaux, aucune règle de
---    calcul fournie par le référentiel, aucun action_type dédié identifié).
--- 5) [tech: nav] PAM/ULAM : rapportnav_proxy.service.service_type est une
---    colonne dédiée réelle (ServiceTypeEnum), pas recalculée. Le rapport
---    AEM couvre PAR DÉFAUT toutes les unités (PAM + ULAM) -- malgré son
---    nom, il n'est PAS restreint aux PAM. unite_nom (contient déjà
---    PAM/ULAM en clair) permet un filtrage texte optionnel côté Metabase.
--- 6) [métier] "Complétude pour stats" : pas de champ mission-level stocké
---    à ce jour. La vraie règle (MissionEntity.isCompleteForStats())
---    combine 3 validateurs, non reproduits ici. mission_status = 'ENDED'
---    est le filtre "missions closes" le plus fiable en attendant ;
---    nav_toutes_actions_completes n'est qu'une brique partielle (nav
---    uniquement). Un champ dédié est prévu côté source -- filtre
---    commenté ajouté dans le WHERE final, à activer dès que le champ
---    sera disponible.
--- 7) [tech: env] Filtre sur les missions supprimées : uniquement
---    monitorenv_proxy.missions.deleted (WHERE final). Aucun flag
---    "deleted"/"is_deleted" n'existe sur mission_action, env_actions ni
---    monitorfish_proxy.mission_actions (vérifié dans leurs entités JPA
---    respectives) -- le filtre ne peut donc porter que sur les missions
---    monitorenv, pas sur les actions individuellement.
--- 8) [métier] 4.3.1 et 7.1 ont des définitions différentes : 4.3.1 =
---    statuts "navigation" seuls, 7.1 = statuts "navigation" + "mouillage".
--- 9) [tech: nav] Piège côté flow Prefect (extract_rapportnav_analytics.py),
---    NON reproduit ici : les colonnes numériques manquantes y sont
---    remplies avec -1, pas 0/NULL. Cette requête-ci ressort les valeurs
---    manquantes en NULL -- à garder en tête si comparaison avec
---    rapportnav.aem (DWH).
--- 10) [tech: nav/env/fish] Garde-fou "fin >= début" appliqué UNIQUEMENT
---     sur heures_de_mer_nav (7.1/4.3.1). Les autres dateDiff (RESCUE,
---     ANTI_POLLUTION, ILLEGAL_IMMIGRATION, VIGIMER/BAAEM, PUBLIC_ORDER/
---     NAUTICAL_EVENT côté nav ; env_actions et mission_actions fish
---     côté durée) n'ont PAS ce garde-fou -- une ligne désordonnée y
---     soustrairait silencieusement des heures. Pas corrigé partout pour
---     ne pas alourdir chaque sumIf sans données réelles pour juger de
---     la fréquence du problème -- à surveiller si des totaux paraissent
---     anormalement bas.
--- 11) [tech: env] Jointure env_action_theme_ids <-> env_actions castée en
---     toString() des deux côtés (même risque UUID natif / String déjà
---     rencontré sur target_2/control_2/infraction_2).
--- 12) [métier] gi.service_id (mission_general_info) est la source de
---     l'unité (unite_nom, aem.serviceId). Cette colonne n'a jamais été
---     vérifiée dans le code source (supposée par analogie avec
---     analytics_missions_full_data.sql) -- à confirmer si unite_nom
---     reste vide.
+--    7.5/7.6 piraterie-brigandage
+-- 6) [métier] rapportnav_proxy.missions.isCompleteForStats() champ non dispo dans la table proxy 
+--     jointure a venir nav.mission.external_id = env.mission.id
+-- 7) [tech: env] Filtre sur les missions supprimées à confirmer
+--    monitorenv_proxy.mission / env_actions
+--    monitorfish_proxy.mission_actions
 -- =====================================================================
 
 WITH
@@ -77,13 +24,6 @@ status_actions AS (
         ma.mission_id,
         ma.status,
         ma.start_datetime_utc,
-        -- [tech: nav] Frame ROWS BETWEEN ... explicite indispensable :
-        -- sans lui, ClickHouse applique par défaut RANGE BETWEEN
-        -- UNBOUNDED PRECEDING AND CURRENT ROW, qui n'inclut jamais la
-        -- ligne suivante -- leadInFrame(x, 1, default) retombe alors
-        -- systématiquement sur le default pour CHAQUE ligne (constaté
-        -- sur données réelles : corrected_end_datetime_utc identique à
-        -- envm.end_datetime_utc pour toutes les lignes d'une mission).
         leadInFrame(
             ma.start_datetime_utc,
             1,
@@ -117,14 +57,6 @@ heures_de_mer_nav AS (
 control_targets_nav AS (
     SELECT
         ma.mission_id,
-        -- [métier] COUNT (pas DISTINCT) volontaire : la définition de 7.4
-        -- dit "somme des cibles contrôlées" -- un même navire contrôlé
-        -- deux fois dans la mission doit compter deux fois (deux
-        -- opérations de contrôle distinctes). COUNT(DISTINCT t.id) serait
-        -- de toute façon un no-op puisque id est la clé primaire de
-        -- target_2, déjà unique par ligne. À confirmer avec le métier que
-        -- cette lecture de "somme des cibles" est la bonne avant de
-        -- publier ce chiffre.
         countIf(toString(t.id) != '00000000-0000-0000-0000-000000000000') AS nb_targets_control_nav
     FROM rapportnav_proxy.mission_action ma
     LEFT JOIN rapportnav_proxy.target_2 t ON toString(t.action_id) = toString(ma.id)
@@ -263,35 +195,18 @@ env_agg AS (
         ) AS n3_3_1_nb_heures_de_mer,
 
         -- 4.1 Surveillance et contrôles environnement (hors rejets illicites)
-        -- action_type couvre CONTROL + SURVEILLANCE ("contrôles et
-        -- surveillances" dans la définition officielle).
-        -- [métier] à confirmer que CONTROL et SURVEILLANCE doivent bien
-        -- être additionnés sans distinction pour 4.1.1/4.1.3/4.1.4/4.1.5
-        -- -- le libellé de l'indicateur les regroupe, mais aucune
-        -- vérification terrain n'a été faite sur des données réelles à
-        -- ce stade.
         sumIf(
             dateDiff('second', ea.action_start_datetime_utc, ea.action_end_datetime_utc) / 3600.0,
             ea.action_type IN ('CONTROL', 'SURVEILLANCE') AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
         ) AS n4_1_1_nb_heures_de_mer,
         sumIf(
             if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 0),
-            ea.action_type = 'CONTROL' AND JSONExtractString(ea.value, 'vehicleType') = 'VESSEL'
-                AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
+            ea.action_type = 'CONTROL'AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
         )
         + countIf(
-            ea.action_type = 'SURVEILLANCE' AND JSONExtractString(ea.value, 'vehicleType') = 'VESSEL'
-                AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
+            ea.action_type = 'SURVEILLANCE' AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
         )
             AS n4_1_3_nb_operations,
-            -- [métier] reprend la même logique que
-            -- nb_targets_control_env (7.4) -- compte les cibles VESSEL
-            -- réellement contrôlées plutôt qu'un défaut fixe de 1 par
-            -- action. MAIS actionNumberOfControls est un champ JSON dont
-            -- on ne sait pas avec certitude s'il représente exactement le
-            -- nombre de cibles VESSEL distinctes du contrôle (un contrôle
-            -- pourrait en théorie viser plusieurs navires) -- à confirmer
-            -- avec le métier avant de publier ce chiffre en dashboard.
         sumIf(
             length(arrayFilter(x -> length(JSONExtractArrayRaw(x, 'natinf')) > 0,
                                 JSONExtractArrayRaw(ifNull(ea.value, ''), 'infractions'))),
@@ -345,20 +260,6 @@ env_agg AS (
 fish_agg AS (
     SELECT
         fa.mission_id,
-        -- 4.3.1 : contribution fish, durée fin - début des actions
-        -- de contrôle CNSP.
-        -- [métier] BLOQUANT constaté sur données réelles : sur la mission
-        -- vérifiée, TOUS les action_end_datetime_utc des actions fish
-        -- sont manquants -- dateDiff(start, NULL) renvoie NULL pour
-        -- chaque ligne, donc n4_3_1_nb_heures_de_mer_fish ressort à 0
-        -- (ou NULL) systématiquement tant que action_end_datetime_utc
-        -- n'est pas renseigné côté source MonitorFish.
-        -- [tech: fish] Aucun champ de durée alternatif n'existe --
-        -- vérifié colonne par colonne dans MissionActionEntity.kt
-        -- (monitorfish) : seules action_datetime_utc et
-        -- action_end_datetime_utc portent une notion temporelle sur
-        -- cette table, rien d'autre à substituer. À trancher avec le
-        -- métier/CNSP sur le remplissage réel de ce champ en pratique.
         sumIf(
             dateDiff('second', fa.action_datetime_utc, fa.action_end_datetime_utc) / 3600.0,
             fa.action_type IN ('SEA_CONTROL', 'LAND_CONTROL')
@@ -484,13 +385,6 @@ SELECT
     toInt64(
         coalesce(ct.nb_targets_control_nav, 0) + coalesce(e.nb_targets_control_env, 0) + coalesce(fct.nb_targets_control_fish, 0)
     ) AS n7_4_nb_controles_en_mer,
-
-    -- 7.5/7.6 : nouveaux indicateurs (piraterie/brigandage), aucune règle
-    -- de calcul fournie par le référentiel ("TODO nouveau") -- pas
-    -- d'action_type dédié identifié dans ActionType.kt (rapportnav2) à
-    -- ce jour. Placeholders à 0, même traitement que 3.3.3/3.3.4.
-    -- [métier] à activer dès que la règle de calcul et le champ source
-    -- existeront (rapportnav2 et/ou côté DWH).
     toFloat64(0) AS n7_5_nb_heures_de_mer_piraterie_brigandage,
     toFloat64(0) AS n7_6_nb_heures_de_vol_piraterie_brigandage
 
@@ -508,8 +402,6 @@ LEFT JOIN fish_control_targets fct               ON fct.mission_id = m.id
 
 WHERE toDateTime(m.start_datetime_utc) >= toDateTime('2025-01-01 00:00:00')
   AND toUInt8(m.deleted) = 0
-  -- AND m.completeness_for_stats = 'COMPLETE'  -- [métier] champ à venir côté source, activer dès disponibilité (nom de colonne à confirmer)
   AND ms.service_type IN ('PAM', 'ULAM')
-  -- AND m.id IN (37542, 36754)  -- TEMPORAIRE, À RETIRER : restriction de validation sur 2 missions connues, le temps de vérifier les correctifs (leadInFrame notamment)
 ORDER BY m.start_datetime_utc DESC
 ;
