@@ -396,7 +396,13 @@ base AS (
 -- =====================================================================
 SELECT
     -- --- Colonnes bonus / QA, à retirer avant collage dans le gabarit ---
-    toDateTime(toStartOfMonth(b.mission_date_debut), 'UTC') AS "Mois",
+    -- assumeNotNull() : mission_date_debut remonte Nullable(DateTime)
+    -- depuis Postgres (colonne source nullable), même si le WHERE de
+    -- `base` exclut déjà toute valeur NULL en pratique. Nécessaire ici
+    -- car "Mois" sert de sorting key ClickHouse (order_by du CSV de
+    -- sync), qui refuse les colonnes Nullable par défaut
+    -- (allow_nullable_key désactivé).
+    assumeNotNull(toDateTime(toStartOfMonth(b.mission_date_debut), 'UTC')) AS "Mois",
     formatDateTime(toStartOfMonth(b.mission_date_debut), '%Y-%m') AS "Mois (texte)",
     toInt32(uniqExact(b.mission_id)) AS nb_missions_agregees,  -- missions distinctes, pas nb de lignes
     MIN(b.mission_date_debut) AS mission_date_debut_min,       -- vérif. manuelle : doit tomber dans le mois affiché par "Mois"
@@ -526,8 +532,9 @@ SELECT
 FROM base b
 
 GROUP BY
-    toDateTime(toStartOfMonth(b.mission_date_debut), 'UTC'),
+    assumeNotNull(toDateTime(toStartOfMonth(b.mission_date_debut), 'UTC')),
     formatDateTime(toStartOfMonth(b.mission_date_debut), '%Y-%m'),
     b.zone_maritime,
     b.nom_ou_ville_origine
 ORDER BY "Mois" DESC, "Zone Maritime de déploiement", "Nom ou Ville d'origine"
+;
