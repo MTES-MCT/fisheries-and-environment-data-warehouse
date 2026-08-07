@@ -411,13 +411,13 @@ SELECT
     ''                                      AS "Famille",
     b.nom_ou_ville_origine                 AS "Nom ou Ville d'origine",
 
-    NULL                                      AS "1) Sauvegarde de la vie humaine",
-    NULL                                      AS "1.1) Sauvegarde de la vie humaine hors cadre d'un phénomène migratoire",
+    CAST(NULL AS Nullable(String))                                      AS "1) Sauvegarde de la vie humaine",
+    CAST(NULL AS Nullable(String))                                      AS "1.1) Sauvegarde de la vie humaine hors cadre d'un phénomène migratoire",
     SUM(b.n1_1_1_nb_heures_de_mer)         AS "1.1.1 Nombre d'heures de mer",
     toFloat64(0)                           AS "1.1.2 Nombre d'heures de vol",  -- aucune source (pas de moyen aérien tracé)
     SUM(b.n1_1_3_nb_operations_conduites)  AS "1.1.3 Nombre d'opérations conduites",
     SUM(b.n1_1_4_nb_personnes_secourues)   AS "1.1.4 Nombre de personnes secourues",
-    NULL                                      AS "1.2) Sauvegarde de la vie humaine dans le cadre d'un phénomène migratoire",
+    CAST(NULL AS Nullable(String))                                      AS "1.2) Sauvegarde de la vie humaine dans le cadre d'un phénomène migratoire",
     SUM(b.n1_2_1_nb_heures_de_mer)         AS "1.2.1 Nombre d'heures de mer",
     toFloat64(0)                           AS "1.2.2 Nombre d'heures de vol",  -- aucune source
     SUM(b.n1_2_3_nb_operations_conduites)  AS "1.2.3 Nombre d'opérations conduites",
@@ -426,7 +426,7 @@ SELECT
     SUM(b.n1_2_6_nb_operations_sauvetage)  AS "1.2.6 (SAR migrants) Nombre d'opérations de sauvetage conduites ",
     SUM(b.n1_2_7_nb_personnes_secourues)   AS "1.2.7 (SAR migrants)Nombre de personnes secourues",
 
-    NULL                                      AS "2) Assistance aux navires en difficulté et sécurité maritime",
+    CAST(NULL AS Nullable(String))                                      AS "2) Assistance aux navires en difficulté et sécurité maritime",
     SUM(b.n2_1_nb_heures_de_mer)           AS "2.1 Nombre d'heures de mer",
     toFloat64(0)                           AS "2.2 Nombre d'heures de vol",  -- aucune source
     SUM(b.n2_3_nb_operations)              AS "2.3 Nombre d'opérations ANED (mise en œuvre de moyens nautique ou aérien)",
@@ -439,41 +439,41 @@ SELECT
     toInt64(0)                             AS "2.10 Nombre de munitions détruites",  -- aucune source
     toFloat64(0)                           AS "2.11 Poids de la matière active correspondante (en kg)",  -- aucune source
 
-    NULL                                      AS "3) Lutte contre les trafics illicites par voie maritime",
-    NULL                                      AS "3.1) Lutte contre le trafic en mer de produits stupéfiants",
+    CAST(NULL AS Nullable(String))                                      AS "3) Lutte contre les trafics illicites par voie maritime",
+    CAST(NULL AS Nullable(String))                                      AS "3.1) Lutte contre le trafic en mer de produits stupéfiants",
     toFloat64(0)                           AS "3.1.1 Nombre d’heures de mer",  -- domaine 3.1 entier absent du backend
     toFloat64(0)                           AS "3.1.2 Nombre d’heures de vol",
     toInt64(0)                             AS "3.1.3 Nombre d'opérations NARCO en mer",
     toInt64(0)                             AS "3.1.4 Nombre d’inspections en mer",
     toInt64(0)                             AS "3.1.5 Nombre de navires ou embarcations déroutés ou saisis en mer",
     toFloat64(0)                           AS "3.1.6 Quantité saisie en kg suite à ces opérations",
-    NULL                                      AS "3.2) Lutte contre le trafic en mer d’armes, de munitions ou d’explosifs",
+    CAST(NULL AS Nullable(String))                                      AS "3.2) Lutte contre le trafic en mer d’armes, de munitions ou d’explosifs",
     toFloat64(0)                           AS "3.2.1  Nombre d'heures de mer",  -- domaine 3.2 entier absent du backend
     toFloat64(0)                           AS "3.2.2 Nombre d'heures de vol",
     toInt64(0)                             AS "3.2.3 Nombre d'opérations en mer",
     toInt64(0)                             AS "3.2.4 Nombre d’inspections en mer",
     toInt64(0)                             AS "3.2.5 Nombre de navires ou embarcations déroutés ou saisis en mer",
     toInt64(0)                             AS "3.2.6 Nombre d'armes et de munitions saisies suite à ces opérations",
-    NULL                                      AS "3.3) Lutte contre le trafic en mer d’espèces protégées",
+    CAST(NULL AS Nullable(String))                                      AS "3.3) Lutte contre le trafic en mer d’espèces protégées",
     SUM(b.n3_3_1_nb_heures_de_mer)         AS "3.3.1  Nombre d'heures de mer",
     toFloat64(0)                           AS "3.3.2 Nombre d'heures de vol",  -- aucune source
     SUM(b.n3_3_3_nb_navires_deroutes_ou_saisis) AS "3.3.3 Nombre de navires ou embarcations déroutés ou saisis en mer",  -- TODO backend, toujours 0
     SUM(b.n3_3_4_nb_saisies)               AS "3.3.4 Nombre de saisies",  -- TODO backend, toujours 0
-    NULL                                      AS "3.4) lutte contre l’immigration illégale par voie maritime",
+    CAST(NULL AS Nullable(String))                                      AS "3.4) lutte contre l’immigration illégale par voie maritime",
     SUM(b.n3_4_1_nb_heures_de_mer)         AS "3.4.1 Nombre d’heures de mer",
     toFloat64(0)                           AS "3.4.2 Nombre d’heures de vol ",  -- aucune source
     SUM(b.n3_4_3_nb_navires_interceptes)   AS "3.4.3 Nombre de navires/embarcations interceptés ",
     SUM(b.n3_4_4_nb_migrants_interceptes)  AS "3.4.4 Nombre de migrants interceptés ",
     SUM(b.n3_4_5_nb_passeurs_presumes_interceptes) AS "3.4.5 Nombre de passeurs présumés interceptés",
 
-    NULL                                      AS "4) Protection de l’environnement, gestion du patrimoine marin et des ressources publiques marines, surveillance des espaces protégés ",
-    NULL                                      AS "4.1) Surveillance et contrôles pour la protection de l'environnement (hors rejets illicites)",
+    CAST(NULL AS Nullable(String))                                      AS "4) Protection de l’environnement, gestion du patrimoine marin et des ressources publiques marines, surveillance des espaces protégés ",
+    CAST(NULL AS Nullable(String))                                      AS "4.1) Surveillance et contrôles pour la protection de l'environnement (hors rejets illicites)",
     SUM(b.n4_1_1_nb_heures_de_mer)         AS "4.1.1 Nombre d'heures de mer de surveillance ou de contrôle pour la protection de l'environnement (hors rejets illicites)",
     toFloat64(0)                           AS "4.1.2 Nombre d’heures de vol de surveillance ou de contrôle pour la protection de l'environnement (hors rejets illicites)",  -- aucune source
     SUM(b.n4_1_3_nb_operations)            AS "4.1.3 Nombre d'opérations de surveillance ou de contrôles (hors rejets illicites)",
     SUM(b.n4_1_4_nb_infractions)           AS "4.1.4 Nombre d’infractions à la réglementation relative à la protection de l'environnement en mer (hors rejets illicites)",
     SUM(b.n4_1_5_nb_pv)                    AS "4.1.5 Nombre de Procès-Verbaux dressés en mer (hors rejets illicites)",
-    NULL                                      AS "4.2) Répression contre les rejets illicites, lutte contre les pollutions",
+    CAST(NULL AS Nullable(String))                                      AS "4.2) Répression contre les rejets illicites, lutte contre les pollutions",
     SUM(b.n4_2_1_nb_heures_de_mer)         AS "4.2.1 Nombre d'heures de mer (surveillance et lutte)",
     toFloat64(0)                           AS "4.2.2 Nombre d'heures de vol  (surveillance et lutte)",  -- aucune source
     SUM(b.n4_2_3_participation_brassage_simple) AS "4.2.3 Participation à une opération de lutte ANTIPOL en mer (simple brassage)",
@@ -482,7 +482,7 @@ SELECT
     SUM(b.n4_2_6_nb_pv)                    AS "4.2.6 Nombre de procès-verbaux dressés",
     SUM(b.n4_2_7_nb_deroutements)          AS "4.2.7 Nombre de déroutements effectués",
     SUM(b.n4_2_8_nb_pollutions_detectees)  AS "4.2.8 Nombre de pollutions détectées et/ou constatées par un agent habilité",
-    NULL                                      AS "4.3) Lutte contre les activités de pêche illégale",
+    CAST(NULL AS Nullable(String))                                      AS "4.3) Lutte contre les activités de pêche illégale",
     SUM(b.n4_3_1_nb_heures_de_mer)         AS "4.3.1 Nombre d’heures de mer (surveillance/police des pêches) :",
     toFloat64(0)                           AS "4.3.2 Nombre d’heures de vol (surveillance/police des pêches) :",  -- aucune source
     SUM(b.n4_3_3_nb_operations_polpeche)   AS "4.3.3 nombre d'opérations POLPECHE",
@@ -492,12 +492,12 @@ SELECT
     SUM(b.n4_3_7_nb_infractions_mer)       AS "4.3.7 Nombre d'infractions constatées en mer",
     SUM(b.n4_3_8_nb_navires_accompagnes_deroutes) AS "4.3.8 Nombre de navires accompagnés ou déroutés",
     SUM(b.n4_3_9_quantite_kg_saisie)       AS "4.3.9 quantitée de produits de la pêche saisis/rejetés en mer(en kg)",
-    NULL                                      AS "4.4) Protection des biens culturels maritimes",
+    CAST(NULL AS Nullable(String))                                      AS "4.4) Protection des biens culturels maritimes",
     SUM(b.n4_4_1_nb_heures_de_mer)         AS "4.4.1 Nombre d'heures de mer",
     SUM(b.n4_4_2_nb_operations_scientifiques) AS "4.4.2 Nombre d'opérations scientifiques",
     SUM(b.n4_4_3_nb_operations_police_bcm) AS "4.4.3 Nombre d'opération de police des BCM",
 
-    NULL                                      AS "5) Sûreté maritime et maintien de l'ordre public en mer",
+    CAST(NULL AS Nullable(String))                                      AS "5) Sûreté maritime et maintien de l'ordre public en mer",
     SUM(b.n5_1_nb_heures_de_mer_surete_maritime) AS "5.1  Nombre d'heures de mer sureté maritime (y compris Vigipirate-mer)    ",
     toFloat64(0)                           AS "5.2 Nombre d'heures de vol sureté maritime (y compris Vigipirate-mer)  ",  -- aucune source
     SUM(b.n5_3_nb_heures_de_mer_ordre_public) AS "5.3 Nombre d'heures de mer de maintien de l'ordre public en mer",
@@ -505,7 +505,7 @@ SELECT
     toInt64(0)                             AS "5.5 Nombre de traversées protégées par des équipes d'agents de l'Etat,",  -- aucune source
     toInt64(0)                             AS "5.6 Nombre de contrôles sûreté sur navire",  -- aucune source
 
-    NULL                                      AS "6) Police douanière, fiscale et économique en mer (hors stupéfiants)",
+    CAST(NULL AS Nullable(String))                                      AS "6) Police douanière, fiscale et économique en mer (hors stupéfiants)",
     toFloat64(0)                           AS "6.1  Nombre d'heures de mer",  -- domaine 6 entier absent du backend
     toFloat64(0)                           AS "6.2 Nombre d'heures de vol",
     toInt64(0)                             AS "6.3 Nombre d'opérations",
@@ -515,7 +515,7 @@ SELECT
     toInt64(0)                             AS "6.7 Nombre de constatations en matière de tabac et cigarettes",
     toInt64(0)                             AS "6.8 Nombre de manquement à l'obligation déclarative et de blanchiments douaniers relevés",
 
-    NULL                                      AS "7) Souveraineté et protection des intérêts nationaux ",
+    CAST(NULL AS Nullable(String))                                      AS "7) Souveraineté et protection des intérêts nationaux ",
     SUM(b.n7_1_nb_heures_de_mer)           AS "7.1 Nombre d’heures de mer de surveillance générale des approches maritimes (ZEE)",
     toFloat64(0)                           AS "7.2 Nombre d’heures de vol de surveillance générale des approches maritimes (ZEE)",  -- aucune source
     SUM(b.n7_3_nb_navires_reconnus)        AS "7.3 Nombre total de navires reconnus dans les approches maritimes (ZEE)",
