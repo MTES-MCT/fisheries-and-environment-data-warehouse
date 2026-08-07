@@ -20,4 +20,4 @@
 "monitorfish_proxy","beacons",,"monitorfish","beacons",,"beacon_number","6 5 * * *"
 "monitorfish_proxy","beacon_malfunctions",,"monitorfish","beacon_malfunctions",,"id","8 5 * * *"
 "monitorenv_proxy","natinfs",,"monitorenv","natinfs",,"natinf_code","10 5 * * *"
-"rapportnav_proxy",,"rapportnav_remote/missions_aem.sql","rapportnav","missions_aem",,"id","12 5 * * *"
+"rapportnav_proxy",,"rapportnav_remote/missions_aem.sql","rapportnav","missions_aem",,,"12 5 * * *"
