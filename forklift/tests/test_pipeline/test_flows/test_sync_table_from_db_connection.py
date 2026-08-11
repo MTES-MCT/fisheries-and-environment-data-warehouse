@@ -55,6 +55,27 @@ def test_sync_table_from_db_connection(
 
     assert state.is_successful()
 
+    if destination_table == "missions_aem":
+        print("DEBUG mission_action:", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.mission_action WHERE mission_id = 999001"
+        ))
+        print("DEBUG missions:", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.missions WHERE id = 999001"
+        ))
+        print("DEBUG missions_control_units:", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.missions_control_units WHERE mission_id = 999001"
+        ))
+        print("DEBUG control_units:", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.control_units WHERE id = 999001"
+        ))
+        print("DEBUG mission_general_info:", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.mission_general_info WHERE mission_id = 999001"
+        ))
+        print("DEBUG mission (rm):", client.query_df(
+            "SELECT count() AS n, any(is_complete_for_stats) AS complete, any(external_id) AS ext_id "
+            "FROM rapportnav_proxy.mission WHERE external_id = '999001'"
+        ))
+
     df = client.query_df(
         (
             "SELECT * FROM "
