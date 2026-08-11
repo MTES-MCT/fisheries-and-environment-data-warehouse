@@ -9,3 +9,4 @@ class Database(Enum):
     MONITORENV = "monitorenv"
     RAPPORTNAV = "rapportnav"
     SACROIS = "sacrois"
+    MATOMO = "matomo"
