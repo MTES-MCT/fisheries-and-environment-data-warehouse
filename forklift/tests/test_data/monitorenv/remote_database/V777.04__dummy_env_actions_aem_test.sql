@@ -5,10 +5,29 @@
 -- 4.4 (biens culturels, thème 104/165). Structure JSON de `value`
 -- reprise de celle exploitée par missions_aem.sql (vehicleType,
 -- actionNumberOfControls, infractions[{natinf, infractionType}]).
--- ⚠️ Colonnes NOT NULL de env_actions non revérifiées indépendamment
--- dans cette session -- à ajuster si Flyway échoue.
--- Pas de DELETE : additif uniquement.
+--
+-- ⚠️ IMPORTANT : themes.id N'EST PAS une valeur stable de schéma --
+-- cette table est peuplée dynamiquement à partir de control_plan_themes/
+-- control_plan_sub_themes (données de plan de contrôle, réimportées
+-- chaque année, cf. V666.0__Reset_themes_and_tags.sql côté monitorenv).
+-- Les ids 103/19/102/104/165 utilisés dans missions_aem.sql ne sont
+-- donc PAS garantis stables entre environnements ni dans le temps --
+-- à signaler à l'équipe : la requête de production devrait idéalement
+-- résoudre ces thèmes par nom plutôt que par id en dur.
+-- Pour un test isolé et reproductible, on insère ici nos propres lignes
+-- `themes` avec ces ids explicites plutôt que de dépendre de données
+-- dynamiquement importées (potentiellement absentes en environnement
+-- de test frais).
 -- =====================================================================
+
+INSERT INTO public.themes (id, name, started_at, ended_at) VALUES
+    (103, 'Test AEM - Espèces protégées', '2023-01-01 00:00:00', '2099-12-31 23:59:59'),
+    (19,  'Test AEM - Pollution 19', '2023-01-01 00:00:00', '2099-12-31 23:59:59'),
+    (102, 'Test AEM - Pollution 102', '2023-01-01 00:00:00', '2099-12-31 23:59:59'),
+    (104, 'Test AEM - Biens culturels', '2023-01-01 00:00:00', '2099-12-31 23:59:59'),
+    (165, 'Test AEM - Biens culturels (opérations scientifiques)', '2023-01-01 00:00:00', '2099-12-31 23:59:59')
+;
+SELECT setval('themes_id_seq', (SELECT MAX(id) FROM public.themes));
 
 INSERT INTO public.env_actions (
     id, mission_id, action_type, action_start_datetime_utc,
