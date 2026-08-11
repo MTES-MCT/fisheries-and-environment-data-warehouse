@@ -337,7 +337,9 @@ fish_control_targets AS (
 
 SELECT
     toInt32(m.id) AS mission_id,
-    toDateTime(m.start_datetime_utc) AS mission_date_debut,
+    -- assumeNotNull() : sert de sorting key ClickHouse (order_by du CSV
+    -- de sync), qui refuse les colonnes Nullable par défaut.
+    assumeNotNull(toDateTime(m.start_datetime_utc)) AS mission_date_debut,
     toDateTime(m.end_datetime_utc)   AS mission_date_fin,
     toString(ms.unit_name)              AS unite_nom,
     toInt32(coalesce(mu.nb_unites_distinctes, 0)) AS unite_nb_distinctes,
