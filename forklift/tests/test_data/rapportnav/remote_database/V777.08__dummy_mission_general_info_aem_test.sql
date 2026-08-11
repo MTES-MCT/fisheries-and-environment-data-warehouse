@@ -2,7 +2,7 @@
 -- Fixture de test AEM — mission_general_info pour la mission fictive
 -- 999001 (nbr_of_recognized_vessel alimente l'indicateur 7.3).
 -- Colonnes copiées de V777.06__dummy_mission_general_info.sql.
--- service_id = 999001 : pointe vers la fixture V777.11__dummy_service_aem_test.sql
+-- service_id = 999001 : pointe vers la fixture V777.07.5__dummy_service_aem_test.sql
 -- (nécessaire pour que cette mission remonte aussi dans mission_analytics,
 -- via analytics_missions_full_data.sql -- sinon NULL suffirait pour
 -- missions_aem.sql seul).
