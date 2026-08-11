@@ -17,7 +17,7 @@ INSERT INTO public.target_2 (
 ) VALUES (
     '99999902-0000-0000-0000-000000000001',
     '99999901-0000-0000-0000-000000000012',
-    'VESSEL', 'Navire Test AEM', 'FISHING', 12,
+    'VEHICLE', 'Navire Test AEM', 'FISHING', 12,
     'CONTROLLED', 'Agent Test', null, null,
     '2025-06-12 12:00:00+00', '2025-06-12 13:30:00+00', 'TEST', null
 );
