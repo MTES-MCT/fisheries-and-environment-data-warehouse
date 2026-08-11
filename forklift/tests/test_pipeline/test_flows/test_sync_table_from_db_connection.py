@@ -76,6 +76,15 @@ def test_sync_table_from_db_connection(
             "FROM rapportnav_proxy.mission WHERE external_id = '999001'"
         ))
 
+    if destination_table == "mission_analytics":
+        print("DEBUG service:", client.query_df(
+            "SELECT count() AS n, any(name) AS name FROM rapportnav_proxy.service WHERE id = 999001"
+        ))
+        print("DEBUG mission_general_info.service_id:", client.query_df(
+            "SELECT count() AS n, any(service_id) AS service_id "
+            "FROM rapportnav_proxy.mission_general_info WHERE mission_id = 999001"
+        ))
+
     df = client.query_df(
         (
             "SELECT * FROM "
