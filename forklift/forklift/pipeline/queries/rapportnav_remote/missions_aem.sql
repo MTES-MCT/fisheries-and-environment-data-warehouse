@@ -142,6 +142,7 @@ dim_unit_reference_by_id AS (
     UNION ALL SELECT 10141, 'DIRM MED',             'MED',  'Méditerranée'        -- PAM Gyptis
     UNION ALL SELECT 10404, 'DIRM SA',              'SA',   'Atlantique'          -- PAM Iris
     UNION ALL SELECT 10345, 'DM SOI (974)',        'La Réunion', 'Sud de l''Océan indien'  -- PAM Osiris II
+    UNION ALL SELECT 10519, 'DGTM Guyane (973)',    'Guyane', 'Guyane'             -- PAM Cayenne : agrégée avec l'ULAM Guyane
 ),
 
 nav_completeness AS (
@@ -461,3 +462,5 @@ WHERE toDateTime(m.start_datetime_utc) >= toDateTime('2025-01-01 00:00:00')
   AND toUInt8(m.deleted) = 0
   AND ms.service_type IN ('PAM', 'ULAM')
   AND rm.is_complete_for_stats = 1
+ORDER BY m.start_datetime_utc DESC
+;
