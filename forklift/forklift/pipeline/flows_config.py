@@ -26,6 +26,7 @@ from forklift.pipeline.flows import (
     discards,
     drop_table,
     enrich_monitorfish_catches,
+    eofs,
     extract_rapportnav_analytics,
     import_sacrois_data,
     landings,
@@ -33,7 +34,6 @@ from forklift.pipeline.flows import (
     pnos,
     reset_dictionary,
     reset_proxy_pg_database,
-    rtps,
     sales_notes,
     sync_geo_table_to_h3_table,
     sync_table_from_db_connection,
@@ -61,6 +61,7 @@ def get_flows_to_register():
     discards_flow = deepcopy(discards.flow)
     drop_table_flow = deepcopy(drop_table.flow)
     enrich_monitorfish_catches_flow = deepcopy(enrich_monitorfish_catches.flow)
+    eofs_flow = deepcopy(eofs.flow)
     extract_rapportnav_analytics_flow = deepcopy(extract_rapportnav_analytics.flow)
     import_sacrois_data_flow = deepcopy(import_sacrois_data.flow)
     landings_flow = deepcopy(landings.flow)
@@ -68,7 +69,7 @@ def get_flows_to_register():
     pnos_flow = deepcopy(pnos.flow)
     reset_dictionary_flow = deepcopy(reset_dictionary.flow)
     reset_proxy_pg_database_flow = deepcopy(reset_proxy_pg_database.flow)
-    rtps_flow = deepcopy(rtps.flow)
+    rtps_flow = deepcopy(eofs.flow)
     sales_notes_flow = deepcopy(sales_notes.flow)
     sync_geo_table_to_h3_table_flow = deepcopy(sync_geo_table_to_h3_table.flow)
     sync_table_from_db_connection_flow = deepcopy(sync_table_from_db_connection.flow)
@@ -84,6 +85,7 @@ def get_flows_to_register():
     deps_flow.schedule = CronSchedule("52 4 * * *")
     discards_flow.schedule = CronSchedule("35 4 * * *")
     enrich_monitorfish_catches_flow.schedule = CronSchedule("14 5 * * *")
+    eofs_flow.schedule = CronSchedule("7 4 * * *")
     extract_rapportnav_analytics_flow.schedule = CronSchedule("56 4 * * *")
     landings_flow.schedule = CronSchedule("54 4 * * *")
     matomo_stats_flow.schedule = CronSchedule("50 4 1 * *")
