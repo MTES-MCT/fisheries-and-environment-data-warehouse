@@ -18,8 +18,7 @@ def create_database_if_not_exists(database: str):
     If it already exists, does nothing.
 
     Args:
-        database (str): Database to create in the data warehouse. Possible value are
-          `monitorfish`, `monitorenv`
+        database (str): Database to create in the data warehouse.
     """
     db = Database(database)
     sql = "CREATE DATABASE IF NOT EXISTS {database:Identifier}"

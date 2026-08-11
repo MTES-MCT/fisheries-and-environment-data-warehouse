@@ -43,3 +43,8 @@ DATA_WAREHOUSE_PWD = os.getenv("DATA_WAREHOUSE_PWD")
 # Rapportnav API
 RAPPORTNAV_API_ENDPOINT = "https://rapport-nav.din.developpement-durable.gouv.fr/api/"
 RAPPORTNAV_API_KEY = os.getenv("RAPPORTNAV_API_KEY")
+
+# Matomo API
+MATOMO_URL = "https://stats.beta.gouv.fr"
+MATOMO_API_TOKEN = os.getenv("MATOMO_API_TOKEN")
+MONITORFISH_MATOMO_SITE_ID = 146
