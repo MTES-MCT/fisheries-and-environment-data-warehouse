@@ -76,6 +76,28 @@ def test_sync_table_from_db_connection(
             "FROM rapportnav_proxy.mission WHERE external_id = '999001'"
         ))
 
+    if destination_table == "fact_mission_ulam":
+        print("DEBUG monitorenv missions:", client.query_df(
+            "SELECT count() AS n, any(start_datetime_utc) AS start FROM monitorenv_proxy.missions WHERE id = 999100"
+        ))
+        print("DEBUG missions_control_units:", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.missions_control_units WHERE mission_id = 999100"
+        ))
+        print("DEBUG control_units:", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.control_units WHERE id = 999100"
+        ))
+        print("DEBUG rapportnav mission_general_info:", client.query_df(
+            "SELECT count() AS n, any(mission_id) AS mission_id FROM rapportnav_proxy.mission_general_info WHERE mission_id = 999100"
+        ))
+        print("DEBUG mission_action (STATUS/CONTROL/...):", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.mission_action WHERE mission_id = 999100"
+        ))
+        print("DEBUG the actual JOIN used by rapport_ulam_mission.sql:", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.mission_general_info mgi "
+            "INNER JOIN monitorenv_proxy.missions envm ON envm.id = mgi.mission_id "
+            "WHERE mgi.mission_id = 999100"
+        ))
+
     df = client.query_df(
         (
             "SELECT * FROM "
