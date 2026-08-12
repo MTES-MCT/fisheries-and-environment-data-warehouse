@@ -15,4 +15,9 @@ values  ('b483cc7c-0d51-441e-ba33-257f3e679922', 761, 'CONTACT', '2025-01-06 11:
         ('81bed49f-027c-42e3-948a-41078a9f4e99', 12, 'CONTROL', '2025-01-29 13:27:11.914000 +00:00', null, null, false, null, null, null, null, null, null, null, 'SEA', null, 'FISHING', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null),
         ('7c185cff-8dfb-40c6-b92b-f0b0635d10b6', 12, 'RESCUE', '2025-01-29 15:22:13.678000 +00:00', null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, true, false, null, null, null, null, null, null, null, null, null, null, null, null),
         ('be572db0-11fe-4992-91e8-7edc27c07357', 12, 'BAAEM_PERMANENCE', '2025-01-29 16:00:03.783000 +00:00', null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null),
-        ('9ca33242-a618-49f6-bee6-dcdadda613a7', 12, 'STATUS', '2025-01-01 12:33:00.000000 +00:00', null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        ('9ca33242-a618-49f6-bee6-dcdadda613a7', 12, 'STATUS', '2025-01-01 12:33:00.000000 +00:00', null, null, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null),
+        -- CONTROL de la mission fictive AEM 999001 -- id référencé par
+        -- target_2.action_id dans V777.05__dummy_target_control_infraction_aem_test.sql
+        -- (jusqu'ici cette FK pointait dans le vide, aucune fixture ne
+        -- l'insérait).
+        ('99999901-0000-0000-0000-000000000012', 999001, 'CONTROL', '2025-06-12 12:00:00.000000 +00:00', '2025-06-12 13:30:00.000000 +00:00', null, false, null, null, null, null, null, null, null, 'SEA', null, 'FISHING', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
