@@ -87,7 +87,7 @@ def test_sync_table_from_db_connection(
             "SELECT count() AS n FROM monitorenv_proxy.control_units WHERE id = 999100"
         ))
         print("DEBUG rapportnav mission_general_info:", client.query_df(
-            "SELECT count() AS n, any(mission_id) AS mission_id FROM rapportnav_proxy.mission_general_info WHERE mission_id = 999100"
+            "SELECT count() AS n, any(mission_id) AS found_mission_id FROM rapportnav_proxy.mission_general_info WHERE mission_id = 999100"
         ))
         print("DEBUG mission_action (STATUS/CONTROL/...):", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action WHERE mission_id = 999100"
