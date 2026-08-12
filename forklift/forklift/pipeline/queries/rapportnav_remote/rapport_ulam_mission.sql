@@ -142,11 +142,11 @@ SELECT
         'UNAVAILABLE'
     )) AS mission_status,
     toString(coalesce(mgi.mission_report_type, '')) AS mission_report_type,
-    toUInt8(mgi.mission_report_type = 'FIELD_REPORT') AS is_field_mission,
-    toUInt8(mgi.mission_report_type = 'EXTERNAL_REINFORCEMENT_TIME_REPORT') AS is_external_reinforcement,
+    toUInt8(coalesce(mgi.mission_report_type, '') = 'FIELD_REPORT') AS is_field_mission,
+    toUInt8(coalesce(mgi.mission_report_type, '') = 'EXTERNAL_REINFORCEMENT_TIME_REPORT') AS is_external_reinforcement,
     toString(coalesce(mgi.reinforcement_type, '')) AS reinforcement_type,
     toString(coalesce(mgi.jdp_type, '')) AS jdp_type,
-    toUInt8(mgi.reinforcement_type = 'JDP' OR mgi.jdp_type IS NOT NULL) AS is_jdp,
+    toUInt8(coalesce(mgi.reinforcement_type, '') = 'JDP' OR mgi.jdp_type IS NOT NULL) AS is_jdp,
     toUInt8(coalesce(mgi.is_mission_armed, 0)) AS is_mission_armed,
     toUInt8(coalesce(mgi.is_with_interministerial_service, 0)) AS is_with_interministerial_service,
     toUInt16(coalesce(im.nb_administrations, 0)) AS nb_intermin_administrations,
@@ -175,5 +175,3 @@ LEFT JOIN nav_completeness nc   ON nc.mission_id = mgi.mission_id
 -- (portée jamais expliquée dans le code source) -- à confirmer avec Alexandre,
 -- ou à retirer si le rapport ULAM doit couvrir tout l'historique.
 WHERE envm.start_datetime_utc >= toDateTime('2025-01-01 00:00:00');
-
-

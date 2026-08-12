@@ -78,4 +78,3 @@ LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
 -- déjà exploités dans fact_mission_ulam.computed_hours_at_sea -- pas une
 -- "activité" au sens métier du rapport ULAM.
 WHERE ma.action_type != 'STATUS';
-
