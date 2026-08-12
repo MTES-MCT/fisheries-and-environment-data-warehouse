@@ -70,15 +70,22 @@ heures_de_mer AS (
     GROUP BY mission_id
 ),
 
--- Missions conjointes / administrations concourantes
+-- Missions conjointes / administrations concourantes. Noms résolus via
+-- monitorenv_proxy.administrations (déjà synchronisée dans le DWH,
+-- cf. ligne "administrations" de sync_table_from_db_connection.csv --
+-- contrairement à ce que laissait penser une note de scope antérieure)
+-- pour éviter d'exposer des id bruts sur le graphique "Répartition des
+-- administrations concourant aux missions conjointes".
 intermin AS (
     SELECT
-        mission_general_info_id,
-        groupArray(administration_id) AS administration_ids,
-        groupArray(control_unit_id)   AS control_unit_ids,
-        COUNT(DISTINCT administration_id) AS nb_administrations
-    FROM rapportnav_proxy.inter_ministerial_service
-    GROUP BY mission_general_info_id
+        ims.mission_general_info_id,
+        groupArray(ims.administration_id)      AS administration_ids,
+        groupArray(coalesce(adm.name, ''))      AS administration_names,
+        groupArray(ims.control_unit_id)         AS control_unit_ids,
+        COUNT(DISTINCT ims.administration_id)   AS nb_administrations
+    FROM rapportnav_proxy.inter_ministerial_service ims
+    LEFT JOIN monitorenv_proxy.administrations adm ON adm.id = ims.administration_id
+    GROUP BY ims.mission_general_info_id
 ),
 
 -- Classification mer/terre/air des moyens (même mapping que la requête 1,
@@ -160,6 +167,10 @@ SELECT
     toUInt8(coalesce(mgi.is_with_interministerial_service, 0)) AS is_with_interministerial_service,
     toUInt16(coalesce(im.nb_administrations, 0)) AS nb_intermin_administrations,
     coalesce(im.administration_ids, []) AS intermin_administration_ids,
+    -- Libellés résolus via monitorenv_proxy.administrations pour le
+    -- graphique "Répartition des administrations concourant aux missions
+    -- conjointes" (maquette v2) -- éviter d'afficher des id bruts.
+    coalesce(im.administration_names, []) AS intermin_administration_names,
     coalesce(im.control_unit_ids, []) AS intermin_control_unit_ids,
     toFloat64(coalesce(mgi.nb_hour_at_sea, 0)) AS declared_hours_at_sea,
     toFloat64(coalesce(hm.computed_hours_at_sea, 0)) AS computed_hours_at_sea,
@@ -171,6 +182,17 @@ SELECT
     coalesce(mr.mission_terrain_types, []) AS mission_terrain_types,
     toUInt8(envm.end_datetime_utc IS NOT NULL AND envm.end_datetime_utc < now()) AS is_mission_finished,
     toUInt8(coalesce(nc.toutes_actions_nav_completes, 0)) AS nav_toutes_actions_completes,
+    -- Règle "Missions rapportées" (maquette v2, tooltip) : "Seules les
+    -- missions terminées et complètes dans RPN sont comptabilisées ici".
+    -- nav_toutes_actions_completes agrège déjà is_complete_for_stats au
+    -- niveau action (cf. CTE nav_completeness), donc ce flag couvre bien
+    -- les deux conditions -- pas besoin d'un 3e critère séparé. Exposé en
+    -- colonne dédiée plutôt que laissé à chaque carte Metabase de faire le
+    -- AND des deux champs séparément (risque d'application incohérente).
+    toUInt8(
+        (envm.end_datetime_utc IS NOT NULL AND envm.end_datetime_utc < now())
+        AND coalesce(nc.toutes_actions_nav_completes, 0) = 1
+    ) AS is_mission_reportable,
     'rapportnav' AS source_system,
     now() AS updated_at
 FROM rapportnav_proxy.mission_general_info mgi
