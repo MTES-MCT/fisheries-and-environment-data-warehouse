@@ -61,7 +61,7 @@ def init_vessels(add_monitorfish_proxy_database):
     print("Creating monitorfish.vessels table")
     state = sync_table_from_db_connection_flow.run(
         source_database="monitorfish_proxy",
-        query_filepath="monitorfish_proxy/vessels.sql",
+        query_filepath="data_warehouse/vessels.sql",
         destination_database="monitorfish",
         destination_table="vessels",
         order_by="id",
