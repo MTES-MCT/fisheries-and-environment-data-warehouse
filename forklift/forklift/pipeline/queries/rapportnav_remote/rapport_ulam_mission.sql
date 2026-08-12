@@ -121,7 +121,12 @@ nav_completeness AS (
 )
 
 SELECT
-    toInt32(mgi.mission_id) AS mission_id,
+    -- envm.id (PK monitorenv_proxy.missions, non-nullable) plutôt que
+    -- mgi.mission_id (FK côté rapportnav, potentiellement Nullable côté
+    -- proxy) : ORDER BY refuse une clé de tri nullable
+    -- (allow_nullable_key désactivé), même si l'INNER JOIN garantit déjà
+    -- qu'aucune valeur NULL ne peut sortir ici.
+    toInt32(envm.id) AS mission_id,
     toString(mgi.mission_id_uuid) AS mission_id_uuid,
     coalesce(mu.unit_names, '') AS unit_names,
     toUInt16(coalesce(mu.nb_unites_distinctes, 0)) AS nb_unites_distinctes,
