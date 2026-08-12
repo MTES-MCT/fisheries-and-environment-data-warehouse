@@ -78,8 +78,24 @@ def test_sync_table_from_db_connection(
         ))
 
     if destination_table == "fact_moyen_ulam":
+        # V777.05__dummy_missions_ulam.sql (monitorenv) runs as a single
+        # Flyway transaction -- if ANY of its 5 statements fails, ALL of
+        # them roll back together, not just the failing one. Check every
+        # table it touches individually to see how far it got.
         print("DEBUG monitorenv missions (999100):", client.query_df(
             "SELECT count() AS n FROM monitorenv_proxy.missions WHERE id = 999100"
+        ))
+        print("DEBUG monitorenv control_units (999100):", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.control_units WHERE id = 999100"
+        ))
+        print("DEBUG monitorenv missions_control_units (999100):", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.missions_control_units WHERE mission_id = 999100"
+        ))
+        print("DEBUG monitorenv bases (999100):", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.bases WHERE id = 999100"
+        ))
+        print("DEBUG monitorenv control_unit_resources (999100/999101):", client.query_df(
+            "SELECT count() AS n FROM monitorenv_proxy.control_unit_resources WHERE id IN (999100, 999101)"
         ))
         print("DEBUG mission_action_resource total (unfiltered):", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action_resource"
