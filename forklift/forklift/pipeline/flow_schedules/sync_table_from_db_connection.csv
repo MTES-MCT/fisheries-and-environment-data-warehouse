@@ -21,3 +21,6 @@
 "monitorfish_proxy","beacon_malfunctions",,"monitorfish","beacon_malfunctions",,"id","8 5 * * *"
 "monitorenv_proxy","natinfs",,"monitorenv","natinfs",,"natinf_code","10 5 * * *"
 "rapportnav_proxy",,"data_warehouse/missions_aem.sql","rapportnav","missions_aem",,"mission_date_debut","12 5 * * *"
+"monitorfish_proxy","beacon_malfunction_actions",,"monitorfish","beacon_malfunction_actions",,"id","14 5 * * *"
+"monitorfish_proxy","beacon_malfunction_comments",,"monitorfish","beacon_malfunction_comments",,"id","16 5 * * *"
+"monitorfish_proxy","beacon_malfunction_notifications",,"monitorfish","beacon_malfunction_notifications",,"id","18 5 * * *"
