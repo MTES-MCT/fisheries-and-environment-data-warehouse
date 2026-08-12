@@ -166,3 +166,6 @@ infra/metabase_plugins/*
 # Ignore downloaded external repositories
 forklift/tests/test_data/external/*
 !forklift/tests/test_data/external/README.md
+
+# idea
+.idea/
