@@ -20,13 +20,13 @@ from forklift.pipeline.shared_tasks.generic import (
     run_ddl_scripts,
 )
 
+matomo_site_ids = {"monitorfish": MONITORFISH_MATOMO_SITE_ID}
+
 
 @task(checkpoint=False)
 def fetch_unique_visitors_per_month(start_date: str, application: str) -> pd.DataFrame:
     end_date = date.today().isoformat()
     date_range = f"{start_date},{end_date}"
-
-    matomo_site_ids = {"monitorfish": MONITORFISH_MATOMO_SITE_ID}
 
     try:
         site_id = matomo_site_ids[application]
@@ -60,6 +60,62 @@ def fetch_unique_visitors_per_month(start_date: str, application: str) -> pd.Dat
 
 
 @task(checkpoint=False)
+def fetch_monthly_users(start_date: str, application: str) -> pd.DataFrame:
+    end_date = date.today().isoformat()
+    date_range = f"{start_date},{end_date}"
+
+    try:
+        site_id = matomo_site_ids[application]
+    except KeyError as e:
+        raise ValueError(f"Unknwon application {application}") from e
+
+    params = {
+        "module": "API",
+        "method": "VisitsSummary.getUsers",
+        "idSite": site_id,
+        "period": "month",
+        "date": date_range,
+        "format": "JSON",
+        "token_auth": MATOMO_API_TOKEN,
+    }
+
+    response = requests.post(
+        f"{MATOMO_URL}/index.php", params=params, timeout=30, proxies=PROXIES
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    users = pd.Series(data)
+    users.index = pd.to_datetime(users.index)
+    users = users.rename_axis("month")
+    users = users.rename("users")
+    users = users.reset_index()
+    users["application"] = application
+
+    return users[["application", "month", "users"]]
+
+
+@task(checkpoint=False)
+def load_monthly_users(monthly_users: pd.DataFrame, application: str):
+    logger = prefect.context.get("logger")
+    client = create_datawarehouse_client()
+    logger.info(f"Droppping monthly_users partition '{application}'.")
+    client.command(
+        "ALTER TABLE matomo.monthly_users DROP PARTITION {application:String}",
+        parameters={"application": application},
+    )
+    logger.info(
+        f"Loading {len(monthly_users)} lines to monthly_users of application {application}."
+    )
+    load_to_data_warehouse(
+        monthly_users,
+        table_name="monthly_users",
+        database="matomo",
+        logger=logger,
+    )
+
+
+@task(checkpoint=False)
 def load_monthly_unique_visitors(
     monthly_unique_visitors: pd.DataFrame, application: str
 ):
@@ -89,15 +145,34 @@ with Flow("Matomo stats") as flow:
         unique_visitors_per_month = fetch_unique_visitors_per_month(
             start_date, application
         )
+        monthly_users = fetch_monthly_users(start_date, application)
 
         create_database = create_database_if_not_exists("matomo")
-        created_table = run_ddl_scripts(
+        monthly_unique_visitors_created_table = run_ddl_scripts(
             "matomo/create_monthly_unique_visitors_if_not_exists.sql",
+            upstream_tasks=[create_database],
+        )
+        monthly_users_created_table = run_ddl_scripts(
+            "matomo/create_monthly_users_if_not_exists.sql",
             upstream_tasks=[create_database],
         )
 
         load_monthly_unique_visitors(
-            unique_visitors_per_month, application, upstream_tasks=[created_table]
+            unique_visitors_per_month,
+            application,
+            upstream_tasks=[
+                monthly_unique_visitors_created_table,
+                monthly_users_created_table,
+            ],
+        )
+
+        load_monthly_users(
+            monthly_users,
+            application,
+            upstream_tasks=[
+                monthly_unique_visitors_created_table,
+                monthly_users_created_table,
+            ],
         )
 
 
