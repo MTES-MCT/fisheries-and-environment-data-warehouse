@@ -20,6 +20,6 @@
 "monitorfish_proxy","beacons",,"monitorfish","beacons",,"beacon_number","6 5 * * *"
 "monitorfish_proxy","beacon_malfunctions",,"monitorfish","beacon_malfunctions",,"id","8 5 * * *"
 "monitorenv_proxy","natinfs",,"monitorenv","natinfs",,"natinf_code","10 5 * * *"
-"rapportnav_proxy",,"rapportnav_remote/rapport_ulam_mission.sql","rapportnav","fact_mission_ulam",,"mission_id","12 5 * * *"
+"rapportnav_proxy",,"rapportnav_remote/rapport_ulam_mission.sql","rapportnav","fact_mission_ulam",,"start_datetime_utc","12 5 * * *"
 "rapportnav_proxy",,"rapportnav_remote/rapport_ulam_action.sql","rapportnav","fact_action_ulam",,"action_id","14 5 * * *"
 "rapportnav_proxy",,"rapportnav_remote/rapport_ulam_moyen.sql","rapportnav","fact_moyen_ulam",,"action_id","16 5 * * *"

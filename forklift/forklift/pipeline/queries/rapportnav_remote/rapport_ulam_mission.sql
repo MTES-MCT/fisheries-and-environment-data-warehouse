@@ -137,7 +137,11 @@ SELECT
     '' AS unit_type,
     '' AS facade,
     toInt32(coalesce(mgi.service_id, 0)) AS service_id,
-    toDateTime64(envm.start_datetime_utc, 6) AS start_datetime_utc,
+    -- assumeNotNull : envm.start_datetime_utc est Nullable côté proxy, mais
+    -- le WHERE en fin de requête (>= 2025-01-01) exclut déjà toute ligne
+    -- NULL avant le SELECT -- nécessaire pour servir de clé ORDER BY
+    -- (même contrainte allow_nullable_key que mission_id plus haut).
+    toDateTime64(assumeNotNull(envm.start_datetime_utc), 6) AS start_datetime_utc,
     toDateTime64(envm.end_datetime_utc, 6) AS end_datetime_utc,
     toString(multiIf(
         envm.end_datetime_utc IS NULL OR envm.start_datetime_utc IS NULL, 'UNAVAILABLE',
