@@ -1,8 +1,8 @@
-CREATE TABLE IF NOT EXISTS matomo.monthly_unique_visitors (
+CREATE TABLE IF NOT EXISTS matomo.daily_unique_visitors (
     application LowCardinality(String),
-    month DateTime,
+    day DateTime,
     unique_visitors Integer
 )
 ENGINE MergeTree()
 PARTITION BY application
-PRIMARY KEY (application, month)
+PRIMARY KEY (application, day)

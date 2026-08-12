@@ -24,7 +24,7 @@ matomo_site_ids = {"monitorfish": MONITORFISH_MATOMO_SITE_ID}
 
 
 @task(checkpoint=False)
-def fetch_unique_visitors_per_month(start_date: str, application: str) -> pd.DataFrame:
+def fetch_daily_unique_visitors(start_date: str, application: str) -> pd.DataFrame:
     end_date = date.today().isoformat()
     date_range = f"{start_date},{end_date}"
 
@@ -37,7 +37,7 @@ def fetch_unique_visitors_per_month(start_date: str, application: str) -> pd.Dat
         "module": "API",
         "method": "VisitsSummary.getUniqueVisitors",
         "idSite": site_id,
-        "period": "month",
+        "period": "day",
         "date": date_range,
         "format": "JSON",
         "token_auth": MATOMO_API_TOKEN,
@@ -49,14 +49,14 @@ def fetch_unique_visitors_per_month(start_date: str, application: str) -> pd.Dat
     response.raise_for_status()
     data = response.json()
 
-    unique_visitors = pd.Series(data)
-    unique_visitors.index = pd.to_datetime(unique_visitors.index)
-    unique_visitors = unique_visitors.rename_axis("month")
-    unique_visitors = unique_visitors.rename("unique_visitors")
-    unique_visitors = unique_visitors.reset_index()
-    unique_visitors["application"] = application
+    daily_unique_visitors = pd.Series(data)
+    daily_unique_visitors.index = pd.to_datetime(daily_unique_visitors.index)
+    daily_unique_visitors = daily_unique_visitors.rename_axis("day")
+    daily_unique_visitors = daily_unique_visitors.rename("unique_visitors")
+    daily_unique_visitors = daily_unique_visitors.reset_index()
+    daily_unique_visitors["application"] = application
 
-    return unique_visitors[["application", "month", "unique_visitors"]]
+    return daily_unique_visitors[["application", "day", "unique_visitors"]]
 
 
 @task(checkpoint=False)
@@ -116,22 +116,20 @@ def load_monthly_users(monthly_users: pd.DataFrame, application: str):
 
 
 @task(checkpoint=False)
-def load_monthly_unique_visitors(
-    monthly_unique_visitors: pd.DataFrame, application: str
-):
+def load_daily_unique_visitors(daily_unique_visitors: pd.DataFrame, application: str):
     logger = prefect.context.get("logger")
     client = create_datawarehouse_client()
-    logger.info(f"Droppping monthly_unique_visitors partition '{application}'.")
+    logger.info(f"Droppping daily_unique_visitors partition '{application}'.")
     client.command(
-        "ALTER TABLE matomo.monthly_unique_visitors DROP PARTITION {application:String}",
+        "ALTER TABLE matomo.daily_unique_visitors DROP PARTITION {application:String}",
         parameters={"application": application},
     )
     logger.info(
-        f"Loading {len(monthly_unique_visitors)} lines to monthly_unique_visitors of application {application}."
+        f"Loading {len(daily_unique_visitors)} lines to daily_unique_visitors of application {application}."
     )
     load_to_data_warehouse(
-        monthly_unique_visitors,
-        table_name="monthly_unique_visitors",
+        daily_unique_visitors,
+        table_name="daily_unique_visitors",
         database="matomo",
         logger=logger,
     )
@@ -142,14 +140,12 @@ with Flow("Matomo stats") as flow:
     with case(flow_not_running, True):
         start_date = Parameter("start_date", default="2025-01-01")
         application = Parameter("application", default="monitorfish")
-        unique_visitors_per_month = fetch_unique_visitors_per_month(
-            start_date, application
-        )
+        daily_unique_visitors = fetch_daily_unique_visitors(start_date, application)
         monthly_users = fetch_monthly_users(start_date, application)
 
         create_database = create_database_if_not_exists("matomo")
-        monthly_unique_visitors_created_table = run_ddl_scripts(
-            "matomo/create_monthly_unique_visitors_if_not_exists.sql",
+        daily_unique_visitors_created_table = run_ddl_scripts(
+            "matomo/create_daily_unique_visitors_if_not_exists.sql",
             upstream_tasks=[create_database],
         )
         monthly_users_created_table = run_ddl_scripts(
@@ -157,11 +153,11 @@ with Flow("Matomo stats") as flow:
             upstream_tasks=[create_database],
         )
 
-        load_monthly_unique_visitors(
-            unique_visitors_per_month,
+        load_daily_unique_visitors(
+            daily_unique_visitors,
             application,
             upstream_tasks=[
-                monthly_unique_visitors_created_table,
+                daily_unique_visitors_created_table,
                 monthly_users_created_table,
             ],
         )
@@ -170,7 +166,7 @@ with Flow("Matomo stats") as flow:
             monthly_users,
             application,
             upstream_tasks=[
-                monthly_unique_visitors_created_table,
+                daily_unique_visitors_created_table,
                 monthly_users_created_table,
             ],
         )

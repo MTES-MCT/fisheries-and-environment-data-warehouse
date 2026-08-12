@@ -2,6 +2,7 @@ import json
 from datetime import date
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 import requests
 from clickhouse_connect.driver.exceptions import DatabaseError
@@ -15,8 +16,8 @@ from forklift.config import (
 )
 from forklift.db_engines import create_datawarehouse_client
 from forklift.pipeline.flows.matomo_stats import (
+    fetch_daily_unique_visitors,
     fetch_monthly_users,
-    fetch_unique_visitors_per_month,
     flow,
 )
 from tests.mocks import replace_check_flow_not_running
@@ -26,8 +27,8 @@ replace_check_flow_not_running(flow)
 
 MATOMO_UNIQUE_VISITORS_RESPONSE = {
     "2025-01-01": 12,
-    "2025-02-01": 34,
-    "2025-03-01": 56,
+    "2025-01-02": 34,
+    "2025-01-03": 56,
 }
 
 MATOMO_USERS_RESPONSE = {
@@ -52,6 +53,36 @@ def mock_matomo_post(url, params=None, timeout=None, proxies=None):
 
 
 @fixture
+def expected_daily_unique_visitors() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "application": ["monitorfish", "monitorfish", "monitorfish"],
+            "day": [
+                pd.Timestamp("2025-01-01 00:00:00"),
+                pd.Timestamp("2025-01-02 00:00:00"),
+                pd.Timestamp("2025-01-03 00:00:00"),
+            ],
+            "unique_visitors": [12, 34, 56],
+        }
+    )
+
+
+@fixture
+def expected_monthly_users() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "application": ["monitorfish", "monitorfish", "monitorfish"],
+            "month": [
+                pd.Timestamp("2025-01-01 00:00:00"),
+                pd.Timestamp("2025-02-01 00:00:00"),
+                pd.Timestamp("2025-03-01 00:00:00"),
+            ],
+            "users": [5, 10, 15],
+        }
+    )
+
+
+@fixture
 def drop_matomo_database():
     client = create_datawarehouse_client()
     yield
@@ -64,7 +95,7 @@ def test_fetch_unique_visitors_per_month_with_unknown_application_raises():
         side_effect=mock_matomo_post,
     ):
         with pytest.raises(ValueError, match="Unknwon application some_application"):
-            fetch_unique_visitors_per_month.run(
+            fetch_daily_unique_visitors.run(
                 start_date="2025-01-01", application="some_application"
             )
 
@@ -80,12 +111,12 @@ def test_fetch_monthly_users_with_unknown_application_raises():
             )
 
 
-def test_matomo_stats(drop_matomo_database):
+def test_matomo_stats(
+    drop_matomo_database, expected_daily_unique_visitors, expected_monthly_users
+):
     client = create_datawarehouse_client()
 
-    unique_visitors_query = (
-        "SELECT * FROM matomo.monthly_unique_visitors ORDER BY month"
-    )
+    unique_visitors_query = "SELECT * FROM matomo.daily_unique_visitors ORDER BY day"
     users_query = "SELECT * FROM matomo.monthly_users ORDER BY month"
 
     # Initially the matomo database does not exist
@@ -108,7 +139,7 @@ def test_matomo_stats(drop_matomo_database):
             "module": "API",
             "method": "VisitsSummary.getUniqueVisitors",
             "idSite": MONITORFISH_MATOMO_SITE_ID,
-            "period": "month",
+            "period": "day",
             "date": expected_date_range,
             "format": "JSON",
             "token_auth": MATOMO_API_TOKEN,
@@ -131,15 +162,8 @@ def test_matomo_stats(drop_matomo_database):
         proxies=PROXIES,
     )
 
-    monthly_unique_visitors_after_one_run = client.query_df(unique_visitors_query)
-    assert len(monthly_unique_visitors_after_one_run) == 3
-    assert set(monthly_unique_visitors_after_one_run.application) == {"monitorfish"}
-    assert list(monthly_unique_visitors_after_one_run.unique_visitors) == [12, 34, 56]
-
+    daily_unique_visitors_after_one_run = client.query_df(unique_visitors_query)
     monthly_users_after_one_run = client.query_df(users_query)
-    assert len(monthly_users_after_one_run) == 3
-    assert set(monthly_users_after_one_run.application) == {"monitorfish"}
-    assert list(monthly_users_after_one_run.users) == [5, 10, 15]
 
     # Running the flow again must replace the `monitorfish` partition rather than
     # duplicating its rows
@@ -150,8 +174,22 @@ def test_matomo_stats(drop_matomo_database):
         state = flow.run(start_date="2025-01-01", application="monitorfish")
     assert state.is_successful()
 
-    monthly_unique_visitors_after_two_runs = client.query_df(unique_visitors_query)
-    assert len(monthly_unique_visitors_after_two_runs) == 3
-
+    daily_unique_visitors_after_two_runs = client.query_df(unique_visitors_query)
     monthly_users_after_two_runs = client.query_df(users_query)
-    assert len(monthly_users_after_two_runs) == 3
+
+    pd.testing.assert_frame_equal(
+        daily_unique_visitors_after_one_run,
+        expected_daily_unique_visitors,
+        check_dtype=False,
+    )
+    pd.testing.assert_frame_equal(
+        monthly_users_after_one_run, expected_monthly_users, check_dtype=False
+    )
+    pd.testing.assert_frame_equal(
+        daily_unique_visitors_after_two_runs,
+        expected_daily_unique_visitors,
+        check_dtype=False,
+    )
+    pd.testing.assert_frame_equal(
+        monthly_users_after_two_runs, expected_monthly_users, check_dtype=False
+    )
