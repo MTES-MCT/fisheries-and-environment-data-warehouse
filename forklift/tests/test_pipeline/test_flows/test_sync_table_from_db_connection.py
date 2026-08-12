@@ -78,10 +78,11 @@ def test_sync_table_from_db_connection(
         ))
 
     if destination_table == "fact_moyen_ulam":
-        # V777.05__dummy_missions_ulam.sql (monitorenv) runs as a single
-        # Flyway transaction -- if ANY of its 5 statements fails, ALL of
-        # them roll back together, not just the failing one. Check every
-        # table it touches individually to see how far it got.
+        # V777.05-V777.09 (monitorenv) used to be a single file/transaction
+        # where any one failing statement rolled back all 5 tables together,
+        # masking which one actually failed (all showed empty). Now split
+        # into 5 independent files -- check each table to see exactly which
+        # one, if any, still fails.
         print("DEBUG monitorenv missions (999100):", client.query_df(
             "SELECT count() AS n FROM monitorenv_proxy.missions WHERE id = 999100"
         ))
