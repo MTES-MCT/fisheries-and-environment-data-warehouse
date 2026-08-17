@@ -46,7 +46,19 @@ dim_unit_reference_by_id AS (
     UNION ALL SELECT 10345, 'Sud de l''Océan indien'  -- PAM Osiris II
     UNION ALL SELECT 10519, 'Guyane'                  -- PAM Cayenne
 ),
--- Référentiel unité VALIDÉ AEM (idem requête 2) -- pas rapportnav_proxy.service.
+-- Filtre unités ULAM (cf. requête 2, même logique) : service_type via
+-- service_control_unit, repli sur le nom si le lien n'est pas renseigné.
+ulam_control_units AS (
+    SELECT DISTINCT cu.id AS control_unit_id
+    FROM monitorenv_proxy.control_units cu
+    LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
+    LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
+    WHERE s.service_type = 'ULAM' OR startsWith(upper(cu.name), 'ULAM')
+),
+-- Référentiel unité VALIDÉ AEM (idem requête 2) -- rapportnav_proxy.service
+-- sert uniquement au filtre ULAM ci-dessus, pas de référentiel concurrent.
+-- INNER JOIN sur ulam_control_units : filtre les actions dont la mission
+-- n'a aucune unité ULAM associée.
 mission_units AS (
     SELECT
         mcu.mission_id,
@@ -57,6 +69,7 @@ mission_units AS (
         arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
+    INNER JOIN ulam_control_units uu ON uu.control_unit_id = cu.id
     LEFT JOIN dim_unit_reference_by_id uref ON uref.control_unit_id = cu.id
     GROUP BY mcu.mission_id
 ),
@@ -121,7 +134,9 @@ SELECT
     toString(coalesce(ar.terrain_type_first, 'INDETERMINE')) AS terrain_type,
     now() AS updated_at
 FROM rapportnav_proxy.mission_action ma
-LEFT JOIN mission_units mu ON mu.mission_id = ma.mission_id
+-- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au moins
+-- une unité ULAM (cf. ulam_control_units plus haut).
+INNER JOIN mission_units mu ON mu.mission_id = ma.mission_id
 LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
 -- STATUS = marqueurs de changement d'état nav (ANCHORED/NAVIGATING/...),
 -- déjà exploités dans fact_mission_ulam.computed_hours_at_sea -- pas une

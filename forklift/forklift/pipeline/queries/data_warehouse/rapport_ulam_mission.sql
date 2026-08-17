@@ -48,11 +48,28 @@ dim_unit_reference_by_id AS (
     UNION ALL SELECT 10345, 'Sud de l''Océan indien'  -- PAM Osiris II
     UNION ALL SELECT 10519, 'Guyane'                  -- PAM Cayenne
 ),
+-- Filtre unités ULAM : rapportnav_proxy.service.service_type (enum
+-- PAM/ULAM, NOT NULL) via la table de liaison service_control_unit
+-- (service_id, control_unit_id -- mêmes id que monitorenv_proxy.control_units).
+-- Repli sur le nom (startsWith 'ULAM') si l'unité n'a aucune ligne dans
+-- service_control_unit (lien pas systématiquement renseigné) -- limite
+-- ce rapport aux unités ULAM, exclut PAM et tout le reste.
+ulam_control_units AS (
+    SELECT DISTINCT cu.id AS control_unit_id
+    FROM monitorenv_proxy.control_units cu
+    LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
+    LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
+    WHERE s.service_type = 'ULAM' OR startsWith(upper(cu.name), 'ULAM')
+),
 -- Référentiel "unité" VALIDÉ sur le rapport AEM : monitorenv_proxy
--- missions_control_units + control_units (PAS rapportnav_proxy.service --
--- la fiche ULAM d'origine a été écrite avant le travail AEM et n'en tenait
--- pas compte). Repris tel quel de la CTE mission_units de
+-- missions_control_units + control_units pour le nom/façade/façade de
+-- l'unité (rapportnav_proxy.service sert UNIQUEMENT au filtre ULAM
+-- ci-dessus, pas de référentiel d'unité concurrent -- la fiche ULAM
+-- d'origine a été écrite avant le travail AEM et n'en tenait pas
+-- compte). Repris tel quel de la CTE mission_units de
 -- query_aem_par_mission_3_bases_clickhouse.sql.
+-- INNER JOIN sur ulam_control_units : une mission conjointe ULAM+PAM
+-- n'expose ici que son (ses) unité(s) ULAM, pas l'unité PAM partenaire.
 mission_units AS (
     SELECT
         mcu.mission_id,
@@ -64,6 +81,7 @@ mission_units AS (
         arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
+    INNER JOIN ulam_control_units uu ON uu.control_unit_id = cu.id
     LEFT JOIN dim_unit_reference_by_id uref ON uref.control_unit_id = cu.id
     GROUP BY mcu.mission_id
 ),
@@ -321,7 +339,10 @@ SELECT
     now() AS updated_at
 FROM rapportnav_proxy.mission_general_info mgi
 INNER JOIN monitorenv_proxy.missions envm ON envm.id = mgi.mission_id
-LEFT JOIN mission_units mu      ON mu.mission_id = mgi.mission_id
+-- INNER JOIN (pas LEFT) : mission_units ne contient que les missions
+-- avec au moins une unité ULAM (cf. ulam_control_units plus haut) --
+-- c'est ce qui filtre le rapport aux missions ULAM.
+INNER JOIN mission_units mu    ON mu.mission_id = mgi.mission_id
 LEFT JOIN intermin im           ON im.mission_general_info_id = mgi.id
 LEFT JOIN heures_de_mer hm      ON hm.mission_id = mgi.mission_id
 LEFT JOIN mission_resources mr  ON mr.mission_id = mgi.mission_id
