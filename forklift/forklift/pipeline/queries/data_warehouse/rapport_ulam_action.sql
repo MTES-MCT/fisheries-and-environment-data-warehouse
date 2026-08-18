@@ -104,6 +104,62 @@ action_resources AS (
     FROM rapportnav_proxy.mission_action_resource mar
     LEFT JOIN resource_dim rd ON rd.resource_id = mar.resource_id
     GROUP BY mar.action_id
+),
+-- Référentiel libellé français / politique publique / thématique par
+-- action_type, repris du dictionnaire de données métier "Types et
+-- sous-types d'actions" (export CSV du 2026-08-14). Clé = action_type
+-- seul, sauf UNIT_MANAGEMENT_TRAINING où action_subtype distingue des
+-- activités de nature différente (DIVING / MAN_OVERBOARD_RECOVERY /
+-- TECHNICAL_INTERVENTION_SHOOTING -- valeurs d'un champ contrôlé côté
+-- rapportnav, pas du texte libre).
+-- ⚠️ TRAINING (le "vrai", pas UNIT_MANAGEMENT_TRAINING) : action_subtype
+-- vient d'un champ texte libre saisi par l'utilisateur (ma.training_type).
+-- Le dictionnaire source recense des dizaines de valeurs distinctes
+-- (fautes de frappe, variantes de casse/accents...), impossible à mapper
+-- ligne à ligne de façon fiable et pérenne. On applique donc à toute
+-- action TRAINING le libellé par défaut de l'action_type (Entraînement /
+-- Contrôle des activités maritimes / Transversal), quel que soit le
+-- texte saisi -- si un besoin de reporting plus fin sur les formations
+-- émerge, il faudra un vrai référentiel de training_type côté rapportnav
+-- plutôt qu'un mapping texte libre ici.
+action_type_mapping AS (
+    SELECT 'ANTI_POLLUTION' AS action_type, '' AS action_subtype_key, 'Opération de lutte anti-pollution' AS libelle_francais, 'Contrôle des activités maritimes' AS politique_publique, 'Environnement marin' AS thematique
+    UNION ALL SELECT 'BAAEM_PERMANENCE', '', 'Permanence BAAEM - bureau de l''action de l''Etat en mer', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'COMMUNICATION', '', 'Communication', 'Contrôle des activités maritimes', 'Transversal'
+    -- Libellés suffixés "?" dans le dictionnaire source (CONTACT, INQUIRY) :
+    -- incertitude du métier sur le nom, reprise telle quelle -- à ne pas
+    -- "corriger" sans validation métier.
+    UNION ALL SELECT 'CONTACT', '', 'Accueil public ?', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'CONTROL', '', 'Contrôle', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'CONTROL_NAUTICAL_LEISURE', '', 'Contrôle de loisirs nautiques', 'Contrôle des activités maritimes', 'Loisirs nautiques'
+    UNION ALL SELECT 'CONTROL_SECTOR', '', 'Thématique de contrôle', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'CONTROL_SLEEPING_FISHING_GEAR', '', 'Contrôle d''engin de pêche dormant', 'Contrôle des activités maritimes', 'Pêches maritimes'
+    UNION ALL SELECT 'HEARING_CONDUCT', '', 'Préparation et conduite d''audition', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'ILLEGAL_IMMIGRATION', '', 'Opération de lutte contre l''immigration illégale', 'Contrôle des activités maritimes', 'Flux migratoires'
+    UNION ALL SELECT 'INQUIRY', '', 'Enquête/ préparation de contrôle ?', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'LAND_SURVEILLANCE', '', 'Surveillance générale terrestre', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'MARITIME_SURVEILLANCE', '', 'Surveillance générale maritime', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'MEETING', '', 'Réunion', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'NAUTICAL_EVENT', '', 'Surveillance de manifestation nautique', 'Contrôle des activités maritimes', 'Occupation du domaine public maritime'
+    UNION ALL SELECT 'NOTE', '', 'Note libre', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'OTHER', '', 'Autre (vie et gestion de l''unité)', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'OTHER_CONTROL', '', 'Autre contrôle', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'PUBLIC_ORDER', '', 'Ordre public', 'Maintien de l''ordre public', ''
+    UNION ALL SELECT 'PV_DRAFTING', '', 'Rédaction de PV', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'REPRESENTATION', '', 'Représentation', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'RESCUE', '', 'Assistance/ sauvetage', 'Assistance/ sauvetage', 'Assistance/ sauvetage'
+    -- RESOURCES_MAINTENANCE : mêmes libellé/politique publique/thématique
+    -- quel que soit action_subtype (NAUTICAL/TERRESTRIAL) ou terrain_type
+    -- (MER/TERRE/AIR) dans le dictionnaire source -> clé action_type seul.
+    UNION ALL SELECT 'RESOURCES_MAINTENANCE', '', 'Entretien des moyens', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'SECURITY_VISIT', '', 'Visite sécurité', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'TRAINING', '', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_OTHER', '', 'Gestion de l''unité - autres', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_PLANNING', '', 'Gestion de l''unité - planning', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', '', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'DIVING', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'MAN_OVERBOARD_RECOVERY', 'Formation', 'Assistance/ sauvetage', 'Assistance/ sauvetage'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'TECHNICAL_INTERVENTION_SHOOTING', 'Formation', 'Maintien de l''ordre public', 'Gestes Techniques Professionnels d''Intervention'
 )
 
 SELECT
@@ -132,12 +188,28 @@ SELECT
     coalesce(ar.resource_ids, []) AS resource_ids,
     coalesce(ar.resource_types, []) AS resource_types,
     toString(coalesce(ar.terrain_type_first, 'INDETERMINE')) AS terrain_type,
+    -- Mapping métier (cf. action_type_mapping ci-dessus) : coalesce sur
+    -- action_type en repli si l'action_type n'a pas de ligne dans le
+    -- référentiel (ne devrait pas arriver -- tous les action_type connus,
+    -- hors STATUS déjà exclu, sont couverts).
+    toString(coalesce(nullIf(atm.libelle_francais, ''), toString(ma.action_type))) AS libelle_francais,
+    toString(coalesce(atm.politique_publique, '')) AS politique_publique,
+    toString(coalesce(atm.thematique, '')) AS thematique,
     now() AS updated_at
 FROM rapportnav_proxy.mission_action ma
 -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au moins
 -- une unité ULAM (cf. ulam_control_units plus haut).
 INNER JOIN mission_units mu ON mu.mission_id = ma.mission_id
 LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
+-- action_subtype_key : ne différencie que UNIT_MANAGEMENT_TRAINING (seul
+-- action_type dont action_subtype est un champ contrôlé, pas du texte
+-- libre -- cf. commentaire sur action_type_mapping).
+LEFT JOIN action_type_mapping atm
+    ON atm.action_type = toString(ma.action_type)
+    AND atm.action_subtype_key = multiIf(
+        ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
+        ''
+    )
 -- STATUS = marqueurs de changement d'état nav (ANCHORED/NAVIGATING/...),
 -- déjà exploités dans fact_mission_ulam.computed_hours_at_sea -- pas une
 -- "activité" au sens métier du rapport ULAM.
