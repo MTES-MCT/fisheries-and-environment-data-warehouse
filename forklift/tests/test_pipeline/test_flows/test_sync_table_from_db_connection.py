@@ -127,13 +127,25 @@ def test_sync_table_from_db_connection(
 
     assert len(df) > 0
 
-    client.command(
-        (
-            "DROP TABLE "
-            "{destination_database:Identifier}.{destination_table:Identifier}"
-        ),
-        parameters={
-            "destination_database": destination_database,
-            "destination_table": destination_table,
-        },
-    )
+    # dim_unit_reference is a shared dependency: missions_aem and the 3
+    # fact_*_pam_ulam queries LEFT JOIN it directly (rapportnav.dim_unit_reference),
+    # cf. discussion en chat sur la centralisation du référentiel unité.
+    # Contrairement aux autres tables de ce test (qui n'ont aucune
+    # dépendance entre elles), la dropper ici casserait tous les tests
+    # paramétrés suivants qui la joignent (table introuvable). On la garde
+    # donc en vie pour le reste de la session de test -- son ordre dans
+    # sync_table_from_db_connection.csv (1re ligne) garantit qu'elle est
+    # créée avant d'être consommée, cf. pytest.mark.parametrize qui
+    # préserve l'ordre du CSV. Le DROP TABLE IF EXISTS interne au flow
+    # (drop_table_if_exists) la recrée proprement à chaque run réel.
+    if destination_table != "dim_unit_reference":
+        client.command(
+            (
+                "DROP TABLE "
+                "{destination_database:Identifier}.{destination_table:Identifier}"
+            ),
+            parameters={
+                "destination_database": destination_database,
+                "destination_table": destination_table,
+            },
+        )

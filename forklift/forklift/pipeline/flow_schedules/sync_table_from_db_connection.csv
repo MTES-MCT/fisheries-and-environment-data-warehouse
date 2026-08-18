@@ -1,4 +1,5 @@
 "source_database","source_table","query_filepath","destination_database","destination_table","ddl_script_path","order_by","cron_string"
+"monitorenv_proxy",,"data_warehouse/dim_unit_reference.sql","rapportnav","dim_unit_reference",,"control_unit_id","28 4 * * *"
 "monitorfish_proxy","control_objectives",,"monitorfish","control_objectives",,"year","30 4 * * *"
 "monitorfish_proxy","fleet_segments",,"monitorfish","fleet_segments",,"year","32 4 * * *"
 "monitorfish_proxy","species",,"monitorfish","species",,"species_code","34 4 * * *"

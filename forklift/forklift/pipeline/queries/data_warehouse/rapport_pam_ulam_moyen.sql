@@ -6,6 +6,9 @@
 -- Couvre les unités PAM ET ULAM dans une seule table (cf.
 -- pam_ulam_control_units plus bas) -- unit_type distingue les deux, cf.
 -- discussion en chat (une table partagée plutôt que 2 jeux dupliqués).
+-- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql dans
+-- sync_table_from_db_connection.csv (aucune dépendance native entre
+-- lignes de ce flow -- cf. commentaire détaillé dans dim_unit_reference.sql).
 -- =====================================================================
 -- table unique déjà dénormalisée (unité, façade, date de début de
 -- mission, type de moyen, indicateurs de durée) pour être droppable
@@ -23,49 +26,6 @@
 -- répartir la durée au prorata si besoin (action_duration_h / nb_resources_on_action).
 -- =====================================================================
 WITH
--- Référentiel façade par unité (monitorenv, control_unit_id) -- fourni
--- manuellement (pas une vraie table monitorenv), repris de la CTE
--- dim_unit_reference_by_id de missions_aem.sql. Dupliqué ici pour la
--- même raison que les autres référentiels de ce fichier (requêtes
--- indépendantes, pas de vue/macro partagée possible dans ce repo) --
--- si la liste évolue, penser à la répercuter dans les 4 fichiers
--- (missions_aem.sql + les 3 requêtes PAM+ULAM).
-dim_unit_reference_by_id AS (
-    SELECT 10194 AS control_unit_id, 'MED' AS facade_ref
-    UNION ALL SELECT 10039, 'MED'
-    UNION ALL SELECT 10452, 'MEMN'
-    UNION ALL SELECT 10204, 'NAMO'
-    UNION ALL SELECT 10457, 'NAMO'  -- Brest
-    UNION ALL SELECT 10288, 'NAMO'  -- Douarnenez
-    UNION ALL SELECT 10074, 'MED'   -- 2A
-    UNION ALL SELECT 10192, 'MED'   -- 2B
-    UNION ALL SELECT 10225, 'SA'
-    UNION ALL SELECT 10255, 'SA'
-    UNION ALL SELECT 10420, 'MED'
-    UNION ALL SELECT 10176, 'NAMO'
-    UNION ALL SELECT 10428, 'NAMO'
-    UNION ALL SELECT 10210, 'MEMN'
-    UNION ALL SELECT 10449, 'NAMO'
-    UNION ALL SELECT 10050, 'MEMN'
-    UNION ALL SELECT 10318, 'MEMN'
-    UNION ALL SELECT 10364, 'SA'
-    UNION ALL SELECT 10303, 'MED'
-    UNION ALL SELECT 10423, 'MEMN'
-    UNION ALL SELECT 10166, 'MED'
-    UNION ALL SELECT 10171, 'NAMO'
-    UNION ALL SELECT 10169, 'Antilles'
-    UNION ALL SELECT 10327, 'Antilles'
-    UNION ALL SELECT 10265, 'Guyane'
-    UNION ALL SELECT 10183, 'Sud de l''Océan indien'
-    UNION ALL SELECT 10430, 'Saint-Pierre et Miquelon'
-    UNION ALL SELECT 10047, 'Sud de l''Océan indien'
-    UNION ALL SELECT 10080, 'NAMO'                    -- PAM Themis
-    UNION ALL SELECT 10121, 'MEMN'                    -- PAM Jeanne Barret
-    UNION ALL SELECT 10141, 'MED'                     -- PAM Gyptis
-    UNION ALL SELECT 10404, 'SA'                      -- PAM Iris
-    UNION ALL SELECT 10345, 'Sud de l''Océan indien'  -- PAM Osiris II
-    UNION ALL SELECT 10519, 'Guyane'                  -- PAM Cayenne
-),
 -- Filtre unités PAM + ULAM (même logique que les 2 autres requêtes) :
 -- service_type via service_control_unit, repli sur le nom si le lien
 -- n'est pas renseigné -- constaté non peuplé en pratique (aucune fixture
@@ -90,17 +50,20 @@ mission_units AS (
         -- différentes -> on ne garde que la 1ère façade trouvée (même
         -- limitation que terrain_category plus bas, résolu par moyen).
         arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade,
-        -- unit_type PAM/ULAM (même classification que mission_service dans
-        -- missions_aem.sql), même approximation "1er trouvé" que facade.
-        arrayElement(groupUniqArray(multiIf(
+        -- unit_type : priorité à rapportnav.dim_unit_reference (référentiel
+        -- unique), repli sur le nom en direct pour toute unité PAM/ULAM pas
+        -- encore ajoutée à ce référentiel manuel (cf. pam_ulam_control_units
+        -- ci-dessus, même filtre par nom). Même approximation "1er trouvé"
+        -- que facade.
+        arrayElement(groupUniqArray(coalesce(nullIf(uref.unit_type, ''), multiIf(
             startsWith(upper(cu.name), 'PAM'), 'PAM',
             startsWith(upper(cu.name), 'ULAM'), 'ULAM',
             'AUTRE'
-        )), 1) AS unit_type
+        ))), 1) AS unit_type
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
-    LEFT JOIN dim_unit_reference_by_id uref ON uref.control_unit_id = cu.id
+    LEFT JOIN rapportnav.dim_unit_reference uref ON uref.control_unit_id = cu.id
     GROUP BY mcu.mission_id
 ),
 -- Nb de moyens mobilisés par action, pour permettre une répartition au
