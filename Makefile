@@ -3,12 +3,11 @@ DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(shell pwd)/forklift/tests/test_data/clickhous
 # DEV commands
 # NOTE: `docker compose up -d` returns as soon as containers are STARTED,
 # not once one-shot containers (the 3 flyway migration jobs) have actually
-# FINISHED. Without an explicit `wait`, the next command in the chain
-# (running the tests) can start querying the databases while Flyway is
-# still mid-migration -- a silent, deterministic race, not a flaky one:
-# whichever migrations haven't been applied yet by the time a given test
-# queries them will look like empty tables, with no error surfaced
-# anywhere (the flyway containers' own logs were never being captured).
+# FINISHED. The `migration-sentinel` service (see
+# infra/testing/docker-compose-test-data.yml) depends on the 3 flyway
+# containers with `condition: service_completed_successfully`, so `up`
+# blocks on and fails if any migration fails. We still print the flyway
+# containers' logs here for visibility in CI output.
 dev-run-data-warehouse:
 	git clone --depth=1 --branch=master https://github.com/MTES-MCT/monitorfish.git ./forklift/tests/test_data/external/monitorfish || echo "Monitorfish repository already present - skipping git clone" && \
 	git clone --depth=1 --branch=main https://github.com/MTES-MCT/monitorenv.git ./forklift/tests/test_data/external/monitorenv || echo "Monitorenv repository already present - skipping git clone" && \
@@ -17,11 +16,10 @@ dev-run-data-warehouse:
 	export DATA_WAREHOUSE_USER=clickhouse_user && \
 	export DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(DATA_WAREHOUSE_INPUT_DATA_FOLDER) && \
 	export DOCKER_DEFAULT_PLATFORM=linux/amd64 && \
-	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml up -d --remove-orphans && \
-	FLYWAY_EXIT_CODES=$$(docker wait monitorfish_flyway monitorenv_flyway rapportnav_flyway); \
+	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml up -d --remove-orphans; \
+	UP_EXIT_CODE=$$?; \
 	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml logs monitorfish-flyway monitorenv-flyway rapportnav-flyway; \
-	echo "flyway exit codes (monitorfish, monitorenv, rapportnav): $$FLYWAY_EXIT_CODES"; \
-	echo "$$FLYWAY_EXIT_CODES" | grep -qv '^0$$' && exit 1 || exit 0
+	exit $$UP_EXIT_CODE
 
 dev-run-metabase:
 	docker compose -f ./infra/testing/docker-compose-dev-metabase.yml up -d && \
@@ -53,9 +51,8 @@ dev-erase-external-data:
 # CI commands - Forklift
 docker-build-forklift:
 	docker build -f "infra/docker/Dockerfile.Forklift" . -t forklift:$(VERSION)
-# See NOTE on dev-run-data-warehouse above: `up -d` doesn't wait for the
-# one-shot flyway migration containers to actually finish, so the tests
-# were racing against still-in-progress migrations with no visible error.
+# See NOTE on dev-run-data-warehouse above: `migration-sentinel` makes
+# `up` block on and fail on flyway completion.
 docker-run-data-warehouse:
 	git clone --depth=1 --branch=master https://github.com/MTES-MCT/monitorfish.git ./forklift/tests/test_data/external/monitorfish || echo "Monitorfish repository already present - skipping git clone" && \
 	git clone --depth=1 --branch=main https://github.com/MTES-MCT/monitorenv.git ./forklift/tests/test_data/external/monitorenv || echo "Monitorenv repository already present - skipping git clone" && \
@@ -63,11 +60,10 @@ docker-run-data-warehouse:
 	export DATA_WAREHOUSE_PASSWORD=password && \
 	export DATA_WAREHOUSE_USER=clickhouse_user && \
 	export DATA_WAREHOUSE_INPUT_DATA_FOLDER=$(DATA_WAREHOUSE_INPUT_DATA_FOLDER) && \
-	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml up -d --remove-orphans && \
-	FLYWAY_EXIT_CODES=$$(docker wait monitorfish_flyway monitorenv_flyway rapportnav_flyway); \
+	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml up -d --remove-orphans; \
+	UP_EXIT_CODE=$$?; \
 	docker compose -f ./infra/deployment/docker-compose.yml -f ./infra/testing/docker-compose-test-data.yml logs monitorfish-flyway monitorenv-flyway rapportnav-flyway; \
-	echo "flyway exit codes (monitorfish, monitorenv, rapportnav): $$FLYWAY_EXIT_CODES"; \
-	echo "$$FLYWAY_EXIT_CODES" | grep -qv '^0$$' && exit 1 || exit 0
+	exit $$UP_EXIT_CODE
 docker-test-forklift: docker-run-data-warehouse
 	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -u forklift:$(DOCKER_GROUP) --env-file forklift/.env.test forklift:$(VERSION) coverage run -m pytest --pdb tests
 docker-tag-forklift:
