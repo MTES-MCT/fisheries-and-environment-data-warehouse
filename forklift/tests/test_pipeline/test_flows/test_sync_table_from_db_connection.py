@@ -55,7 +55,7 @@ def test_sync_table_from_db_connection(
 
     assert state.is_successful()
 
-    if destination_table == "fact_mission_ulam":
+    if destination_table == "fact_mission_pam_ulam":
         print("DEBUG monitorenv missions:", client.query_df(
             "SELECT count() AS n, any(start_datetime_utc) AS start FROM monitorenv_proxy.missions WHERE id = 999100"
         ))
@@ -71,13 +71,13 @@ def test_sync_table_from_db_connection(
         print("DEBUG mission_action (STATUS/CONTROL/...):", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action WHERE mission_id = 999100"
         ))
-        print("DEBUG the actual JOIN used by rapport_ulam_mission.sql:", client.query_df(
+        print("DEBUG the actual JOIN used by rapport_pam_ulam_mission.sql:", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_general_info mgi "
             "INNER JOIN monitorenv_proxy.missions envm ON envm.id = mgi.mission_id "
             "WHERE mgi.mission_id = 999100"
         ))
 
-    if destination_table == "fact_moyen_ulam":
+    if destination_table == "fact_moyen_pam_ulam":
         # V777.05-V777.09 (monitorenv) used to be a single file/transaction
         # where any one failing statement rolled back all 5 tables together,
         # masking which one actually failed (all showed empty). Now split
@@ -107,7 +107,7 @@ def test_sync_table_from_db_connection(
         print("DEBUG mission_action for mission 999100:", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action WHERE mission_id = 999100"
         ))
-        print("DEBUG the actual base FROM used by rapport_ulam_moyen.sql:", client.query_df(
+        print("DEBUG the actual base FROM used by rapport_pam_ulam_moyen.sql:", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action_resource mar "
             "INNER JOIN rapportnav_proxy.mission_action ma ON ma.id = mar.action_id "
             "INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id "

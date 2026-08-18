@@ -1,6 +1,10 @@
 -- =====================================================================
--- Alimente rapportnav.fact_action_ulam (query_filepath pour la ligne
--- "fact_action_ulam" de sync_table_from_db_connection.csv).
+-- Alimente rapportnav.fact_action_pam_ulam (query_filepath pour la ligne
+-- "fact_action_pam_ulam" de sync_table_from_db_connection.csv).
+-- Couvre les unités PAM ET ULAM dans une seule table (cf.
+-- pam_ulam_control_units plus bas) -- action_type_mapping et le référentiel
+-- de contrôle sont identiques des deux côtés, seul le référentiel d'unités
+-- (dim_unit_reference_by_id) distingue PAM/ULAM via unit_type.
 -- =====================================================================
 WITH
 -- Référentiel façade par unité (monitorenv, control_unit_id) -- fourni
@@ -9,7 +13,7 @@ WITH
 -- même raison que les autres référentiels de ce fichier (requêtes
 -- indépendantes, pas de vue/macro partagée possible dans ce repo) --
 -- si la liste évolue, penser à la répercuter dans les 4 fichiers
--- (missions_aem.sql + les 3 requêtes ULAM).
+-- (missions_aem.sql + les 3 requêtes PAM+ULAM).
 dim_unit_reference_by_id AS (
     SELECT 10194 AS control_unit_id, 'MED' AS facade_ref
     UNION ALL SELECT 10039, 'MED'
@@ -46,19 +50,25 @@ dim_unit_reference_by_id AS (
     UNION ALL SELECT 10345, 'Sud de l''Océan indien'  -- PAM Osiris II
     UNION ALL SELECT 10519, 'Guyane'                  -- PAM Cayenne
 ),
--- Filtre unités ULAM (cf. requête 2, même logique) : service_type via
--- service_control_unit, repli sur le nom si le lien n'est pas renseigné.
-ulam_control_units AS (
+-- Filtre unités PAM + ULAM : service_type via service_control_unit, repli
+-- sur le nom si le lien n'est pas renseigné -- constaté non peuplé en
+-- pratique (aucune fixture de test ne renseigne service_control_unit),
+-- donc le repli par nom est la voie principale, pas un simple filet de
+-- sécurité. Même convention de nommage pour les 2 (nom d'unité préfixé
+-- PAM/ULAM, confirmé côté métier).
+pam_ulam_control_units AS (
     SELECT DISTINCT cu.id AS control_unit_id
     FROM monitorenv_proxy.control_units cu
     LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
     LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
-    WHERE s.service_type = 'ULAM' OR startsWith(upper(cu.name), 'ULAM')
+    WHERE s.service_type IN ('PAM', 'ULAM')
+       OR startsWith(upper(cu.name), 'ULAM')
+       OR startsWith(upper(cu.name), 'PAM')
 ),
 -- Référentiel unité VALIDÉ AEM (idem requête 2) -- rapportnav_proxy.service
--- sert uniquement au filtre ULAM ci-dessus, pas de référentiel concurrent.
--- INNER JOIN sur ulam_control_units : filtre les actions dont la mission
--- n'a aucune unité ULAM associée.
+-- sert uniquement au filtre PAM/ULAM ci-dessus, pas de référentiel concurrent.
+-- INNER JOIN sur pam_ulam_control_units : filtre les actions dont la
+-- mission n'a aucune unité PAM ni ULAM associée.
 mission_units AS (
     SELECT
         mcu.mission_id,
@@ -66,10 +76,19 @@ mission_units AS (
         -- Approximation : mission conjointe entre unités de façades
         -- différentes -> on ne garde que la 1ère façade trouvée (même
         -- limitation que terrain_type_first plus bas).
-        arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade
+        arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade,
+        -- unit_type PAM/ULAM (même classification que mission_service dans
+        -- missions_aem.sql) -- approximation identique à facade ci-dessus
+        -- pour les (rares) missions conjointes PAM+ULAM : on ne garde que
+        -- le 1er type trouvé.
+        arrayElement(groupUniqArray(multiIf(
+            startsWith(upper(cu.name), 'PAM'), 'PAM',
+            startsWith(upper(cu.name), 'ULAM'), 'ULAM',
+            'AUTRE'
+        )), 1) AS unit_type
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
-    INNER JOIN ulam_control_units uu ON uu.control_unit_id = cu.id
+    INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
     LEFT JOIN dim_unit_reference_by_id uref ON uref.control_unit_id = cu.id
     GROUP BY mcu.mission_id
 ),
@@ -167,6 +186,7 @@ SELECT
     ma.mission_id AS mission_id,
     coalesce(mu.unit_names, '') AS unit_names,
     coalesce(mu.facade, '') AS facade,
+    toString(coalesce(mu.unit_type, '')) AS unit_type,
     toString(ma.action_type) AS action_type,
     toString(multiIf(
         ma.action_type = 'TRAINING', coalesce(ma.training_type, ''),
@@ -198,7 +218,7 @@ SELECT
     now() AS updated_at
 FROM rapportnav_proxy.mission_action ma
 -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au moins
--- une unité ULAM (cf. ulam_control_units plus haut).
+-- une unité PAM ou ULAM (cf. pam_ulam_control_units plus haut).
 INNER JOIN mission_units mu ON mu.mission_id = ma.mission_id
 LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
 -- action_subtype_key : ne différencie que UNIT_MANAGEMENT_TRAINING (seul
@@ -211,6 +231,6 @@ LEFT JOIN action_type_mapping atm
         ''
     )
 -- STATUS = marqueurs de changement d'état nav (ANCHORED/NAVIGATING/...),
--- déjà exploités dans fact_mission_ulam.computed_hours_at_sea -- pas une
--- "activité" au sens métier du rapport ULAM.
+-- déjà exploités dans fact_mission_pam_ulam.computed_hours_at_sea -- pas
+-- une "activité" au sens métier du rapport.
 WHERE ma.action_type != 'STATUS';

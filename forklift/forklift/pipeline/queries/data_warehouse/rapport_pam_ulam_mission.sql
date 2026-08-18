@@ -1,6 +1,9 @@
 -- =====================================================================
--- Alimente rapportnav.fact_mission_ulam (query_filepath pour la ligne
--- "fact_mission_ulam" de sync_table_from_db_connection.csv).
+-- Alimente rapportnav.fact_mission_pam_ulam (query_filepath pour la ligne
+-- "fact_mission_pam_ulam" de sync_table_from_db_connection.csv).
+-- Couvre les unités PAM ET ULAM dans une seule table (cf.
+-- pam_ulam_control_units plus bas) -- unit_type distingue les deux, cf.
+-- discussion en chat (une table partagée plutôt que 2 jeux dupliqués).
 -- SELECT pur : le flow générique fait CREATE TABLE ... AS <cette requête>
 -- (ddl_script_path laissé vide -> schéma inféré, cf. discussion en chat).
 -- =====================================================================
@@ -11,7 +14,7 @@ WITH
 -- même raison que les autres référentiels de ce fichier (requêtes
 -- indépendantes, pas de vue/macro partagée possible dans ce repo) --
 -- si la liste évolue, penser à la répercuter dans les 4 fichiers
--- (missions_aem.sql + les 3 requêtes ULAM).
+-- (missions_aem.sql + les 3 requêtes PAM+ULAM).
 dim_unit_reference_by_id AS (
     SELECT 10194 AS control_unit_id, 'MED' AS facade_ref
     UNION ALL SELECT 10039, 'MED'
@@ -48,28 +51,34 @@ dim_unit_reference_by_id AS (
     UNION ALL SELECT 10345, 'Sud de l''Océan indien'  -- PAM Osiris II
     UNION ALL SELECT 10519, 'Guyane'                  -- PAM Cayenne
 ),
--- Filtre unités ULAM : rapportnav_proxy.service.service_type (enum
+-- Filtre unités PAM + ULAM : rapportnav_proxy.service.service_type (enum
 -- PAM/ULAM, NOT NULL) via la table de liaison service_control_unit
 -- (service_id, control_unit_id -- mêmes id que monitorenv_proxy.control_units).
--- Repli sur le nom (startsWith 'ULAM') si l'unité n'a aucune ligne dans
--- service_control_unit (lien pas systématiquement renseigné) -- limite
--- ce rapport aux unités ULAM, exclut PAM et tout le reste.
-ulam_control_units AS (
+-- Repli sur le nom (startsWith 'ULAM'/'PAM') si l'unité n'a aucune ligne
+-- dans service_control_unit -- constaté non peuplé en pratique (aucune
+-- fixture de test ne renseigne service_control_unit), donc le repli par
+-- nom est la voie principale, pas un simple filet de sécurité.
+pam_ulam_control_units AS (
     SELECT DISTINCT cu.id AS control_unit_id
     FROM monitorenv_proxy.control_units cu
     LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
     LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
-    WHERE s.service_type = 'ULAM' OR startsWith(upper(cu.name), 'ULAM')
+    WHERE s.service_type IN ('PAM', 'ULAM')
+       OR startsWith(upper(cu.name), 'ULAM')
+       OR startsWith(upper(cu.name), 'PAM')
 ),
 -- Référentiel "unité" VALIDÉ sur le rapport AEM : monitorenv_proxy
 -- missions_control_units + control_units pour le nom/façade/façade de
--- l'unité (rapportnav_proxy.service sert UNIQUEMENT au filtre ULAM
+-- l'unité (rapportnav_proxy.service sert UNIQUEMENT au filtre PAM/ULAM
 -- ci-dessus, pas de référentiel d'unité concurrent -- la fiche ULAM
 -- d'origine a été écrite avant le travail AEM et n'en tenait pas
 -- compte). Repris tel quel de la CTE mission_units de
 -- query_aem_par_mission_3_bases_clickhouse.sql.
--- INNER JOIN sur ulam_control_units : une mission conjointe ULAM+PAM
--- n'expose ici que son (ses) unité(s) ULAM, pas l'unité PAM partenaire.
+-- INNER JOIN sur pam_ulam_control_units : filtre aux missions ayant au
+-- moins une unité PAM ou ULAM. Une mission conjointe PAM+ULAM expose
+-- maintenant les deux unités dans unit_names (cf. unit_type ci-dessous
+-- pour les distinguer -- avant l'élargissement à PAM, seule(s) l'unité
+-- (les unités) ULAM ressortai(en)t ici, la PAM partenaire était masquée).
 mission_units AS (
     SELECT
         mcu.mission_id,
@@ -78,17 +87,27 @@ mission_units AS (
         groupArray(cu.id) AS control_unit_ids,
         -- Approximation : mission conjointe entre unités de façades
         -- différentes -> on ne garde que la 1ère façade trouvée.
-        arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade
+        arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade,
+        -- unit_type PAM/ULAM (même classification que mission_service dans
+        -- missions_aem.sql) -- résout le TODO historique ci-dessous. Même
+        -- approximation "1er trouvé" que facade pour les (rares) missions
+        -- conjointes PAM+ULAM.
+        arrayElement(groupUniqArray(multiIf(
+            startsWith(upper(cu.name), 'PAM'), 'PAM',
+            startsWith(upper(cu.name), 'ULAM'), 'ULAM',
+            'AUTRE'
+        )), 1) AS unit_type
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
-    INNER JOIN ulam_control_units uu ON uu.control_unit_id = cu.id
+    INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
     LEFT JOIN dim_unit_reference_by_id uref ON uref.control_unit_id = cu.id
     GROUP BY mcu.mission_id
 ),
--- ⚠️ Classification PAM/ULAM (unit_type) : dim_unit_reference_by_name
--- (nécessaire pour PAM, en attendant l'export control_unit_id côté PAM)
--- toujours pas rebranchée -- seule la façade (dim_unit_reference_by_id,
--- ULAM) l'est désormais. unit_type reste vide plus bas.
+-- ⚠️ Classification PAM/ULAM (unit_type) : désormais dérivée par nom
+-- (startsWith, cf. mission_units ci-dessus) plutôt que via un référentiel
+-- control_unit_id -> service_type dédié (qui exigerait un export
+-- control_unit_id fiable côté PAM, toujours pas disponible -- cf.
+-- pam_ulam_control_units en tête de fichier, même limitation).
 
 -- Heures de mer recalculées (méthode déjà validée sur le rapport AEM,
 -- cf. status_actions / heures_de_mer_nav dans
@@ -223,11 +242,11 @@ SELECT
     coalesce(mu.unit_names, '') AS unit_names,
     toUInt16(coalesce(mu.nb_unites_distinctes, 0)) AS nb_unites_distinctes,
     coalesce(mu.control_unit_ids, []) AS control_unit_ids,
-    -- TODO : classification PAM/ULAM toujours pas rebranchée
-    -- (dim_unit_reference_by_name, nécessite l'export control_unit_id
-    -- côté PAM) -- laissé vide plutôt que de réintroduire l'heuristique
-    -- service.name.
-    '' AS unit_type,
+    -- Classification PAM/ULAM : dérivée du nom d'unité (cf. mission_units,
+    -- même heuristique startsWith que pam_ulam_control_units) -- résout le
+    -- TODO historique (l'export control_unit_id -> service_type dédié côté
+    -- PAM n'est toujours pas disponible, cf. commentaire plus haut).
+    toString(coalesce(mu.unit_type, '')) AS unit_type,
     coalesce(mu.facade, '') AS facade,
     toInt32(coalesce(mgi.service_id, 0)) AS service_id,
     -- assumeNotNull : envm.start_datetime_utc est Nullable côté proxy, mais
@@ -340,8 +359,8 @@ SELECT
 FROM rapportnav_proxy.mission_general_info mgi
 INNER JOIN monitorenv_proxy.missions envm ON envm.id = mgi.mission_id
 -- INNER JOIN (pas LEFT) : mission_units ne contient que les missions
--- avec au moins une unité ULAM (cf. ulam_control_units plus haut) --
--- c'est ce qui filtre le rapport aux missions ULAM.
+-- avec au moins une unité PAM ou ULAM (cf. pam_ulam_control_units plus
+-- haut) -- c'est ce qui filtre le rapport aux missions PAM et ULAM.
 INNER JOIN mission_units mu    ON mu.mission_id = mgi.mission_id
 LEFT JOIN intermin im           ON im.mission_general_info_id = mgi.id
 LEFT JOIN heures_de_mer hm      ON hm.mission_id = mgi.mission_id
@@ -350,5 +369,5 @@ LEFT JOIN heures_moyen_nautique_par_mission hmn ON hmn.mission_id = mgi.mission_
 LEFT JOIN nav_completeness nc   ON nc.mission_id = mgi.mission_id
 -- ⚠️ même filtre de date codé en dur que query_aem_par_mission_3_bases_clickhouse.sql
 -- (portée jamais expliquée dans le code source) -- à confirmer avec Alexandre,
--- ou à retirer si le rapport ULAM doit couvrir tout l'historique.
+-- ou à retirer si le rapport PAM+ULAM doit couvrir tout l'historique.
 WHERE envm.start_datetime_utc >= toDateTime('2025-01-01 00:00:00');

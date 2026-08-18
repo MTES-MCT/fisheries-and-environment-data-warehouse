@@ -12,9 +12,9 @@
 -- Scénario :
 --   - l'action CONTROL (...0004) est volontairement liée aux 2 moyens
 --     (bateau + véhicule) -> nb_resources_on_action=2 pour cette action,
---     donc 2 lignes dans fact_moyen_ulam portant CHACUNE la durée
+--     donc 2 lignes dans fact_moyen_pam_ulam portant CHACUNE la durée
 --     complète de l'action (1h) -- exactement le cas de double comptage
---     documenté dans le commentaire SQL de rapport_ulam_moyen.sql.
+--     documenté dans le commentaire SQL de rapport_pam_ulam_moyen.sql.
 --     Un SUM(action_duration_h) naïf sur ces 2 lignes donnerait 2h alors
 --     que l'action ne dure réellement qu'1h.
 --   - RESOURCES_MAINTENANCE bateau (...0006) -> 1 seul moyen (bateau)
