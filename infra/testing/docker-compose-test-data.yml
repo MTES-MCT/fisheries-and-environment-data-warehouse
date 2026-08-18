@@ -90,6 +90,18 @@ services:
       rapportnav-db:
         condition: service_healthy
 
+  migration-sentinel:
+    image: alpine
+    container_name: migration_sentinel
+    command: ["echo", "OK"]
+    depends_on:
+      monitorfish-flyway:
+        condition: service_completed_successfully
+      monitorenv-flyway:
+        condition: service_completed_successfully
+      rapportnav-flyway:
+        condition: service_completed_successfully
+
 volumes:
   monitorfish-db-data:
     driver: local
