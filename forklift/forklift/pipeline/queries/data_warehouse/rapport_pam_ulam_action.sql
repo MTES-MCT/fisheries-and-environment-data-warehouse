@@ -94,33 +94,67 @@ action_resources AS (
 -- missions_aem.sql (control_targets_nav). Nécessaire pour les colonnes
 -- "Nb de ctrl" / "Nb d'INF sans PV" / "Nb d'INF avec PV" des maquettes
 -- Bilan opérationnel.
--- ⚠️⚠️ SCHÉMA NON VÉRIFIÉ CONTRE UNE VRAIE BASE rapportnav2 -- noms de
--- colonnes et valeurs d'enum reconstruits de mémoire dans la fixture de
--- test V777.05__dummy_target_control_infraction_aem_test.sql (elle-même
--- explicitement marquée non testée). À valider avant merge contre
--- target2/v2/TargetModel.kt, control/v2/ControlModel.kt,
--- infraction/v2/InfractionModel.kt (rapportnav2) :
---   - infraction_type = 'WITH_REPORT' est la seule valeur confirmée par la
---     fixture -- traitée ici comme "infraction avec PV". Toute autre valeur
---     (y compris NULL) est comptée "sans PV" par défaut : si un 3e état
---     existe (brouillon, en attente...) il serait mal classé.
---   - control_2.has_been_done : supposé signifier "le contrôle a
---     effectivement eu lieu" -- nb_controls ne compte que ces lignes-là.
---   - control_2.amount_of_controls : sémantique peu claire (nombre de
---     contrôles représentés par CETTE ligne, ou juste un compteur
---     secondaire ?) -- exposé séparément (nb_controls_amount) plutôt que
---     de trancher au hasard entre les deux définitions possibles.
-action_infractions AS (
+-- Schéma et logique VÉRIFIÉS contre rapportnav2 (repo cloné et inspecté --
+-- migration V1.2025.03.18.16.14__target_2_control_2_infraction_2_table.sql
+-- pour le DDL, CountInfractions.kt + ComputeNavControlPolicy.kt pour la
+-- vraie logique de comptage métier) :
+--   - infraction_type (varchar, PAS un enum PG) a 3 valeurs réelles
+--     (InfractionTypeEnum, rapportnav2) : WITH_REPORT (avec PV),
+--     WITHOUT_REPORT (sans PV), WAITING (en attente / pas encore
+--     qualifiée). Les 3 sont distinguées ci-dessous -- WAITING n'est PAS
+--     compté comme "sans PV" (erreur de la version précédente).
+--   - control_2 a une contrainte UNIQUE(control_type, target_id) : un
+--     agent ne peut PAS créer 2 lignes du même type de contrôle sur la
+--     même cible -- plusieurs contrôles identiques s'accumulent dans
+--     amount_of_controls (DEFAULT 1) sur une seule ligne (confirmé par la
+--     migration de données V1.2025.10.23.17.30__fix_amount_of_controls.sql).
+--     "Nb de ctrl" est donc SUM(amount_of_controls), PAS un COUNT de
+--     lignes control_2 (qui sous-compterait silencieusement) -- exactement
+--     la logique de CountInfractions.countNavInfractions (rapportnav2),
+--     reproduite ci-dessous : par contrôle has_been_done=true, on somme
+--     amount_of_controls une seule fois s'il a AU MOINS UNE infraction du
+--     type recherché (pas un COUNT de lignes infraction_2, qui
+--     compterait 2x un contrôle avec 2 infractions du même type).
+--   - natinf_code (control_2.infraction_natinf_2) est un varchar(10), pas
+--     un entier.
+control_infraction_flags AS (
+    SELECT
+        c.id AS control_id,
+        toString(t.action_id) AS action_id,
+        coalesce(c.amount_of_controls, 0) AS amount_of_controls,
+        coalesce(c.has_been_done, false) AS has_been_done,
+        maxIf(1, coalesce(i.infraction_type, '') = 'WITH_REPORT') AS has_with_report,
+        maxIf(1, coalesce(i.infraction_type, '') = 'WITHOUT_REPORT') AS has_without_report,
+        maxIf(1, coalesce(i.infraction_type, '') = 'WAITING') AS has_waiting
+    FROM rapportnav_proxy.control_2 c
+    INNER JOIN rapportnav_proxy.target_2 t ON t.id = c.target_id
+    LEFT JOIN rapportnav_proxy.infraction_2 i ON i.control_id = c.id
+    GROUP BY c.id, t.action_id, c.amount_of_controls, c.has_been_done
+),
+action_controls AS (
+    SELECT
+        action_id,
+        -- Filtré has_been_done=true comme les autres colonnes, pour rester
+        -- cohérent avec nb_controls (sinon un contrôle non fait gonflerait
+        -- nb_control_types sans apparaître dans nb_controls).
+        uniqExactIf(control_id, has_been_done = true) AS nb_control_types,
+        sumIf(amount_of_controls, has_been_done = true) AS nb_controls,
+        sumIf(amount_of_controls, has_been_done = true AND has_with_report = 1) AS nb_infractions_avec_pv,
+        sumIf(amount_of_controls, has_been_done = true AND has_without_report = 1) AS nb_infractions_sans_pv,
+        sumIf(amount_of_controls, has_been_done = true AND has_waiting = 1) AS nb_infractions_en_attente
+    FROM control_infraction_flags
+    GROUP BY action_id
+),
+action_targets AS (
     SELECT
         toString(t.action_id) AS action_id,
         uniqExact(t.id) AS nb_targets,
-        uniqExactIf(c.id, coalesce(c.has_been_done, 0) = 1) AS nb_controls,
-        sumIf(coalesce(c.amount_of_controls, 0), coalesce(c.has_been_done, 0) = 1) AS nb_controls_amount,
-        countIf(coalesce(i.infraction_type, '') = 'WITH_REPORT') AS nb_infractions_avec_pv,
-        countIf(i.id IS NOT NULL AND coalesce(i.infraction_type, '') != 'WITH_REPORT') AS nb_infractions_sans_pv,
+        -- Codes NATINF des infractions rattachées à des contrôles
+        -- has_been_done=true -- même périmètre que les compteurs
+        -- ci-dessus.
         groupUniqArray(n.natinf_code) AS natinf_codes
     FROM rapportnav_proxy.target_2 t
-    LEFT JOIN rapportnav_proxy.control_2 c ON c.target_id = t.id
+    LEFT JOIN rapportnav_proxy.control_2 c ON c.target_id = t.id AND coalesce(c.has_been_done, false) = true
     LEFT JOIN rapportnav_proxy.infraction_2 i ON i.control_id = c.id
     LEFT JOIN rapportnav_proxy.infraction_natinf_2 n ON n.infraction_id = i.id
     GROUP BY t.action_id
@@ -216,21 +250,23 @@ SELECT
     toString(coalesce(nullIf(atm.libelle_francais, ''), toString(ma.action_type))) AS libelle_francais,
     toString(coalesce(atm.politique_publique, '')) AS politique_publique,
     toString(coalesce(atm.thematique, '')) AS thematique,
-    -- Cibles/contrôles/infractions (cf. action_infractions ci-dessus,
-    -- ⚠️ schéma non vérifié -- voir avertissement détaillé sur la CTE).
-    toUInt16(coalesce(ai.nb_targets, 0)) AS nb_targets,
-    toUInt16(coalesce(ai.nb_controls, 0)) AS nb_controls,
-    toUInt16(coalesce(ai.nb_controls_amount, 0)) AS nb_controls_amount,
-    toUInt16(coalesce(ai.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
-    toUInt16(coalesce(ai.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
-    coalesce(ai.natinf_codes, []) AS natinf_codes,
+    -- Cibles/contrôles/infractions (cf. action_targets/action_controls
+    -- ci-dessus -- schéma et logique vérifiés contre rapportnav2).
+    toUInt16(coalesce(atg.nb_targets, 0)) AS nb_targets,
+    toUInt16(coalesce(acl.nb_control_types, 0)) AS nb_control_types,
+    toUInt16(coalesce(acl.nb_controls, 0)) AS nb_controls,
+    toUInt16(coalesce(acl.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
+    toUInt16(coalesce(acl.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
+    toUInt16(coalesce(acl.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
+    coalesce(atg.natinf_codes, []) AS natinf_codes,
     now() AS updated_at
 FROM rapportnav_proxy.mission_action ma
 -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au moins
 -- une unité PAM ou ULAM (cf. pam_ulam_control_units plus haut).
 INNER JOIN mission_units mu ON mu.mission_id = ma.mission_id
 LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
-LEFT JOIN action_infractions ai ON ai.action_id = toString(ma.id)
+LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
+LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
 -- action_subtype_key : ne différencie que UNIT_MANAGEMENT_TRAINING (seul
 -- action_type dont action_subtype est un champ contrôlé, pas du texte
 -- libre -- cf. commentaire sur action_type_mapping).
