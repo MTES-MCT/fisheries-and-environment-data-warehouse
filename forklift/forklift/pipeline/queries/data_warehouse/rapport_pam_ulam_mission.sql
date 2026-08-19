@@ -1,68 +1,43 @@
 -- =====================================================================
--- Alimente rapportnav.fact_mission_pam_ulam (query_filepath pour la ligne
--- "fact_mission_pam_ulam" de sync_table_from_db_connection.csv).
--- Couvre les unités PAM ET ULAM dans une seule table (cf.
--- pam_ulam_control_units plus bas) -- unit_type distingue les deux, cf.
--- discussion en chat (une table partagée plutôt que 2 jeux dupliqués).
+-- Alimente rapportnav.fact_mission_pam_ulam.
+-- Couvre les unités PAM ET ULAM dans une seule table -- unit_types
+-- distingue les deux.
 -- SELECT pur : le flow générique fait CREATE TABLE ... AS <cette requête>
--- (ddl_script_path laissé vide -> schéma inféré, cf. discussion en chat).
--- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql dans
+-- (ddl_script_path laissé vide -> schéma inféré).
+-- Doit tourner après dim_unit_reference.sql dans
 -- sync_table_from_db_connection.csv (aucune dépendance native entre
--- lignes de ce flow -- cf. commentaire détaillé dans dim_unit_reference.sql).
+-- lignes de ce flow, cf. dim_unit_reference.sql).
 -- =====================================================================
 WITH
--- Filtre unités PAM + ULAM : rapportnav_proxy.service.service_type (enum
--- PAM/ULAM, NOT NULL) via la table de liaison service_control_unit
--- (service_id, control_unit_id -- mêmes id que monitorenv_proxy.control_units).
--- Repli sur le nom (startsWith 'ULAM'/'PAM') si l'unité n'a aucune ligne
--- dans service_control_unit -- constaté non peuplé en pratique (aucune
--- fixture de test ne renseigne service_control_unit), donc le repli par
--- nom est la voie principale, pas un simple filet de sécurité.
+-- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
+-- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
+-- pas dans ce rapport).
 pam_ulam_control_units AS (
-    SELECT DISTINCT cu.id AS control_unit_id
-    FROM monitorenv_proxy.control_units cu
-    LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
-    LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
-    WHERE s.service_type IN ('PAM', 'ULAM')
-       OR startsWith(upper(cu.name), 'ULAM')
-       OR startsWith(upper(cu.name), 'PAM')
+    SELECT
+        control_unit_id,
+        facade_ref,
+        unit_type
+    FROM rapportnav.dim_unit_reference
+    WHERE unit_type IN ('PAM', 'ULAM')
 ),
--- Référentiel "unité" VALIDÉ sur le rapport AEM : monitorenv_proxy
--- missions_control_units + control_units pour le nom/façade/façade de
--- l'unité (rapportnav_proxy.service sert UNIQUEMENT au filtre PAM/ULAM
--- ci-dessus, pas de référentiel d'unité concurrent -- la fiche ULAM
--- d'origine a été écrite avant le travail AEM et n'en tenait pas
--- compte). Repris tel quel de la CTE mission_units de
--- query_aem_par_mission_3_bases_clickhouse.sql.
 -- INNER JOIN sur pam_ulam_control_units : filtre aux missions ayant au
--- moins une unité PAM ou ULAM. Une mission conjointe PAM+ULAM expose
--- maintenant les deux unités dans unit_names (cf. unit_type ci-dessous
--- pour les distinguer -- avant l'élargissement à PAM, seule(s) l'unité
--- (les unités) ULAM ressortai(en)t ici, la PAM partenaire était masquée).
+-- moins une unité PAM ou ULAM. Une mission conjointe PAM+ULAM expose les
+-- deux unités dans unit_names (cf. unit_types ci-dessous).
 mission_units AS (
     SELECT
         mcu.mission_id,
         arrayStringConcat(groupArray(cu.name), ', ') AS unit_names,
         COUNT(DISTINCT cu.id) AS nb_unites_distinctes,
         groupArray(cu.id) AS control_unit_ids,
-        -- Approximation : mission conjointe entre unités de façades
-        -- différentes -> on ne garde que la 1ère façade trouvée.
-        arrayElement(groupUniqArray(uref.facade_ref), 1) AS facade,
-        -- unit_type : priorité à rapportnav.dim_unit_reference (référentiel
-        -- unique, résout le TODO historique ci-dessous), repli sur le nom
-        -- en direct pour toute unité PAM/ULAM pas encore ajoutée à ce
-        -- référentiel manuel (cf. pam_ulam_control_units, même filtre par
-        -- nom en tête de fichier). Approximation "1er trouvé" identique à
-        -- facade ci-dessus pour les (rares) missions conjointes PAM+ULAM.
-        arrayElement(groupUniqArray(coalesce(nullIf(uref.unit_type, ''), multiIf(
-            startsWith(upper(cu.name), 'PAM'), 'PAM',
-            startsWith(upper(cu.name), 'ULAM'), 'ULAM',
-            'AUTRE'
-        ))), 1) AS unit_type
+        -- Liste complète (dédupliquée) des façades/types d'unité de la
+        -- mission -- une mission conjointe peut mobiliser des unités de
+        -- façades ou types différents (ex : PAM+ULAM), donc pas de
+        -- réduction à la 1ère trouvée.
+        groupUniqArray(uu.facade_ref) AS facades,
+        groupUniqArray(uu.unit_type) AS unit_types
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
-    LEFT JOIN rapportnav.dim_unit_reference uref ON uref.control_unit_id = cu.id
     GROUP BY mcu.mission_id
 ),
 
@@ -186,6 +161,33 @@ nav_completeness AS (
         countIf(coalesce(is_complete_for_stats, 0) = 0) = 0 AS toutes_actions_nav_completes
     FROM rapportnav_proxy.mission_action
     GROUP BY mission_id
+),
+
+-- Durée totale des actions de la mission (hors STATUS, même exclusion que
+-- fact_action_pam_ulam.duration_h) -- utilisée pour le temps agent en
+-- renfort extérieur ci-dessous.
+mission_action_hours AS (
+    SELECT
+        mission_id,
+        sum(toFloat64(if(
+            end_datetime_utc IS NOT NULL AND end_datetime_utc >= start_datetime_utc,
+            dateDiff('second', start_datetime_utc, end_datetime_utc) / 3600.0,
+            coalesce(toFloat64(nbr_of_hours), 0)
+        ))) AS total_action_hours
+    FROM rapportnav_proxy.mission_action
+    WHERE action_type != 'STATUS'
+    GROUP BY mission_id
+),
+-- Nombre d'agents assignés à la mission (rapportnav_proxy.mission_crew).
+-- Absences (mission_crew_absence) non exclues -- non demandé, à affiner
+-- si le décompte doit exclure les agents absents sur la période.
+mission_crew_counts AS (
+    SELECT
+        mission_id,
+        uniqExact(agent_id) AS nb_agents
+    FROM rapportnav_proxy.mission_crew
+    WHERE mission_id IS NOT NULL AND agent_id IS NOT NULL
+    GROUP BY mission_id
 )
 
 SELECT
@@ -199,12 +201,12 @@ SELECT
     coalesce(mu.unit_names, '') AS unit_names,
     toUInt16(coalesce(mu.nb_unites_distinctes, 0)) AS nb_unites_distinctes,
     coalesce(mu.control_unit_ids, []) AS control_unit_ids,
-    -- Classification PAM/ULAM : dérivée du nom d'unité (cf. mission_units,
-    -- même heuristique startsWith que pam_ulam_control_units) -- résout le
-    -- TODO historique (l'export control_unit_id -> service_type dédié côté
-    -- PAM n'est toujours pas disponible, cf. commentaire plus haut).
-    toString(coalesce(mu.unit_type, '')) AS unit_type,
-    coalesce(mu.facade, '') AS facade,
+    -- Liste complète des types d'unité (PAM/ULAM) et façades des unités
+    -- engagées sur la mission (cf. mission_units) -- une mission conjointe
+    -- PAM+ULAM ou multi-façades expose toutes les valeurs, pas la 1ère
+    -- trouvée.
+    coalesce(mu.unit_types, []) AS unit_types,
+    coalesce(mu.facades, []) AS facades,
     toInt32(coalesce(mgi.service_id, 0)) AS service_id,
     -- assumeNotNull : envm.start_datetime_utc est Nullable côté proxy, mais
     -- le WHERE en fin de requête (>= 2025-01-01) exclut déjà toute ligne
@@ -225,17 +227,13 @@ SELECT
     toString(coalesce(mgi.reinforcement_type, '')) AS reinforcement_type,
     toString(coalesce(mgi.jdp_type, '')) AS jdp_type,
     toUInt8(coalesce(mgi.reinforcement_type, '') = 'JDP' OR mgi.jdp_type IS NOT NULL) AS is_jdp,
-    -- "Temps en renfort extérieur" : le champ "temps agent individualisé"
-    -- n'existe toujours pas (cf. gap déjà documenté) -- approximation
-    -- retenue : heures DÉCLARATIVES de la mission (mission_general_info.
-    -- nb_hour_at_sea, PAS computed_hours_at_sea/heures_moyen_nautique
-    -- plus bas) pour toute mission EXTERNAL_REINFORCEMENT_TIME_REPORT,
-    -- FIELD_REPORT, ou avec un jdp_type renseigné. Périmètre volontairement
-    -- plus large que le seul flag is_external_reinforcement ci-dessus.
+    -- "Temps en renfort extérieur" = durée des actions de la mission
+    -- (mission_action_hours, hors STATUS) × nombre d'agents assignés à la
+    -- mission (mission_crew_counts), pour toute mission dont
+    -- reinforcement_type est renseigné.
     toFloat64(if(
-        coalesce(mgi.mission_report_type, '') IN ('EXTERNAL_REINFORCEMENT_TIME_REPORT', 'FIELD_REPORT')
-        OR mgi.jdp_type IS NOT NULL,
-        coalesce(mgi.nb_hour_at_sea, 0),
+        mgi.reinforcement_type IS NOT NULL,
+        coalesce(mah.total_action_hours, 0) * coalesce(mcc.nb_agents, 0),
         0
     )) AS heures_renfort_exterieur,
     -- "Temps en JDP" / "nombre de missions JDP" : même principe, mais le
@@ -324,6 +322,8 @@ LEFT JOIN heures_de_mer hm      ON hm.mission_id = mgi.mission_id
 LEFT JOIN mission_resources mr  ON mr.mission_id = mgi.mission_id
 LEFT JOIN heures_moyen_nautique_par_mission hmn ON hmn.mission_id = mgi.mission_id
 LEFT JOIN nav_completeness nc   ON nc.mission_id = mgi.mission_id
+LEFT JOIN mission_action_hours mah ON mah.mission_id = mgi.mission_id
+LEFT JOIN mission_crew_counts mcc  ON mcc.mission_id = mgi.mission_id
 -- ⚠️ même filtre de date codé en dur que query_aem_par_mission_3_bases_clickhouse.sql
 -- (portée jamais expliquée dans le code source) -- à confirmer avec Alexandre,
 -- ou à retirer si le rapport PAM+ULAM doit couvrir tout l'historique.

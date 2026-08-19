@@ -1,123 +1,284 @@
 -- =====================================================================
--- Alimente rapportnav.fact_cible_pam_ulam (query_filepath pour la ligne
--- "fact_cible_pam_ulam" de sync_table_from_db_connection.csv).
--- Nouvelle table (cf. discussion en chat) -- grain : 1 ligne par unité ×
--- sous-type de contrôle × target_type × mois. Table pré-agrégée, prête à
--- être posée directement en Metabase.
+-- Alimente rapportnav.fact_cible_pam_ulam.
+-- Grain : 1 ligne par unité × source (NAV/FISH/ENV) × sous-type de
+-- contrôle (action_subtype/action_subsubtype, même hiérarchie que
+-- fact_action_pam_ulam) × mois. Table pré-agrégée, prête à être posée
+-- directement en Metabase.
 --
--- "Sous-type de contrôle" = mission_action.control_type (cf. commentaire
--- détaillé dans rapport_pam_ulam_moyen.sql -- même champ, même limitation
--- nav-only vérifiée contre rapportnav2).
--- "target_type" = target_2.target_type (DEFAULT/VEHICLE/COMPANY/INDIVIDUAL
--- -- cf. TargetType.kt, rapportnav2) -- classification de CE QUI a été
--- contrôlé, complémentaire de control_type (POURQUOI/quel type de
--- contrôle). Contrairement à rapport_pam_ulam_moyen.sql, PAS de fan-out
--- artificiel ici : control_2.target_id -> target_2.id est un vrai lien
--- (1 contrôle a exactement 1 cible), donc nb_controles/infractions sont
--- correctement attribués à leur target_type réel, pas dupliqués.
+-- ⚠️ RÉÉCRITURE : l'ancienne version ne lisait que rapportnav_proxy
+-- (target_2.target_type, 4 valeurs génériques DEFAULT/VEHICLE/COMPANY/
+-- INDIVIDUAL -- pas la granularité voulue par les maquettes) et filtrait
+-- sur `ma.control_type IS NOT NULL`. Or `control_type` n'est un champ
+-- renseigné QUE pour OTHER_CONTROL (texte libre, cf. discussion en chat)
+-- -- ce filtre excluait donc silencieusement CONTROL_NAUTICAL_LEISURE/
+-- CONTROL_SECTOR/CONTROL_SLEEPING_FISHING_GEAR de cette table. La
+-- "granularité de cible" demandée par les maquettes est en réalité déjà
+-- portée par action_subtype/action_subsubtype (leisure_type/
+-- fishing_gear_type/sector_establishment_type/vessel_type -- même
+-- hiérarchie unifiée que fact_action_pam_ulam) : réutilisée ici plutôt
+-- que target_2.target_type.
 --
--- ⚠️ Actions sans control_type renseigné, ou cibles sans contrôle
--- has_been_done=true, sont EXCLUES (cf. même limitation que
--- rapport_pam_ulam_moyen.sql).
+-- 3 sources désormais unies (comme fact_action_pam_ulam) : NAV (famille
+-- CONTROL unifiée), FISH (monitorfish.analytics_controls_full_data,
+-- control_type != 'OBSERVATION'), ENV (monitorenv.analytics_actions,
+-- action_type='CONTROL'). `source` exposé en colonne pour permettre un
+-- filtre par police tout en gardant les totaux "toutes polices
+-- confondues" par simple SUM().
 --
--- Couvre les unités PAM ET ULAM -- 1 ligne par UNITÉ INDIVIDUELLE (même
--- logique que rapport_pam_ulam_moyen.sql, pas de concaténation
--- "ULAM 33, ULAM 40").
--- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql dans
--- sync_table_from_db_connection.csv (aucune dépendance native entre
--- lignes de ce flow -- cf. commentaire détaillé dans dim_unit_reference.sql).
+-- nb_controles_amp/nb_controles_300m/nb_controles_avec_plongee/
+-- nb_controles_journee_securite : mêmes champs "détail" confirmés
+-- utilisés par la maquette (Contrôles de navires/loisirs nautiques) que
+-- sur fact_action_pam_ulam -- NAV uniquement (nbr_of_control_amp/300m,
+-- has_diving_during_operation, is_control_during_security_day n'existent
+-- pas côté fish/env, 0 par défaut pour ces sources).
+--
+-- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql ET après les
+-- flows sync_table_with_pandas qui alimentent monitorfish.analytics_controls_full_data
+-- / monitorenv.analytics_actions / monitorenv.actions_infractions (aucune
+-- dépendance native entre lignes de ces 2 flows, cf. dim_unit_reference.sql).
 -- =====================================================================
 WITH
--- Filtre unités PAM + ULAM (même logique que les autres requêtes) :
--- service_type via service_control_unit, repli sur le nom si le lien
--- n'est pas renseigné -- constaté non peuplé en pratique (aucune fixture
--- de test ne renseigne service_control_unit), donc le repli par nom est
--- la voie principale, pas un simple filet de sécurité.
+-- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
+-- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
+-- pas dans ce rapport).
 pam_ulam_control_units AS (
-    SELECT DISTINCT cu.id AS control_unit_id
-    FROM monitorenv_proxy.control_units cu
-    LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
-    LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
-    WHERE s.service_type IN ('PAM', 'ULAM')
-       OR startsWith(upper(cu.name), 'ULAM')
-       OR startsWith(upper(cu.name), 'PAM')
+    SELECT
+        control_unit_id,
+        facade_ref,
+        unit_type
+    FROM rapportnav.dim_unit_reference
+    WHERE unit_type IN ('PAM', 'ULAM')
 ),
--- 1 ligne par (mission, unité individuelle) -- cf. rapport_pam_ulam_moyen.sql,
--- même logique, dupliquée ici (requêtes indépendantes, cf. convention du
--- repo).
+-- 1 ligne par (mission, unité individuelle).
 mission_unit_pairs AS (
     SELECT DISTINCT
         mcu.mission_id,
         cu.id AS control_unit_id,
         cu.name AS unit_name,
-        toString(coalesce(uref.facade_ref, '')) AS facade,
-        toString(coalesce(nullIf(uref.unit_type, ''), multiIf(
-            startsWith(upper(cu.name), 'PAM'), 'PAM',
-            startsWith(upper(cu.name), 'ULAM'), 'ULAM',
-            'AUTRE'
-        ))) AS unit_type
+        uu.facade_ref AS facade,
+        uu.unit_type AS unit_type
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
-    LEFT JOIN rapportnav.dim_unit_reference uref ON uref.control_unit_id = cu.id
 ),
--- Contrôles/infractions has_been_done=true, groupés par (action, cible,
--- target_type) -- PAS collapsé sur toute l'action (contrairement à
--- rapport_pam_ulam_moyen.sql) : ici le lien control_2->target_2 est
--- direct, pas d'approximation à faire.
-control_by_target AS (
+-- Politique publique / thématique pour la famille CONTROL NAV -- extrait
+-- réduit de action_type_mapping (rapport_pam_ulam_action.sql) : mêmes 6
+-- clés (action_subtype), à resynchroniser si cette table change là-bas.
+control_policy_mapping AS (
+    SELECT '' AS action_subtype_key, 'Contrôle des activités maritimes' AS politique_publique, 'Transversal' AS thematique
+    UNION ALL SELECT 'NAUTICAL_LEISURE', 'Contrôle des activités maritimes', 'Loisirs nautiques'
+    UNION ALL SELECT 'SECTOR', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'SLEEPING_FISHING_GEAR', 'Contrôle des activités maritimes', 'Pêches maritimes'
+    UNION ALL SELECT 'OTHER_CONTROL', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'SHIP', 'Contrôle des activités maritimes', 'Transversal'
+),
+-- Contrôles/infractions NAV (target_2 -> control_2 -> infraction_2), même
+-- logique que rapport_pam_ulam_action.sql : "Nb de ctrl" =
+-- SUM(amount_of_controls) des contrôles has_been_done=true.
+control_infraction_flags AS (
     SELECT
         c.id AS control_id,
         toString(t.action_id) AS action_id,
-        t.id AS target_id,
-        toString(t.target_type) AS target_type,
         coalesce(c.amount_of_controls, 0) AS amount_of_controls,
+        coalesce(c.has_been_done, false) AS has_been_done,
         maxIf(1, coalesce(i.infraction_type, '') = 'WITH_REPORT') AS has_with_report,
         maxIf(1, coalesce(i.infraction_type, '') = 'WITHOUT_REPORT') AS has_without_report,
         maxIf(1, coalesce(i.infraction_type, '') = 'WAITING') AS has_waiting
     FROM rapportnav_proxy.control_2 c
     INNER JOIN rapportnav_proxy.target_2 t ON t.id = c.target_id
     LEFT JOIN rapportnav_proxy.infraction_2 i ON i.control_id = c.id
-    WHERE coalesce(c.has_been_done, false) = true
-    GROUP BY c.id, t.action_id, t.id, t.target_type, c.amount_of_controls
+    GROUP BY c.id, t.action_id, c.amount_of_controls, c.has_been_done
 ),
-action_target_type_controls AS (
+action_controls AS (
     SELECT
         action_id,
-        target_type,
-        uniqExact(target_id) AS nb_cibles,
-        sum(amount_of_controls) AS nb_controles,
-        sumIf(amount_of_controls, has_with_report = 1) AS nb_infractions_avec_pv,
-        sumIf(amount_of_controls, has_without_report = 1) AS nb_infractions_sans_pv,
-        sumIf(amount_of_controls, has_waiting = 1) AS nb_infractions_en_attente
-    FROM control_by_target
-    GROUP BY action_id, target_type
+        sumIf(amount_of_controls, has_been_done = true) AS nb_controls,
+        sumIf(amount_of_controls, has_been_done = true AND has_with_report = 1) AS nb_infractions_avec_pv,
+        sumIf(amount_of_controls, has_been_done = true AND has_without_report = 1) AS nb_infractions_sans_pv,
+        sumIf(amount_of_controls, has_been_done = true AND has_waiting = 1) AS nb_infractions_en_attente
+    FROM control_infraction_flags
+    GROUP BY action_id
+),
+action_targets AS (
+    SELECT
+        toString(t.action_id) AS action_id,
+        uniqExact(t.id) AS nb_targets
+    FROM rapportnav_proxy.target_2 t
+    LEFT JOIN rapportnav_proxy.control_2 c ON c.target_id = t.id AND coalesce(c.has_been_done, false) = true
+    GROUP BY t.action_id
+),
+
+-- ---- Source NAV : famille CONTROL unifiée uniquement ----
+nav_control_rows AS (
+    SELECT
+        'NAV' AS source,
+        mup.control_unit_id AS control_unit_id,
+        mup.unit_name AS unit_name,
+        mup.facade AS facade,
+        mup.unit_type AS unit_type,
+        toString(multiIf(
+            ma.action_type = 'CONTROL_NAUTICAL_LEISURE', 'NAUTICAL_LEISURE',
+            ma.action_type = 'CONTROL_SLEEPING_FISHING_GEAR', 'SLEEPING_FISHING_GEAR',
+            ma.action_type = 'CONTROL_SECTOR', 'SECTOR',
+            ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
+            ma.action_type = 'CONTROL' AND nullIf(ma.vessel_type, '') IS NOT NULL, 'SHIP',
+            ''
+        )) AS action_subtype,
+        toString(coalesce(
+            nullIf(ma.vessel_type, ''),
+            nullIf(ma.leisure_type, ''),
+            nullIf(ma.fishing_gear_type, ''),
+            -- sector_type + sector_establishment_type renseignés ensemble
+            -- pour CONTROL_SECTOR (filière + établissement précis) --
+            -- concaténés plutôt que coalescés, cf. rapport_pam_ulam_action.sql.
+            nullIf(
+                arrayStringConcat(arrayFilter(
+                    x -> x != '',
+                    [coalesce(ma.sector_type, ''), coalesce(ma.sector_establishment_type, '')]
+                ), ' / '),
+                ''
+            ),
+            nullIf(ma.control_type, ''),
+            ''
+        )) AS action_subsubtype,
+        toString(coalesce(cpm.politique_publique, '')) AS politique_publique,
+        toString(coalesce(cpm.thematique, '')) AS thematique,
+        toDate(toStartOfMonth(ma.start_datetime_utc)) AS mois,
+        toUInt16(coalesce(acl.nb_controls, 0)) AS nb_controles,
+        toUInt16(coalesce(acl.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
+        toUInt16(coalesce(acl.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
+        toUInt16(coalesce(acl.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
+        toUInt16(coalesce(atg.nb_targets, 0)) AS nb_cibles,
+        toUInt16(coalesce(ma.nbr_of_control_amp, 0)) AS nb_controles_amp,
+        toUInt16(coalesce(ma.nbr_of_control_300m, 0)) AS nb_controles_300m,
+        toUInt16(coalesce(ma.has_diving_during_operation, 0)) AS nb_controles_avec_plongee,
+        toUInt16(coalesce(ma.is_control_during_security_day, 0)) AS nb_controles_journee_securite
+    FROM rapportnav_proxy.mission_action ma
+    -- INNER JOIN : filtre aux missions ayant au moins une unité PAM ou
+    -- ULAM ; fanout intentionnel 1 ligne par unité individuelle.
+    INNER JOIN mission_unit_pairs mup ON mup.mission_id = ma.mission_id
+    LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
+    LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
+    LEFT JOIN control_policy_mapping cpm
+        ON cpm.action_subtype_key = multiIf(
+            ma.action_type = 'CONTROL_NAUTICAL_LEISURE', 'NAUTICAL_LEISURE',
+            ma.action_type = 'CONTROL_SLEEPING_FISHING_GEAR', 'SLEEPING_FISHING_GEAR',
+            ma.action_type = 'CONTROL_SECTOR', 'SECTOR',
+            ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
+            ma.action_type = 'CONTROL' AND nullIf(ma.vessel_type, '') IS NOT NULL, 'SHIP',
+            ''
+        )
+    WHERE ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL')
+      AND ma.start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+),
+
+-- ---- Source FISH : contrôles seulement (OBSERVATION exclu) ----
+fish_control_rows AS (
+    SELECT
+        'FISH' AS source,
+        f.control_unit_id AS control_unit_id,
+        f.control_unit AS unit_name,
+        f.facade AS facade,
+        toString(multiIf(
+            startsWith(upper(f.control_unit), 'PAM'), 'PAM',
+            startsWith(upper(f.control_unit), 'ULAM'), 'ULAM',
+            'AUTRE'
+        )) AS unit_type,
+        'FISH' AS action_subtype,
+        toString(f.control_type) AS action_subsubtype,
+        'Pêches maritimes' AS politique_publique,
+        toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
+        toDate(toStartOfMonth(f.control_datetime_utc)) AS mois,
+        toUInt16(1) AS nb_controles,
+        toUInt16(f.infraction_report) AS nb_infractions_avec_pv,
+        toUInt16(if(f.infraction = 1 AND f.infraction_report = 0, 1, 0)) AS nb_infractions_sans_pv,
+        toUInt16(0) AS nb_infractions_en_attente,
+        toUInt16(1) AS nb_cibles,
+        -- Pas d'équivalent AMP/bande 300/plongée/journée sécu côté FISH.
+        toUInt16(0) AS nb_controles_amp,
+        toUInt16(0) AS nb_controles_300m,
+        toUInt16(0) AS nb_controles_avec_plongee,
+        toUInt16(0) AS nb_controles_journee_securite
+    FROM monitorfish.analytics_controls_full_data f
+    WHERE f.control_type != 'OBSERVATION'
+      AND (startsWith(upper(f.control_unit), 'ULAM') OR startsWith(upper(f.control_unit), 'PAM'))
+      AND f.control_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+),
+
+-- ---- Source ENV : contrôles seulement ----
+env_infractions_by_action AS (
+    SELECT
+        env_action_id,
+        countIf(coalesce(infraction_type, '') = 'WITH_REPORT') AS nb_infractions_avec_pv,
+        countIf(coalesce(infraction_type, '') = 'WITHOUT_REPORT') AS nb_infractions_sans_pv,
+        countIf(coalesce(infraction_type, '') = 'WAITING') AS nb_infractions_en_attente
+    FROM monitorenv.actions_infractions
+    GROUP BY env_action_id
+),
+env_control_rows AS (
+    SELECT
+        'ENV' AS source,
+        a.control_unit_id AS control_unit_id,
+        a.control_unit AS unit_name,
+        a.action_facade AS facade,
+        toString(multiIf(
+            startsWith(upper(a.control_unit), 'PAM'), 'PAM',
+            startsWith(upper(a.control_unit), 'ULAM'), 'ULAM',
+            'AUTRE'
+        )) AS unit_type,
+        toString(a.theme_level_2) AS action_subtype,
+        '' AS action_subsubtype,
+        '' AS politique_publique,
+        '' AS thematique,
+        toDate(toStartOfMonth(a.action_start_datetime_utc)) AS mois,
+        toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controles,
+        toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
+        toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
+        toUInt16(coalesce(ei.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
+        toUInt16(1) AS nb_cibles,
+        -- Pas d'équivalent AMP/bande 300/plongée/journée sécu côté ENV.
+        toUInt16(0) AS nb_controles_amp,
+        toUInt16(0) AS nb_controles_300m,
+        toUInt16(0) AS nb_controles_avec_plongee,
+        toUInt16(0) AS nb_controles_journee_securite
+    FROM monitorenv.analytics_actions a
+    LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
+    WHERE a.action_type = 'CONTROL'
+      AND (
+        startsWith(upper(a.control_unit), 'ULAM')
+        OR (a.administration = 'DIRM / DM' AND startsWith(upper(a.control_unit), 'PAM'))
+      )
+      AND a.action_start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+),
+
+all_rows AS (
+    SELECT * FROM nav_control_rows
+    UNION ALL SELECT * FROM fish_control_rows
+    UNION ALL SELECT * FROM env_control_rows
 )
 
 SELECT
-    mup.control_unit_id AS control_unit_id,
-    mup.unit_name AS unit_name,
-    mup.facade AS facade,
-    mup.unit_type AS unit_type,
-    toString(ma.control_type) AS sous_type_controle,
-    atc.target_type AS target_type,
-    toDate(toStartOfMonth(ma.start_datetime_utc)) AS mois,
-    sum(atc.nb_controles) AS nb_controles,
-    sum(atc.nb_infractions_avec_pv) AS nb_infractions_avec_pv,
-    sum(atc.nb_infractions_sans_pv) AS nb_infractions_sans_pv,
-    sum(atc.nb_infractions_en_attente) AS nb_infractions_en_attente,
-    sum(atc.nb_cibles) AS nb_cibles,
+    source,
+    control_unit_id,
+    unit_name,
+    facade,
+    unit_type,
+    action_subtype,
+    action_subsubtype,
+    politique_publique,
+    thematique,
+    mois,
+    sum(nb_controles) AS nb_controles,
+    sum(nb_infractions_avec_pv) AS nb_infractions_avec_pv,
+    sum(nb_infractions_sans_pv) AS nb_infractions_sans_pv,
+    sum(nb_infractions_en_attente) AS nb_infractions_en_attente,
+    sum(nb_cibles) AS nb_cibles,
+    sum(nb_controles_amp) AS nb_controles_amp,
+    sum(nb_controles_300m) AS nb_controles_300m,
+    sum(nb_controles_avec_plongee) AS nb_controles_avec_plongee,
+    sum(nb_controles_journee_securite) AS nb_controles_journee_securite,
     now() AS updated_at
-FROM rapportnav_proxy.mission_action ma
--- INNER JOIN : ne garde que les actions ayant à la fois un control_type
--- renseigné ET au moins un contrôle has_been_done=true (cf. avertissement
--- en tête de fichier).
-INNER JOIN action_target_type_controls atc ON atc.action_id = toString(ma.id)
--- INNER JOIN : filtre aux missions ayant au moins une unité PAM ou ULAM ;
--- fanout intentionnel 1 ligne par unité individuelle (cf. commentaire
--- mission_unit_pairs).
-INNER JOIN mission_unit_pairs mup ON mup.mission_id = ma.mission_id
-WHERE ma.control_type IS NOT NULL AND toString(ma.control_type) != ''
+FROM all_rows
 GROUP BY
-    mup.control_unit_id, mup.unit_name, mup.facade, mup.unit_type,
-    ma.control_type, atc.target_type, toDate(toStartOfMonth(ma.start_datetime_utc));
+    source, control_unit_id, unit_name, facade, unit_type,
+    action_subtype, action_subsubtype, politique_publique, thematique, mois;

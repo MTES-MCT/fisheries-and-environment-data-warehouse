@@ -1,89 +1,89 @@
 -- =====================================================================
--- Alimente rapportnav.fact_moyen_pam_ulam (query_filepath pour la ligne
--- "fact_moyen_pam_ulam" de sync_table_from_db_connection.csv).
--- Grain (changé en cours de PR, cf. discussion en chat) : 1 ligne par
--- unité × sous-type de contrôle × type de moyen × mois -- PAS 1 ligne par
--- (mission, action, moyen) comme dans la version précédente. Table
--- pré-agrégée, prête à être posée directement en Metabase.
+-- Alimente rapportnav.fact_moyen_pam_ulam.
+-- Grain : 1 ligne par unité × moyen individuel (resource_id/resource_name)
+-- × mois. Table pré-agrégée, prête à être posée directement en Metabase.
 --
--- "Sous-type de contrôle" = mission_action.control_type (ADMINISTRATIVE,
--- GENS_DE_MER, NAVIGATION, SECURITY, SECTOR, TRANSPORT,
--- LANDING_OBLIGATION, FISHING_REPORTING_OBLIGATION, TECHNICAL_MEASURE,
--- INN_ACTIVITY, OTHER -- cf. ControlType.kt, rapportnav2).
--- ⚠️ VÉRIFIÉ contre rapportnav2 (repo cloné et inspecté) : control_type et
--- ses champs frères (leisure_type, fishing_gear_type,
--- sector_establishment_type, nbr_of_control_amp/300m -- ajoutés par
--- V1.2025.09.23.17.30__alter_mission_action_action_new_column.sql)
--- vivent sur mission_action, PAS sur target_2/control_2. Confirmé
--- nav-only : seule MissionNavActionEntity a une méthode
--- toMissionActionModel() qui écrit dans mission_action -- ni
--- MissionFishActionEntity ni MissionEnvActionEntity n'y écrivent jamais.
--- Cette table hérite donc de la même limitation nav-only que le reste de
--- fact_action_pam_ulam (pas un trou nouveau, déjà signalé).
+-- ⚠️ RÉÉCRITURE : l'ancienne version groupait par TYPE de moyen (pas par
+-- moyen nommé) et filtrait sur `ma.control_type IS NOT NULL` -- un champ
+-- qui n'est en réalité renseigné QUE pour OTHER_CONTROL (texte libre, cf.
+-- discussion en chat), ce qui excluait CONTROL_NAUTICAL_LEISURE/SECTOR/
+-- SLEEPING_FISHING_GEAR ET, plus grave pour cette table, excluait aussi
+-- RESOURCES_MAINTENANCE (control_type jamais renseigné dessus) -- les
+-- heures d'entretien par moyen étaient donc structurellement absentes de
+-- cette table malgré ce que son ancien commentaire affirmait. Corrigé :
+-- grain par moyen individuel + actions de la famille CONTROL (nav) ET de
+-- maintenance (RESOURCES_MAINTENANCE) toutes deux incluses.
 --
--- ⚠️ Actions sans control_type renseigné (TRAINING, RESOURCES_MAINTENANCE,
--- MEETING, NOTE...) sont EXCLUES de cette table -- "sous-type de
--- contrôle" n'a pas de sens pour elles. Pour un suivi des heures
--- d'entretien par moyen, utiliser fact_action_pam_ulam (grain action, non
--- affecté par ce filtre).
+-- Moyens = concept NAV uniquement (rapportnav_proxy.mission_action_resource) :
+-- ni monitorfish.analytics_controls_full_data ni monitorenv.analytics_actions
+-- n'exposent de notion de moyen individuel utilisé -- cette table reste
+-- donc nav-only, contrairement à fact_action_pam_ulam/fact_cible_pam_ulam.
 --
--- ⚠️ PIÈGE DOUBLE COMPTAGE (même philosophie que l'ancienne version) : une
--- action a 1 seul control_type mais peut mobiliser plusieurs moyens de
--- types différents -- chaque moyen porte le plein nb_controles/infractions
--- de l'action. SUM(nb_controles) sur cette table, sommé across plusieurs
--- types de moyen pour un même sous_type_controle, PEUT donc dépasser le
--- nombre réel de contrôles. Pour un total sans double compte, utiliser
--- fact_action_pam_ulam ou fact_cible_pam_ulam (pas de moyen là-bas).
+-- ⚠️ PIÈGE DOUBLE COMPTAGE inchangé : une action mobilisant plusieurs
+-- moyens à la fois fait apparaître son plein nb_controles/heures sur
+-- CHAQUE moyen. SUM(nb_controles) sommé across plusieurs moyens PEUT donc
+-- dépasser le nombre réel de contrôles -- pour un total sans double
+-- compte, utiliser fact_action_pam_ulam ou fact_cible_pam_ulam.
 --
 -- Couvre les unités PAM ET ULAM -- 1 ligne par UNITÉ INDIVIDUELLE (pas de
--- concaténation façon "ULAM 33, ULAM 40" comme dans les autres requêtes
--- pam_ulam_*.sql) : une mission conjointe donne une ligne par unité
--- participante, chacune créditée du plein indicateur (cf. discussion en
--- chat sur le grain demandé "par unité").
+-- concaténation façon "ULAM 33, ULAM 40") : une mission conjointe donne
+-- une ligne par unité participante, chacune créditée du plein indicateur.
 -- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql dans
 -- sync_table_from_db_connection.csv (aucune dépendance native entre
 -- lignes de ce flow -- cf. commentaire détaillé dans dim_unit_reference.sql).
 -- =====================================================================
 WITH
--- Filtre unités PAM + ULAM (même logique que les autres requêtes) :
--- service_type via service_control_unit, repli sur le nom si le lien
--- n'est pas renseigné -- constaté non peuplé en pratique (aucune fixture
--- de test ne renseigne service_control_unit), donc le repli par nom est
--- la voie principale, pas un simple filet de sécurité.
+-- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
+-- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
+-- pas dans ce rapport).
 pam_ulam_control_units AS (
-    SELECT DISTINCT cu.id AS control_unit_id
-    FROM monitorenv_proxy.control_units cu
-    LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
-    LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
-    WHERE s.service_type IN ('PAM', 'ULAM')
-       OR startsWith(upper(cu.name), 'ULAM')
-       OR startsWith(upper(cu.name), 'PAM')
+    SELECT
+        control_unit_id,
+        facade_ref,
+        unit_type
+    FROM rapportnav.dim_unit_reference
+    WHERE unit_type IN ('PAM', 'ULAM')
 ),
--- 1 ligne par (mission, unité individuelle) -- PAS agrégé en une seule
--- ligne par mission comme mission_units dans les autres requêtes
--- pam_ulam_*.sql : nécessaire pour le grain "par unité" demandé ici.
+-- 1 ligne par (mission, unité individuelle) -- nécessaire pour le grain
+-- "par unité" demandé ici. facade/unit_type viennent directement de
+-- pam_ulam_control_units (garanti présent par l'INNER JOIN, plus besoin
+-- de repli).
 mission_unit_pairs AS (
     SELECT DISTINCT
         mcu.mission_id,
         cu.id AS control_unit_id,
         cu.name AS unit_name,
-        toString(coalesce(uref.facade_ref, '')) AS facade,
-        toString(coalesce(nullIf(uref.unit_type, ''), multiIf(
-            startsWith(upper(cu.name), 'PAM'), 'PAM',
-            startsWith(upper(cu.name), 'ULAM'), 'ULAM',
-            'AUTRE'
-        ))) AS unit_type
+        uu.facade_ref AS facade,
+        uu.unit_type AS unit_type
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
-    LEFT JOIN rapportnav.dim_unit_reference uref ON uref.control_unit_id = cu.id
 ),
--- Contrôles/infractions has_been_done=true, collapsés par ACTION (pas par
--- control_type -- redondant ici, mission_action.control_type fournit déjà
--- une seule valeur par action). Même logique vérifiée que
--- control_infraction_flags/action_controls dans rapport_pam_ulam_action.sql
--- (CountInfractions.countNavInfractions, rapportnav2 : SUM(amount_of_controls)
--- par contrôle ayant au moins une infraction du type recherché).
+-- Référentiel moyen : nom réel + classification mer/terre/air (même
+-- mapping que rapport_pam_ulam_action.sql/rapport_pam_ulam_mission.sql,
+-- dupliqué ici, cf. convention du repo).
+resource_dim AS (
+    SELECT
+        id AS resource_id,
+        name AS resource_name,
+        type AS resource_type_raw,
+        multiIf(
+            type IN ('AIRPLANE', 'HELICOPTER', 'DRONE'), 'AIR',
+            type IN ('CAR', 'MOTORCYCLE', 'PEDESTRIAN', 'EQUESTRIAN'), 'TERRE',
+            type IN (
+                'BARGE', 'FAST_BOAT', 'FRIGATE', 'HYDROGRAPHIC_SHIP', 'KAYAK',
+                'LIGHT_FAST_BOAT', 'MINE_DIVER', 'NET_LIFTER', 'PATROL_BOAT',
+                'PIROGUE', 'RIGID_HULL', 'SEA_SCOOTER', 'SEMI_RIGID',
+                'SUPPORT_SHIP', 'TRAINING_SHIP', 'TUGBOAT'
+            ), 'MER',
+            'AUTRE'
+        ) AS terrain_category
+    FROM monitorenv_proxy.control_unit_resources
+),
+-- Contrôles/infractions has_been_done=true, collapsés par ACTION -- même
+-- logique que control_infraction_flags/action_controls dans
+-- rapport_pam_ulam_action.sql : SUM(amount_of_controls) par contrôle
+-- ayant au moins une infraction du type recherché.
 control_infraction_flags AS (
     SELECT
         c.id AS control_id,
@@ -115,16 +115,6 @@ action_targets AS (
     FROM rapportnav_proxy.target_2 t
     INNER JOIN rapportnav_proxy.control_2 c ON c.target_id = t.id AND coalesce(c.has_been_done, false) = true
     GROUP BY t.action_id
-),
--- Moyens par (action, type de moyen).
-action_resource_by_type AS (
-    SELECT
-        toString(mar.action_id) AS action_id,
-        toString(coalesce(cur.type, '')) AS resource_type,
-        uniqExact(mar.resource_id) AS nb_moyens
-    FROM rapportnav_proxy.mission_action_resource mar
-    LEFT JOIN monitorenv_proxy.control_unit_resources cur ON cur.id = mar.resource_id
-    GROUP BY mar.action_id, cur.type
 )
 
 SELECT
@@ -132,29 +122,48 @@ SELECT
     mup.unit_name AS unit_name,
     mup.facade AS facade,
     mup.unit_type AS unit_type,
-    toString(ma.control_type) AS sous_type_controle,
-    ares.resource_type AS type_moyen,
+    mar.resource_id AS resource_id,
+    toString(coalesce(rd.resource_name, '')) AS resource_name,
+    toString(coalesce(rd.resource_type_raw, '')) AS resource_type,
+    toString(coalesce(rd.terrain_category, 'AUTRE')) AS terrain_category,
     toDate(toStartOfMonth(ma.start_datetime_utc)) AS mois,
     sum(coalesce(ac.nb_controles, 0)) AS nb_controles,
     sum(coalesce(ac.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
     sum(coalesce(ac.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
     sum(coalesce(ac.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
     sum(coalesce(at.nb_cibles, 0)) AS nb_cibles,
-    sum(ares.nb_moyens) AS nb_moyens,
+    countIf(ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL')) AS nb_actions_controle,
+    sumIf(
+        toFloat64(if(
+            ma.end_datetime_utc IS NOT NULL AND ma.end_datetime_utc >= ma.start_datetime_utc,
+            dateDiff('second', ma.start_datetime_utc, ma.end_datetime_utc) / 3600.0,
+            coalesce(toFloat64(ma.nbr_of_hours), 0)
+        )),
+        ma.action_type = 'RESOURCES_MAINTENANCE'
+    ) AS heures_entretien,
+    countIf(ma.action_type = 'RESOURCES_MAINTENANCE') AS nb_actions_entretien,
     now() AS updated_at
 FROM rapportnav_proxy.mission_action ma
--- INNER JOIN : ne garde que les actions ayant un control_type renseigné
--- (cf. avertissement en tête de fichier).
--- INNER JOIN : produit croisé control_type (1 valeur/action) × resource_type
--- (cf. ⚠️ PIÈGE DOUBLE COMPTAGE en tête de fichier).
-INNER JOIN action_resource_by_type ares ON ares.action_id = toString(ma.id)
-LEFT JOIN action_controls ac ON ac.action_id = toString(ma.id)
-LEFT JOIN action_targets at ON at.action_id = toString(ma.id)
+-- INNER JOIN : fanout intentionnel 1 ligne par moyen mobilisé sur
+-- l'action (cf. ⚠️ PIÈGE DOUBLE COMPTAGE en tête de fichier).
+INNER JOIN rapportnav_proxy.mission_action_resource mar ON mar.action_id = ma.id
+LEFT JOIN resource_dim rd ON rd.resource_id = mar.resource_id
 -- INNER JOIN : filtre aux missions ayant au moins une unité PAM ou ULAM ;
 -- fanout intentionnel 1 ligne par unité individuelle (cf. commentaire
 -- mission_unit_pairs).
 INNER JOIN mission_unit_pairs mup ON mup.mission_id = ma.mission_id
-WHERE ma.control_type IS NOT NULL AND toString(ma.control_type) != ''
+LEFT JOIN action_controls ac ON ac.action_id = toString(ma.id)
+LEFT JOIN action_targets at ON at.action_id = toString(ma.id)
+-- Périmètre : famille CONTROL nav (contrôles) + RESOURCES_MAINTENANCE
+-- (entretien) -- les autres action_type (TRAINING, MEETING, NOTE...)
+-- n'ont pas de sens pour un suivi "moyens", cf. fact_action_pam_ulam pour
+-- ces action_type.
+WHERE (
+        ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL')
+        OR ma.action_type = 'RESOURCES_MAINTENANCE'
+      )
+  AND ma.start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 GROUP BY
     mup.control_unit_id, mup.unit_name, mup.facade, mup.unit_type,
-    ma.control_type, ares.resource_type, toDate(toStartOfMonth(ma.start_datetime_utc));
+    mar.resource_id, rd.resource_name, rd.resource_type_raw, rd.terrain_category,
+    toDate(toStartOfMonth(ma.start_datetime_utc));

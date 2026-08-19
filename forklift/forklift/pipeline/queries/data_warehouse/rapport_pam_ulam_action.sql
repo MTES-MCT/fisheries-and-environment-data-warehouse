@@ -1,126 +1,74 @@
 -- =====================================================================
--- Alimente rapportnav.fact_action_pam_ulam (query_filepath pour la ligne
--- "fact_action_pam_ulam" de sync_table_from_db_connection.csv).
+-- Alimente rapportnav.fact_action_pam_ulam.
 -- Grain : 1 ligne par action/contrôle individuel × unité individuelle,
--- TOUTES SOURCES CONFONDUES (nav + fish + env, colonne `source`) --
--- fusion de l'ancien fact_action_pam_ulam (nav seul) et de
--- fact_controle_pam_ulam (nav+fish+env, contrôles seulement), décidée en
--- cours de PR : les 2 tables se recouvraient sur les contrôles nav (même
--- donnée, présente 2 fois), source de confusion pour la construction des
--- dashboards. Une seule table maintenant, avec beaucoup de colonnes
--- vides selon la source (assumé -- cf. discussion en chat, le choix
--- explicite a été 1 table plutôt que colonnes plus courtes).
+-- toutes sources confondues (nav + fish + env, colonne `source`) --
+-- beaucoup de colonnes vides selon la source. Option non retenue :
+-- séparer CONTROLE / AUTRES ACTIONS pour minimiser les colonnes vides.
 --
--- ⚠️⚠️ POURQUOI 3 SOURCES : rapportnav_proxy.mission_action (nav) ne
--- contient QUE les actions saisies directement dans RapportNav
--- (source=RAPPORT_NAV, vérifié : ni MissionFishActionEntity ni
--- MissionEnvActionEntity n'écrivent dans mission_action, rapportnav2).
--- FISH et ENV n'ont PAS de notion d'activité hors-contrôle (pas de
--- formation/réunion/entretien/permanence côté MonitorFish/MonitorEnv) --
--- seule la source NAV peut donc porter ces action_type là ; FISH/ENV
--- n'apparaissent que pour des contrôles.
--- Sources FISH/ENV déjà construites et actives dans ce repo (PAS créées
--- pour cette PR) :
---   - monitorfish.analytics_controls_full_data (quotidien, cf.
---     sync_table_with_pandas.csv "32 1 * * *")
---   - monitorenv.analytics_actions + monitorenv.actions_infractions
---     (HORAIRE, cf. sync_table_with_pandas.csv "20/22 * * * *")
+-- Pourquoi 3 sources : mission_action (nav) ne contient que les actions
+-- saisies dans RapportNav. FISH/ENV n'ont pas de notion d'activité
+-- hors-contrôle -- ils n'apparaissent donc que pour des contrôles, via
+-- les tables déjà construites (pas créées pour cette table) :
+--   - monitorfish.analytics_controls_full_data (quotidien)
+--   - monitorenv.analytics_actions + monitorenv.actions_infractions (horaire)
 --
--- ⚠️ 3 modèles de données réellement différents. Points VÉRIFIÉS contre
--- les repos MonitorFish/MonitorEnv/rapportnav2 clonés (backend/src/main/
--- kotlin + migrations SQL) :
---   - mission_id partagé entre les 3 systèmes : CONFIRMÉ. MonitorFish n'a
---     AUCUN concept de mission propre -- il interroge l'API MonitorEnv en
---     direct avec ce même missionId:Int (APIMissionRepository.kt,
---     monitorfish).
---   - control_unit_id : PAS supposé partagé entre systèmes (repli
---     volontaire sur le filtre par NOM d'unité pour fish/env, comme pour
---     nav).
---   - FISH nb_controls = 1 par ligne : CONFIRMÉ -- MissionAction.kt
---     (monitorfish) n'a aucun champ "amount_of_controls", contrairement à
---     rapportnav_proxy.control_2.
---   - FISH infraction avec/sans PV : monitorfish a un InfractionType à 3
---     valeurs (WITH_RECORD/WITHOUT_RECORD/PENDING) mais la table déjà
---     construite monitorfish.analytics_controls_full_data ne calcule QUE
---     infraction_report = présence d'au moins une infraction WITH_RECORD
---     -- WITHOUT_RECORD/PENDING pas distingués dans ses colonnes de
---     sortie (limite de cette table déjà construite, hors périmètre de
---     cette PR). nb_infractions_sans_pv FISH mélange donc WITHOUT_RECORD
---     et PENDING -- cf. nb_infractions_sans_pv_fiable (0 pour FISH).
---   - ENV infraction avec/sans/en attente : CONFIRMÉ fiable.
---     InfractionTypeEnum.kt (monitorenv) a EXACTEMENT les 3 mêmes valeurs
---     (WAITING/WITH_REPORT/WITHOUT_REPORT) que la copie miroir dans
---     rapportnav2.
---   - politique_publique/thematique FISH : MonitorFish n'a AUCUNE table de
---     classification interne (pas de "politique publique", vérifié --
---     control_objectives est un objectif chiffré, pas une classification ;
---     MissionActionType n'a que SEA/LAND/AIR_CONTROL/AIR_SURVEILLANCE/
---     OBSERVATION). MonitorFish EST par construction "politique pêche" --
---     politique_publique = 'Pêches maritimes' fixe, thematique = segment
---     (segment de flotte) si disponible sinon 'Pêches maritimes' aussi
---     (cf. discussion en chat).
---   - politique_publique/thematique ENV : monitorenv.analytics_actions a
---     déjà theme_level_1/theme_level_2 (vraie hiérarchie de thèmes,
---     table `themes`, déjà exploitée en prod ailleurs) -- exposés ici tels
---     quels en colonnes brutes (env_theme_level_1/env_theme_level_2/
---     env_plan). MAIS aucune table de code ne liste les valeurs réelles de
---     theme_level_1 (peuplé dynamiquement en base, pas de seed Flyway,
---     cherché dans migrations + pipeline interne + frontend monitorenv,
---     rien trouvé) -- donc PAS de mapping politique_publique construit
---     pour ENV pour l'instant (politique_publique/thematique restent
---     vides pour la source ENV) : en attente de la vraie liste des thèmes
---     PAM/ULAM (demandée en chat, requête fournie pour l'extraire de
---     monitorenv.analytics_actions). ⚠️ À COMPLÉTER dès que la liste est
---     disponible -- ne pas deviner les libellés.
+-- Différences entre les 3 modèles :
+--   - mission_id est partagé entre les 3 systèmes (MonitorFish n'a pas de
+--     notion de mission propre, il interroge l'API MonitorEnv).
+--   - control_unit_id EST partagé entre les 3 systèmes : monitorfish.
+--     analytics_control_units est une copie directe (même id) de
+--     monitorenv.control_units, et monitorenv.analytics_actions vit dans
+--     la même base que control_units. Non exploité ici pour l'instant --
+--     unit_type/facade FISH/ENV restent dérivés du nom (startsWith PAM/
+--     ULAM) plutôt que d'un join sur dim_unit_reference via
+--     control_unit_id, ce qui serait plus robuste.
+--   - FISH : nb_controls toujours 1 (pas de amount_of_controls côté
+--     MonitorFish). analytics_controls_full_data n'expose que la
+--     présence d'une infraction WITH_RECORD -- nb_infractions_sans_pv
+--     FISH mélange donc WITHOUT_RECORD et PENDING (cf.
+--     nb_infractions_sans_pv_fiable = 0 pour FISH).
+--   - ENV : infraction_type a 3 valeurs fiables (WAITING/WITH_REPORT/
+--     WITHOUT_REPORT).
+--   - politique_publique/thematique FISH : fixe 'Pêches maritimes' (pas
+--     de classification interne côté MonitorFish), thematique = segment
+--     de flotte si disponible.
+--   - politique_publique/thematique ENV : vides pour l'instant --
+--     theme_level_1 (monitorenv.analytics_actions) n'a pas de liste de
+--     valeurs de référence connue, à compléter dès qu'elle est fournie
+--     (ne pas deviner les libellés). Bruts exposés en attendant via
+--     env_theme_level_1/env_theme_level_2/env_plan.
 --
--- Filtre "missions à partir de 2025" appliqué aux 3 sources : sans lui,
--- ENV en particulier récupérerait tout l'historique de
--- monitorenv.analytics_actions à chaque refresh horaire, non utile ici.
+-- Filtre "missions à partir de 2025" sur les 3 sources (sinon ENV
+-- récupère tout l'historique à chaque refresh horaire).
 --
--- Couvre les unités PAM ET ULAM -- 1 ligne par UNITÉ INDIVIDUELLE (pas de
--- concaténation façon "ULAM 33, ULAM 40" comme dans l'ancienne version nav
--- -- changement nécessaire pour un control_unit_id cohérent avec fish/env,
--- qui n'ont qu'une unité par ligne nativement) : une mission conjointe
--- donne une ligne par unité participante, chacune créditée du plein
--- indicateur.
--- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql ET après les
--- flows sync_table_with_pandas qui alimentent monitorfish.analytics_controls_full_data
--- / monitorenv.analytics_actions / monitorenv.actions_infractions (aucune
--- dépendance native entre lignes de ces 2 flows -- cf. commentaire
--- détaillé dans dim_unit_reference.sql).
+-- 1 ligne par unité individuelle (pas de concaténation "ULAM 33, ULAM
+-- 40") : cohérent avec fish/env qui n'ont qu'une unité par ligne.
+-- Doit tourner après dim_unit_reference.sql et après les flows
+-- sync_table_with_pandas qui alimentent les tables fish/env ci-dessus.
 -- =====================================================================
 WITH
--- Filtre unités PAM + ULAM pour la source NAV (même logique que les
--- autres requêtes pam_ulam_*.sql) : service_type via service_control_unit,
--- repli sur le nom si le lien n'est pas renseigné -- constaté non peuplé
--- en pratique (aucune fixture de test ne renseigne service_control_unit).
+-- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
+-- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
+-- pas dans ce rapport).
 pam_ulam_control_units AS (
-    SELECT DISTINCT cu.id AS control_unit_id
-    FROM monitorenv_proxy.control_units cu
-    LEFT JOIN rapportnav_proxy.service_control_unit scu ON scu.control_unit_id = cu.id
-    LEFT JOIN rapportnav_proxy.service s ON s.id = scu.service_id AND s.deleted_at IS NULL
-    WHERE s.service_type IN ('PAM', 'ULAM')
-       OR startsWith(upper(cu.name), 'ULAM')
-       OR startsWith(upper(cu.name), 'PAM')
+    SELECT
+        control_unit_id,
+        facade_ref,
+        unit_type
+    FROM rapportnav.dim_unit_reference
+    WHERE unit_type IN ('PAM', 'ULAM')
 ),
--- 1 ligne par (mission, unité individuelle) -- cf. avertissement en tête
--- de fichier sur le changement de grain par rapport à l'ancien
--- fact_action_pam_ulam (unit_names concaténé).
+-- 1 ligne par (mission, unité individuelle).
 mission_unit_pairs AS (
     SELECT DISTINCT
         mcu.mission_id,
         cu.id AS control_unit_id,
         cu.name AS unit_name,
-        toString(coalesce(uref.facade_ref, '')) AS facade,
-        toString(coalesce(nullIf(uref.unit_type, ''), multiIf(
-            startsWith(upper(cu.name), 'PAM'), 'PAM',
-            startsWith(upper(cu.name), 'ULAM'), 'ULAM',
-            'AUTRE'
-        ))) AS unit_type
+        uu.facade_ref AS facade,
+        uu.unit_type AS unit_type
     FROM monitorenv_proxy.missions_control_units mcu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
-    LEFT JOIN rapportnav.dim_unit_reference uref ON uref.control_unit_id = cu.id
 ),
 resource_dim AS (
     SELECT
@@ -139,29 +87,28 @@ resource_dim AS (
         ) AS terrain_category
     FROM monitorenv_proxy.control_unit_resources
 ),
--- Un moyen (ou plusieurs) par action -> agrégés en tableau, une ligne par
--- action (NAV seul -- fish/env n'exposent pas cette notion dans les
--- tables déjà construites qu'on réutilise).
+-- Moyens par action, agrégés en tableau (NAV seul -- fish/env n'exposent
+-- pas cette notion dans les tables déjà construites qu'on réutilise).
 action_resources AS (
     SELECT
         toString(mar.action_id) AS action_id,
         groupArray(mar.resource_id) AS resource_ids,
         groupArray(toString(rd.resource_type_raw)) AS resource_types,
-        -- ⚠️ approximation : si l'action mobilise des moyens de catégories
-        -- différentes, on ne garde que le 1er trouvé.
-        arrayElement(groupUniqArray(rd.terrain_category), 1) AS terrain_type_first
+        -- Liste complète (dédupliquée) des terrains associés aux moyens
+        -- employés sur l'action -- une action peut mobiliser des moyens de
+        -- catégories différentes (ex : véhicule + navire), donc pas de
+        -- réduction au 1er trouvé.
+        groupUniqArray(rd.terrain_category) AS terrain_types
     FROM rapportnav_proxy.mission_action_resource mar
     LEFT JOIN resource_dim rd ON rd.resource_id = mar.resource_id
     GROUP BY mar.action_id
 ),
 -- Cibles/contrôles/infractions NAV (target_2 -> control_2 -> infraction_2
--- -> infraction_natinf_2). Schéma et logique VÉRIFIÉS contre rapportnav2
--- (migration V1.2025.03.18.16.14, CountInfractions.kt,
--- ComputeNavControlPolicy.kt) : infraction_type a 3 valeurs réelles
--- (WITH_REPORT/WITHOUT_REPORT/WAITING) ; "Nb de ctrl" = SUM(amount_of_controls)
--- des contrôles has_been_done=true, PAS un COUNT de lignes control_2
--- (contrainte UNIQUE(control_type, target_id) : les contrôles répétés
--- s'accumulent dans amount_of_controls plutôt que sur plusieurs lignes).
+-- -> infraction_natinf_2). infraction_type a 3 valeurs (WITH_REPORT/
+-- WITHOUT_REPORT/WAITING) ; "Nb de ctrl" = SUM(amount_of_controls) des
+-- contrôles has_been_done=true, PAS un COUNT de lignes control_2 --
+-- contrainte UNIQUE(control_type, target_id) : les contrôles répétés
+-- s'accumulent dans amount_of_controls plutôt que sur plusieurs lignes.
 control_infraction_flags AS (
     SELECT
         c.id AS control_id,
@@ -199,65 +146,73 @@ action_targets AS (
     GROUP BY t.action_id
 ),
 -- Référentiel libellé français / politique publique / thématique par
--- action_type NAV, repris du dictionnaire de données métier "Types et
--- sous-types d'actions" (export CSV du 2026-08-14).
--- ⚠️ RESTRUCTURÉ en cours de PR (cf. discussion en chat, données réelles à
--- l'appui : vessel_type/leisure_type/fishing_gear_type/sector_type/
--- control_type ne sont jamais renseignés en même temps sur une action --
--- un seul champ "détail" par action_type). CONTROL_NAUTICAL_LEISURE,
--- CONTROL_SLEEPING_FISHING_GEAR, CONTROL_SECTOR et OTHER_CONTROL (qui
--- étaient 4 action_type distincts) sont maintenant regroupés sous un seul
--- action_type='CONTROL', différencié par action_subtype (NAUTICAL_LEISURE/
--- SLEEPING_FISHING_GEAR/SECTOR/OTHER_CONTROL/'' pour un contrôle standard).
--- SECURITY_VISIT reste un action_type à part (pas absorbé) -- son
--- security_visit_type est fiable (vrai enum SecurityVisitType, pas du
--- texte libre) mais n'a pas de granularité de mapping distincte dans le
--- dictionnaire source, donc pas de ligne dédiée ici (clé '').
--- Clé = (action_type, action_subtype_key) où action_subtype_key ne
--- distingue que CONTROL (sous-types ci-dessus) et UNIT_MANAGEMENT_TRAINING
--- (action_subtype = champ contrôlé, pas du texte libre) -- tout le reste
--- utilise la clé '' (mapping par défaut de l'action_type).
--- ⚠️ TRAINING (le "vrai") : action_subtype vient d'un champ texte libre
--- (ma.training_type), des dizaines de valeurs distinctes dans le
--- dictionnaire source -- impossible à mapper ligne à ligne. Libellé par
--- défaut de l'action_type appliqué à toute action TRAINING quel que soit
--- le texte saisi (clé '', jamais ma.training_type).
+-- action_type NAV (dictionnaire métier "Types et sous-types d'actions",
+-- export CSV du 2026-08-14).
+-- CONTROL_NAUTICAL_LEISURE/CONTROL_SLEEPING_FISHING_GEAR/CONTROL_SECTOR/
+-- OTHER_CONTROL (4 anciens action_type) sont regroupés sous
+-- action_type='CONTROL', différencié par action_subtype (vessel_type/
+-- leisure_type/fishing_gear_type/sector_type/control_type ne sont jamais
+-- renseignés ensemble sur une action -- un seul champ "détail" par
+-- action_type). Un 5e sous-type SHIP couvre le contrôle navire générique
+-- (raw action_type='CONTROL' avec vessel_type renseigné -- COMMERCIAL/
+-- FISHING/MOTOR/SAILING/...), pour distinguer "contrôle navire" des 4
+-- familles ci-dessus. SECURITY_VISIT reste à part (security_visit_type
+-- est un vrai enum mais n'a pas de granularité de mapping dédiée, clé '').
+-- Clé = (action_type, action_subtype_key) -- seuls CONTROL et
+-- UNIT_MANAGEMENT_TRAINING ont un sous-type mappé, le reste utilise ''.
+-- TRAINING : action_subtype vient d'un champ texte libre (ma.training_type,
+-- des dizaines de valeurs) -- libellé par défaut appliqué quel que soit le
+-- texte saisi (clé '', jamais ma.training_type).
+--
+-- categorie_activite/sous_categorie_activite : taxonomie "8 catégories"
+-- de la maquette Bilan opérationnel (Contrôles / Surveillances /
+-- Assistances-sauvetages / Autre activité terrain / Préparation et suivi
+-- des ctrl / Accueil public-communication / Formations / Vie et gestion
+-- de l'unité), dérivée de action_type -- distincte de politique_publique/
+-- thematique (classification différente, sur le même référentiel source).
+-- ⚠️ Mapping construit par déduction du nom d'action_type, PAS confirmé
+-- par le métier : PUBLIC_ORDER -> "Sûreté maritime" (déduit du camembert
+-- "Autres activités terrain" vu en maquette, à valider) ; RESCUE non
+-- scindé en Assistance/Sauvetage (pas de champ source pour cette
+-- distinction, sous_categorie_activite reprend le libellé générique) ;
+-- BAAEM_PERMANENCE/NOTE classés en "Vie et gestion de l'unité" par défaut.
 action_type_mapping AS (
-    SELECT 'ANTI_POLLUTION' AS action_type, '' AS action_subtype_key, 'Opération de lutte anti-pollution' AS libelle_francais, 'Contrôle des activités maritimes' AS politique_publique, 'Environnement marin' AS thematique
-    UNION ALL SELECT 'BAAEM_PERMANENCE', '', 'Permanence BAAEM - bureau de l''action de l''Etat en mer', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'COMMUNICATION', '', 'Communication', 'Contrôle des activités maritimes', 'Transversal'
+    SELECT 'ANTI_POLLUTION' AS action_type, '' AS action_subtype_key, 'Opération de lutte anti-pollution' AS libelle_francais, 'Contrôle des activités maritimes' AS politique_publique, 'Environnement marin' AS thematique, 'Autre activité terrain' AS categorie_activite, 'Lutte anti-pollution' AS sous_categorie_activite
+    UNION ALL SELECT 'BAAEM_PERMANENCE', '', 'Permanence BAAEM - bureau de l''action de l''Etat en mer', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Autre'
+    UNION ALL SELECT 'COMMUNICATION', '', 'Communication', 'Contrôle des activités maritimes', 'Transversal', 'Accueil public/communication', 'Communication'
     -- Libellés suffixés "?" dans le dictionnaire source (CONTACT, INQUIRY) :
     -- incertitude du métier sur le nom, reprise telle quelle.
-    UNION ALL SELECT 'CONTACT', '', 'Accueil public ?', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'CONTACT', '', 'Accueil public ?', 'Contrôle des activités maritimes', 'Transversal', 'Accueil public/communication', 'Accueil public'
     -- Famille CONTROL unifiée (cf. avertissement ci-dessus) : 5 lignes,
     -- une par ancien action_type de la famille.
-    UNION ALL SELECT 'CONTROL', '', 'Contrôle', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'CONTROL', 'NAUTICAL_LEISURE', 'Contrôle de loisirs nautiques', 'Contrôle des activités maritimes', 'Loisirs nautiques'
-    UNION ALL SELECT 'CONTROL', 'SECTOR', 'Thématique de contrôle', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'CONTROL', 'SLEEPING_FISHING_GEAR', 'Contrôle d''engin de pêche dormant', 'Contrôle des activités maritimes', 'Pêches maritimes'
-    UNION ALL SELECT 'CONTROL', 'OTHER_CONTROL', 'Autre contrôle', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'HEARING_CONDUCT', '', 'Préparation et conduite d''audition', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'ILLEGAL_IMMIGRATION', '', 'Opération de lutte contre l''immigration illégale', 'Contrôle des activités maritimes', 'Flux migratoires'
-    UNION ALL SELECT 'INQUIRY', '', 'Enquête/ préparation de contrôle ?', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'LAND_SURVEILLANCE', '', 'Surveillance générale terrestre', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'MARITIME_SURVEILLANCE', '', 'Surveillance générale maritime', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'MEETING', '', 'Réunion', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'NAUTICAL_EVENT', '', 'Surveillance de manifestation nautique', 'Contrôle des activités maritimes', 'Occupation du domaine public maritime'
-    UNION ALL SELECT 'NOTE', '', 'Note libre', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'OTHER', '', 'Autre (vie et gestion de l''unité)', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'PUBLIC_ORDER', '', 'Ordre public', 'Maintien de l''ordre public', ''
-    UNION ALL SELECT 'PV_DRAFTING', '', 'Rédaction de PV', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'REPRESENTATION', '', 'Représentation', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'RESCUE', '', 'Assistance/ sauvetage', 'Assistance/ sauvetage', 'Assistance/ sauvetage'
-    UNION ALL SELECT 'RESOURCES_MAINTENANCE', '', 'Entretien des moyens', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'SECURITY_VISIT', '', 'Visite sécurité', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'TRAINING', '', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'UNIT_MANAGEMENT_OTHER', '', 'Gestion de l''unité - autres', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'UNIT_MANAGEMENT_PLANNING', '', 'Gestion de l''unité - planning', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', '', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'DIVING', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'MAN_OVERBOARD_RECOVERY', 'Formation', 'Assistance/ sauvetage', 'Assistance/ sauvetage'
-    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'TECHNICAL_INTERVENTION_SHOOTING', 'Formation', 'Maintien de l''ordre public', 'Gestes Techniques Professionnels d''Intervention'
+    UNION ALL SELECT 'CONTROL', '', 'Contrôle', 'Contrôle des activités maritimes', 'Transversal', 'Contrôles', 'Contrôle'
+    UNION ALL SELECT 'CONTROL', 'NAUTICAL_LEISURE', 'Contrôle de loisirs nautiques', 'Contrôle des activités maritimes', 'Loisirs nautiques', 'Contrôles', 'Loisirs nautiques'
+    UNION ALL SELECT 'CONTROL', 'SECTOR', 'Thématique de contrôle', 'Contrôle des activités maritimes', 'Transversal', 'Contrôles', 'Contrôle sectoriel'
+    UNION ALL SELECT 'CONTROL', 'SLEEPING_FISHING_GEAR', 'Contrôle d''engin de pêche dormant', 'Contrôle des activités maritimes', 'Pêches maritimes', 'Contrôles', 'Engins de pêche dormant'
+    UNION ALL SELECT 'CONTROL', 'OTHER_CONTROL', 'Autre contrôle', 'Contrôle des activités maritimes', 'Transversal', 'Contrôles', 'Autre contrôle'
+    UNION ALL SELECT 'CONTROL', 'SHIP', 'Contrôle de navire', 'Contrôle des activités maritimes', 'Transversal', 'Contrôles', 'Contrôle navires'
+    UNION ALL SELECT 'HEARING_CONDUCT', '', 'Préparation et conduite d''audition', 'Contrôle des activités maritimes', 'Transversal', 'Préparation et suivi des ctrl', 'Préparation et conduite d''audition'
+    UNION ALL SELECT 'ILLEGAL_IMMIGRATION', '', 'Opération de lutte contre l''immigration illégale', 'Contrôle des activités maritimes', 'Flux migratoires', 'Autre activité terrain', 'Lutte contre l''immigration illégale'
+    UNION ALL SELECT 'INQUIRY', '', 'Enquête/ préparation de contrôle ?', 'Contrôle des activités maritimes', 'Transversal', 'Préparation et suivi des ctrl', 'Préparation de contrôle'
+    UNION ALL SELECT 'LAND_SURVEILLANCE', '', 'Surveillance générale terrestre', 'Contrôle des activités maritimes', 'Transversal', 'Surveillances', 'Surveillance générale terrestre'
+    UNION ALL SELECT 'MARITIME_SURVEILLANCE', '', 'Surveillance générale maritime', 'Contrôle des activités maritimes', 'Transversal', 'Surveillances', 'Surveillance générale maritime'
+    UNION ALL SELECT 'MEETING', '', 'Réunion', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Réunion'
+    UNION ALL SELECT 'NAUTICAL_EVENT', '', 'Surveillance de manifestation nautique', 'Contrôle des activités maritimes', 'Occupation du domaine public maritime', 'Surveillances', 'Surveillance de manifestation nautique'
+    UNION ALL SELECT 'NOTE', '', 'Note libre', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Note libre'
+    UNION ALL SELECT 'OTHER', '', 'Autre (vie et gestion de l''unité)', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Autre'
+    UNION ALL SELECT 'PUBLIC_ORDER', '', 'Ordre public', 'Maintien de l''ordre public', '', 'Autre activité terrain', 'Sûreté maritime'
+    UNION ALL SELECT 'PV_DRAFTING', '', 'Rédaction de PV', 'Contrôle des activités maritimes', 'Transversal', 'Préparation et suivi des ctrl', 'Rédaction de PV'
+    UNION ALL SELECT 'REPRESENTATION', '', 'Représentation', 'Contrôle des activités maritimes', 'Transversal', 'Autre activité terrain', 'Représentation'
+    UNION ALL SELECT 'RESCUE', '', 'Assistance/ sauvetage', 'Assistance/ sauvetage', 'Assistance/ sauvetage', 'Assistances/sauvetages', 'Assistance/sauvetage'
+    UNION ALL SELECT 'RESOURCES_MAINTENANCE', '', 'Entretien des moyens', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Entretien des moyens'
+    UNION ALL SELECT 'SECURITY_VISIT', '', 'Visite sécurité', 'Contrôle des activités maritimes', 'Transversal', 'Autre activité terrain', 'Visite de sécurité'
+    UNION ALL SELECT 'TRAINING', '', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal', 'Formations', 'Entraînement'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_OTHER', '', 'Gestion de l''unité - autres', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Gestion - autres'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_PLANNING', '', 'Gestion de l''unité - planning', 'Contrôle des activités maritimes', 'Transversal', 'Vie et gestion de l''unité', 'Gestion - planning'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', '', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal', 'Formations', 'Entraînement unité'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'DIVING', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal', 'Formations', 'Entraînement unité'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'MAN_OVERBOARD_RECOVERY', 'Formation', 'Assistance/ sauvetage', 'Assistance/ sauvetage', 'Formations', 'Entraînement unité'
+    UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'TECHNICAL_INTERVENTION_SHOOTING', 'Formation', 'Maintien de l''ordre public', 'Gestes Techniques Professionnels d''Intervention', 'Formations', 'Entraînement unité'
 ),
 
 -- ---- Source NAV : toutes les actions (contrôles et non-contrôles) ----
@@ -278,45 +233,57 @@ nav_rows AS (
             coalesce(toFloat64(ma.nbr_of_hours), 0)
         )) AS duration_h,
         -- action_type unifié : CONTROL absorbe les 4 anciens action_type de
-        -- la famille contrôle (cf. avertissement sur action_type_mapping) --
-        -- SECURITY_VISIT n'est PAS absorbé (choix confirmé en chat).
+        -- la famille contrôle. SECURITY_VISIT n'est pas absorbé.
         toString(multiIf(
             ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL'), 'CONTROL',
             toString(ma.action_type)
         )) AS action_type,
-        -- action_subtype (niveau 2) : pour la famille CONTROL, dérivé de
-        -- l'ancien action_type (NAUTICAL_LEISURE/SLEEPING_FISHING_GEAR/
-        -- SECTOR/OTHER_CONTROL/'' pour un contrôle standard) -- pour le
-        -- reste, même logique qu'avant (fusionne aussi security_visit_type,
-        -- un vrai enum contrôlé, dans le même mécanisme).
+        -- action_subtype (niveau 2) : pour CONTROL, dérivé de l'ancien
+        -- action_type. Pour le reste, fusionne aussi security_visit_type.
         toString(multiIf(
             ma.action_type = 'CONTROL_NAUTICAL_LEISURE', 'NAUTICAL_LEISURE',
             ma.action_type = 'CONTROL_SLEEPING_FISHING_GEAR', 'SLEEPING_FISHING_GEAR',
             ma.action_type = 'CONTROL_SECTOR', 'SECTOR',
             ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
+            -- Contrôle navire "générique" (raw action_type='CONTROL',
+            -- vessel_type renseigné -- COMMERCIAL/FISHING/MOTOR/SAILING/...)
+            -- -- sous-type dédié SHIP, même mécanisme que NAUTICAL_LEISURE/
+            -- SECTOR/SLEEPING_FISHING_GEAR ci-dessus.
+            ma.action_type = 'CONTROL' AND nullIf(ma.vessel_type, '') IS NOT NULL, 'SHIP',
             ma.action_type = 'TRAINING', coalesce(ma.training_type, ''),
             ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
             ma.action_type = 'RESOURCES_MAINTENANCE', coalesce(ma.resource_type, ''),
             ma.action_type = 'SECURITY_VISIT', coalesce(ma.security_visit_type, ''),
             coalesce(ma.reason, '')
         )) AS action_subtype,
-        -- action_subsubtype (niveau 3, NOUVEAU) : remplace les anciennes
-        -- colonnes control_type/vessel_type/vessel_size/leisure_type/
-        -- fishing_gear_type/sector_establishment_type (jamais 2 renseignées
-        -- à la fois sur une même action, confirmé sur données réelles --
-        -- cf. discussion en chat) par un seul coalesce. Uniquement
-        -- significatif pour la famille CONTROL en pratique.
+        -- action_subsubtype (niveau 3) : remplace control_type/vessel_type/
+        -- vessel_size/leisure_type/fishing_gear_type (jamais 2 renseignées
+        -- à la fois) par un seul coalesce. Significatif seulement pour la
+        -- famille CONTROL. Exception : sector_type et
+        -- sector_establishment_type sont RENSEIGNÉS ENSEMBLE pour
+        -- CONTROL_SECTOR (sector_type = filière -- pêche/plaisance --,
+        -- sector_establishment_type = type d'établissement précis dans
+        -- cette filière) -- concaténés plutôt que coalescés pour ne pas en
+        -- perdre un des deux.
         toString(coalesce(
             nullIf(ma.vessel_type, ''),
             nullIf(ma.leisure_type, ''),
             nullIf(ma.fishing_gear_type, ''),
-            nullIf(ma.sector_establishment_type, ''),
+            nullIf(
+                arrayStringConcat(arrayFilter(
+                    x -> x != '',
+                    [coalesce(ma.sector_type, ''), coalesce(ma.sector_establishment_type, '')]
+                ), ' / '),
+                ''
+            ),
             nullIf(ma.control_type, ''),
             ''
         )) AS action_subsubtype,
         toString(coalesce(nullIf(atm.libelle_francais, ''), toString(ma.action_type))) AS libelle_francais,
         toString(coalesce(atm.politique_publique, '')) AS politique_publique,
         toString(coalesce(atm.thematique, '')) AS thematique,
+        toString(coalesce(atm.categorie_activite, '')) AS categorie_activite,
+        toString(coalesce(atm.sous_categorie_activite, '')) AS sous_categorie_activite,
         '' AS env_theme_level_1,
         '' AS env_theme_level_2,
         '' AS env_plan,
@@ -340,27 +307,19 @@ nav_rows AS (
         toUInt16(length(coalesce(ar.resource_ids, []))) AS nb_resources_linked,
         coalesce(ar.resource_ids, []) AS resource_ids,
         coalesce(ar.resource_types, []) AS resource_types,
-        toString(coalesce(ar.terrain_type_first, 'INDETERMINE')) AS terrain_type,
-        toString(coalesce(est.name, '')) AS establishment_name,
-        toString(coalesce(est.siren, '')) AS establishment_siren,
-        toString(coalesce(est.city, '')) AS establishment_city,
+        coalesce(ar.terrain_types, []) AS terrain_types,
         ma.latitude AS latitude,
         ma.longitude AS longitude
     FROM rapportnav_proxy.mission_action ma
     -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au
     -- moins une unité PAM ou ULAM.
     INNER JOIN mission_unit_pairs mup ON mup.mission_id = ma.mission_id
-    LEFT JOIN rapportnav_proxy.establishment est ON est.id = ma.establishment_id
     LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
     LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
-    -- Jointure mapping : action_type déjà unifié (CONTROL) côté requête,
-    -- donc atm.action_type = 'CONTROL' matche directement pour toute la
-    -- famille. action_subtype_key ne différencie que CONTROL (sous-types
-    -- NAUTICAL_LEISURE/SLEEPING_FISHING_GEAR/SECTOR/OTHER_CONTROL) et
-    -- UNIT_MANAGEMENT_TRAINING -- PAS security_visit_type/training_type
-    -- (texte libre ou sans granularité de mapping dédiée, cf. avertissement
-    -- sur action_type_mapping).
+    -- action_type déjà unifié (CONTROL) : atm.action_type = 'CONTROL'
+    -- matche toute la famille. action_subtype_key ne différencie que
+    -- CONTROL et UNIT_MANAGEMENT_TRAINING.
     LEFT JOIN action_type_mapping atm
         ON atm.action_type = toString(multiIf(
             ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL'), 'CONTROL',
@@ -371,6 +330,7 @@ nav_rows AS (
             ma.action_type = 'CONTROL_SLEEPING_FISHING_GEAR', 'SLEEPING_FISHING_GEAR',
             ma.action_type = 'CONTROL_SECTOR', 'SECTOR',
             ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
+            ma.action_type = 'CONTROL' AND nullIf(ma.vessel_type, '') IS NOT NULL, 'SHIP',
             ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
             ''
         )
@@ -397,16 +357,20 @@ fish_rows AS (
         toDateTime64(f.control_datetime_utc, 6) AS start_datetime_utc,
         toDateTime64(f.control_datetime_utc, 6) AS end_datetime_utc,
         toFloat64(0) AS duration_h,
-        toString(f.control_type) AS action_type,
-        '' AS action_subtype,
-        toString(coalesce(f.vessel_name, '')) AS action_subsubtype,
-        toString(f.control_type) AS libelle_francais,
-        -- Politique publique/thématique FIXES : MonitorFish n'a aucune
-        -- classification interne, cf. avertissement en tête de fichier.
-        -- segment = segment de flotte contrôlé, seule granularité
-        -- disponible pour thematique.
+        -- Même hiérarchie que NAV : SEA_CONTROL/LAND_CONTROL/AIR_CONTROL/
+        -- AIR_SURVEILLANCE -> action_type='CONTROL', action_subtype='FISH',
+        -- action_subsubtype=méthode de contrôle réelle. OBSERVATION reste à
+        -- part (pas un contrôle).
+        toString(multiIf(f.control_type = 'OBSERVATION', 'OBSERVATION', 'CONTROL')) AS action_type,
+        toString(multiIf(f.control_type = 'OBSERVATION', '', 'FISH')) AS action_subtype,
+        toString(multiIf(f.control_type = 'OBSERVATION', '', toString(f.control_type))) AS action_subsubtype,
+        toString(multiIf(f.control_type = 'OBSERVATION', 'Observation', 'Contrôle de pêche')) AS libelle_francais,
+        -- politique_publique fixe (pas de classification interne côté
+        -- MonitorFish) ; thematique = segment de flotte si disponible.
         'Pêches maritimes' AS politique_publique,
         toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
+        toString(multiIf(f.control_type = 'OBSERVATION', 'Autre activité terrain', 'Contrôles')) AS categorie_activite,
+        toString(multiIf(f.control_type = 'OBSERVATION', 'Observation', 'Contrôle navires (pêche)')) AS sous_categorie_activite,
         '' AS env_theme_level_1,
         '' AS env_theme_level_2,
         '' AS env_plan,
@@ -425,15 +389,16 @@ fish_rows AS (
         toUInt8(0) AS is_control_during_security_day,
         toUInt8(0) AS is_seizure_sleeping_fishing_gear,
         toUInt8(0) AS has_diving_during_operation,
+        -- Pas d'équivalent réel côté FISH (completedBy existe sur
+        -- mission_actions mais n'est pas exposé par
+        -- analytics_controls_full_data). 1 par défaut : la source filtre
+        -- déjà "non supprimé", pas "complet" au sens nav.
         toUInt8(1) AS is_complete_for_stats,
         toNullable(toInt32(0)) AS nbr_of_hours_declared,
         toUInt16(0) AS nb_resources_linked,
         CAST([], 'Array(Int32)') AS resource_ids,
         CAST([], 'Array(String)') AS resource_types,
-        'MER' AS terrain_type,
-        '' AS establishment_name,
-        '' AS establishment_siren,
-        '' AS establishment_city,
+        CAST(['MER'], 'Array(String)') AS terrain_types,
         f.latitude AS latitude,
         f.longitude AS longitude
     FROM monitorfish.analytics_controls_full_data f
@@ -472,13 +437,13 @@ env_rows AS (
         toString(a.theme_level_2) AS action_subtype,
         '' AS action_subsubtype,
         toString(a.theme_level_1) AS libelle_francais,
-        -- ⚠️ EN ATTENTE : pas de mapping theme_level_1 -> politique_publique
-        -- construit -- vraie liste des thèmes non trouvée dans le code
-        -- (cf. avertissement détaillé en tête de fichier). Laissé vide
-        -- plutôt que deviné. thematique brute exposée via
-        -- env_theme_level_1/2 ci-dessous en attendant.
+        -- En attente de la liste de valeurs de theme_level_1 pour mapper
+        -- politique_publique/thematique -- laissées vides plutôt que
+        -- devinées. Bruts exposés via env_theme_level_1/2 ci-dessous.
         '' AS politique_publique,
         '' AS thematique,
+        'Contrôles' AS categorie_activite,
+        'Contrôle environnement' AS sous_categorie_activite,
         toString(a.theme_level_1) AS env_theme_level_1,
         toString(a.theme_level_2) AS env_theme_level_2,
         toString(a.plan) AS env_plan,
@@ -497,15 +462,14 @@ env_rows AS (
         toUInt8(0) AS is_control_during_security_day,
         toUInt8(0) AS is_seizure_sleeping_fishing_gear,
         toUInt8(0) AS has_diving_during_operation,
+        -- 1 justifié : la requête source de analytics_actions filtre déjà
+        -- completion='COMPLETED'.
         toUInt8(1) AS is_complete_for_stats,
         toNullable(toInt32(0)) AS nbr_of_hours_declared,
         toUInt16(0) AS nb_resources_linked,
         CAST([], 'Array(Int32)') AS resource_ids,
         CAST([], 'Array(String)') AS resource_types,
-        'MER' AS terrain_type,
-        '' AS establishment_name,
-        '' AS establishment_siren,
-        '' AS establishment_city,
+        CAST(['MER'], 'Array(String)') AS terrain_types,
         a.latitude AS latitude,
         a.longitude AS longitude
     FROM monitorenv.analytics_actions a
