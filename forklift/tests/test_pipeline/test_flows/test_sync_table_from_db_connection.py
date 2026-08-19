@@ -27,6 +27,7 @@ parameter_values = [
 
 @pytest.mark.parametrize(parameters, parameter_values)
 def test_sync_table_from_db_connection(
+    request,
     add_monitorfish_proxy_database,
     add_monitorenv_proxy_database,
     add_rapportnav_proxy_database,
@@ -42,6 +43,13 @@ def test_sync_table_from_db_connection(
         f"Testing syncing of {destination_database}.{destination_table} from {source_database}.{source_table}"
     )
     client = create_datawarehouse_client()
+
+    if destination_table == "fact_controle_pam_ulam":
+        # monitorfish.analytics_controls_full_data / monitorenv.analytics_actions
+        # + actions_infractions (unioned by rapport_pam_ulam_controle.sql)
+        # aren't built by this flow -- cf. init_analytics_controls_full_data
+        # in conftest.py for why and how they're set up here.
+        request.getfixturevalue("init_analytics_controls_full_data")
 
     state = flow.run(
         source_database=source_database,
