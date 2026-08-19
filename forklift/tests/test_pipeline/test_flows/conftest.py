@@ -15,7 +15,7 @@ replace_check_flow_not_running(sync_table_from_db_connection_flow)
 
 @fixture
 def init_analytics_controls_full_data():
-    # fact_controle_pam_ulam (rapport_pam_ulam_controle.sql) unions nav with
+    # fact_action_pam_ulam (rapport_pam_ulam_action.sql) unions nav with
     # monitorfish.analytics_controls_full_data / monitorenv.analytics_actions
     # + actions_infractions -- these 3 tables are normally built by the
     # sync_table_with_pandas flow (not sync_table_from_db_connection, which
@@ -23,8 +23,8 @@ def init_analytics_controls_full_data():
     # test ClickHouse instance. Built here directly from the real DDL
     # scripts (same ones sync_table_with_pandas uses) + a couple of
     # PAM/ULAM test rows, on the same test mission (999100) as the other
-    # ULAM fixtures, so fact_controle_pam_ulam has real cross-source data
-    # to union in tests.
+    # ULAM fixtures, so fact_action_pam_ulam has real cross-source data to
+    # union in tests.
     client = create_datawarehouse_client()
     client.command("CREATE DATABASE IF NOT EXISTS monitorfish")
     client.command("CREATE DATABASE IF NOT EXISTS monitorenv")

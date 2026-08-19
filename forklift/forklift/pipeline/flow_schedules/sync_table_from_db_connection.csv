@@ -29,4 +29,3 @@
 "rapportnav_proxy",,"data_warehouse/rapport_pam_ulam_moyen.sql","rapportnav","fact_moyen_pam_ulam",,"mois","22 5 * * *"
 "rapportnav_proxy",,"data_warehouse/rapport_pam_ulam_mission.sql","rapportnav","fact_mission_pam_ulam",,"start_datetime_utc","24 5 * * *"
 "rapportnav_proxy",,"data_warehouse/rapport_pam_ulam_cible.sql","rapportnav","fact_cible_pam_ulam",,"mois","26 5 * * *"
-"rapportnav_proxy",,"data_warehouse/rapport_pam_ulam_controle.sql","rapportnav","fact_controle_pam_ulam",,"action_datetime_utc","34 5 * * *"

@@ -44,10 +44,12 @@ def test_sync_table_from_db_connection(
     )
     client = create_datawarehouse_client()
 
-    if destination_table == "fact_controle_pam_ulam":
+    if destination_table == "fact_action_pam_ulam":
+        # rapport_pam_ulam_action.sql now unions nav with
         # monitorfish.analytics_controls_full_data / monitorenv.analytics_actions
-        # + actions_infractions (unioned by rapport_pam_ulam_controle.sql)
-        # aren't built by this flow -- cf. init_analytics_controls_full_data
+        # + actions_infractions (fact_action_pam_ulam absorbed the former
+        # fact_controle_pam_ulam, cf. discussion en chat) -- these 3 tables
+        # aren't built by this flow, cf. init_analytics_controls_full_data
         # in conftest.py for why and how they're set up here.
         request.getfixturevalue("init_analytics_controls_full_data")
 
