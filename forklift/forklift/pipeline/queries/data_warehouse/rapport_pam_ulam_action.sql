@@ -259,8 +259,42 @@ SELECT
     toUInt16(coalesce(acl.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
     toUInt16(coalesce(acl.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
     coalesce(atg.natinf_codes, []) AS natinf_codes,
+    -- Champs ajoutés en cours de PR (cf. discussion en chat) pour les
+    -- cartes et listes de drill-down des maquettes -- vérifiés contre
+    -- MissionActionModel.kt / EstablishmentModel.kt (rapportnav2).
+    -- Géoloc : laissée Nullable (pas de coalesce à 0/0, un vrai point sur
+    -- la carte) -- présente sur mission_action mais jamais sélectionnée
+    -- avant ce changement.
+    ma.latitude AS latitude,
+    ma.longitude AS longitude,
+    -- control_type/vessel_type/leisure_type/fishing_gear_type/
+    -- sector_establishment_type : ajoutés à mission_action par
+    -- V1.2025.09.23.17.30__alter_mission_action_action_new_column.sql
+    -- (rapportnav2) -- cf. rapport_pam_ulam_moyen.sql pour le détail de
+    -- cette vérification. Un seul de ces champs est en pratique renseigné
+    -- par action (celui correspondant à ce qui a été contrôlé).
+    toString(coalesce(ma.control_type, '')) AS control_type,
+    toString(coalesce(ma.vessel_type, '')) AS vessel_type,
+    toString(coalesce(ma.vessel_size, '')) AS vessel_size,
+    toString(coalesce(ma.leisure_type, '')) AS leisure_type,
+    toString(coalesce(ma.fishing_gear_type, '')) AS fishing_gear_type,
+    toString(coalesce(ma.sector_establishment_type, '')) AS sector_establishment_type,
+    toString(coalesce(ma.security_visit_type, '')) AS security_visit_type,
+    toUInt16(coalesce(ma.nbr_of_control, 0)) AS nbr_of_control_declare,
+    toUInt16(coalesce(ma.nbr_of_control_amp, 0)) AS nbr_of_control_amp,
+    toUInt16(coalesce(ma.nbr_of_control_300m, 0)) AS nbr_of_control_300m,
+    toUInt16(coalesce(ma.nbr_security_visit, 0)) AS nbr_security_visit,
+    toUInt8(coalesce(ma.is_control_during_security_day, 0)) AS is_control_during_security_day,
+    toUInt8(coalesce(ma.is_seizure_sleeping_fishing_gear, 0)) AS is_seizure_sleeping_fishing_gear,
+    toUInt8(coalesce(ma.has_diving_during_operation, 0)) AS has_diving_during_operation,
+    -- Établissement contrôlé (pour "liste des établissements contrôlés",
+    -- maquette) -- jointure via mission_action.establishment_id.
+    toString(coalesce(est.name, '')) AS establishment_name,
+    toString(coalesce(est.siren, '')) AS establishment_siren,
+    toString(coalesce(est.city, '')) AS establishment_city,
     now() AS updated_at
 FROM rapportnav_proxy.mission_action ma
+LEFT JOIN rapportnav_proxy.establishment est ON est.id = ma.establishment_id
 -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au moins
 -- une unité PAM ou ULAM (cf. pam_ulam_control_units plus haut).
 INNER JOIN mission_units mu ON mu.mission_id = ma.mission_id
