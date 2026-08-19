@@ -21,34 +21,53 @@
 --     (rafraîchies HORAIRE, cf. sync_table_with_pandas.csv "20/22 * * * *")
 -- Le filtre PAM/ULAM par nom repris ci-dessous pour ENV est recopié tel
 -- quel de monitorenv_remote/analytics_actions.sql (déjà en prod pour
--- d'autres usages) -- PAS inventé pour cette PR. Appliqué par analogie
--- (non confirmé) au FISH, qui n'a pas cette logique déjà écrite ailleurs.
+-- d'autres usages) -- PAS inventé pour cette PR. Appliqué par analogie au
+-- FISH (repos MonitorFish/MonitorEnv clonés et inspectés, cf. ci-dessous,
+-- mais cette logique par nom n'existe pas ailleurs côté FISH -- c'est
+-- une extrapolation, pas une confirmation).
 --
 -- ⚠️ 3 modèles de données réellement différents, normalisés du mieux
--- possible dans un schéma commun -- plusieurs points sont des
--- APPROXIMATIONS ASSUMÉES, PAS vérifiées comme le reste de cette PR
--- (schéma FISH/ENV non inspecté aussi finement que rapportnav2, pas de
--- repo cloné pour MonitorFish/MonitorEnv) :
---   - mission_id supposé être le même espace d'id à travers les 3 systèmes
---     (hypothèse déjà implicite dans missions_aem.sql qui combine les 3
---     sources au niveau mission -- reprise ici, pas revérifiée).
---   - control_unit_id : PAS supposé partagé entre systèmes (repli
---     volontaire sur le filtre par NOM d'unité pour fish/env, comme pour
---     nav -- évite cette hypothèse plus fragile).
---   - FISH nb_controles = 1 par ligne (chaque ligne d'analytics_controls_full_data
---     est déjà 1 contrôle) -- à confirmer, pas vérifié contre le code
---     MonitorFish.
+-- possible dans un schéma commun. Points VÉRIFIÉS contre les repos
+-- MonitorFish et MonitorEnv clonés (backend/src/main/kotlin + migrations
+-- SQL) :
+--   - mission_id partagé entre les 3 systèmes : CONFIRMÉ, pas une
+--     hypothèse. MonitorFish n'a AUCUN concept de mission propre -- il
+--     interroge l'API MonitorEnv en direct avec ce même missionId:Int
+--     (APIMissionRepository.kt, monitorfish) et RapportNav fait de même
+--     (déjà établi dans missions_aem.sql/rapport_pam_ulam_mission.sql).
+--   - control_unit_id : PAS supposé partagé entre systèmes malgré tout
+--     (repli volontaire sur le filtre par NOM d'unité pour fish/env,
+--     comme pour nav -- évite cette hypothèse plus fragile, non vérifiée).
+--   - FISH nb_controles = 1 par ligne : CONFIRMÉ -- MissionAction.kt
+--     (monitorfish) n'a aucun champ de type "amount_of_controls"/compteur
+--     sur une action, contrairement à rapportnav_proxy.control_2.
+--   - FISH infraction avec/sans PV : monitorfish a bien un InfractionType
+--     à 3 valeurs (WITH_RECORD/WITHOUT_RECORD/PENDING, InfractionType.kt)
+--     -- même piège que nav (WAITING). MAIS la table déjà construite
+--     monitorfish.analytics_controls_full_data (analytics_controls_full_data.sql,
+--     CTE controls_infraction_natinfs_array) ne calcule QUE
+--     infraction_report = présence d'au moins une infraction WITH_RECORD
+--     -- elle n'expose PAS WITHOUT_RECORD/PENDING séparément dans ses
+--     colonnes de sortie. C'est une vraie limite de la table source déjà
+--     construite (pas quelque chose que je peux corriger sans modifier
+--     analytics_controls_full_data.sql, hors périmètre de cette PR) :
+--     nb_infractions_sans_pv pour FISH mélange donc WITHOUT_RECORD et
+--     PENDING -- fiable pour nb_infractions_avec_pv, PAS pour
+--     nb_infractions_sans_pv.
+--   - ENV infraction avec/sans PV : CONFIRMÉ fiable. InfractionTypeEnum.kt
+--     (monitorenv, package envActionControl.infraction) a EXACTEMENT les
+--     3 mêmes valeurs (WAITING/WITH_REPORT/WITHOUT_REPORT) que la copie
+--     miroir dans rapportnav2 -- pas une coïncidence de nom de colonne,
+--     un vrai enum partagé en pratique.
 --   - sous_type_controle : pas d'équivalent identifié côté FISH (colonne
 --     vide) ; côté ENV, theme_level_1 utilisé par approximation (pas
---     confirmé comme l'équivalent fonctionnel de control_type nav).
---   - infraction avec/sans PV : FISH utilise infraction_report (booléen,
---     sémantique supposée ~ WITH_REPORT nav, pas vérifiée) ; ENV utilise
---     actions_infractions.infraction_type, PAS confirmé porter les mêmes
---     valeurs (WAITING/WITH_REPORT/WITHOUT_REPORT) que le InfractionTypeEnum
---     de rapportnav2 -- c'est un champ MonitorEnv, potentiellement un
---     enum différent malgré le nom de colonne identique.
--- À faire valider par quelqu'un ayant une vue sur les schémas MonitorFish/
--- MonitorEnv avant tout usage en dashboard.
+--     confirmé comme l'équivalent fonctionnel de control_type nav --
+--     aucune méthode de calcul métier trouvée qui le confirme).
+--
+-- Filtre "missions à partir de 2025" appliqué sur les 3 sources (cf.
+-- discussion en chat) : sans lui, la source ENV en particulier
+-- récupérerait tout l'historique de monitorenv.analytics_actions, non
+-- utile pour ce rapport et coûteux à chaque refresh horaire.
 --
 -- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql ET après les
 -- flows sync_table_with_pandas qui alimentent monitorfish.analytics_controls_full_data
@@ -138,6 +157,7 @@ nav_controls AS (
         toUInt16(coalesce(ac.nb_controles, 0)) AS nb_controles,
         toUInt16(coalesce(ac.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ac.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
+        toUInt8(1) AS nb_infractions_sans_pv_fiable,
         arrayMap(x -> toString(x), coalesce(an.natinf_codes, [])) AS natinf_codes,
         ma.latitude AS latitude,
         ma.longitude AS longitude
@@ -146,13 +166,20 @@ nav_controls AS (
     LEFT JOIN action_controls ac ON ac.action_id = toString(ma.id)
     LEFT JOIN action_natinfs an ON an.action_id = toString(ma.id)
     WHERE ma.control_type IS NOT NULL AND toString(ma.control_type) != ''
+      AND ma.start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 ),
 
 -- ---- Source FISH ----
 -- monitorfish.analytics_controls_full_data : déjà construite, 1 ligne =
--- 1 contrôle (nb_controles=1 par ligne, cf. avertissement en tête de
--- fichier). Filtre PAM/ULAM par nom d'unité (control_unit), pas par id
--- (espace d'id non supposé partagé avec monitorenv/rapportnav).
+-- 1 contrôle (CONFIRMÉ, cf. avertissement en tête de fichier). Filtre
+-- PAM/ULAM par nom d'unité (control_unit), pas par id (espace d'id non
+-- supposé partagé avec monitorenv/rapportnav).
+-- ⚠️ nb_infractions_sans_pv non fiable ici (mélange WITHOUT_RECORD et
+-- PENDING) -- cf. avertissement détaillé en tête de fichier. Gardé sous
+-- le même nom que nav/env pour permettre un UNION positionnel simple
+-- (colonnes identiques dans les 3 sources), mais accompagné de
+-- nb_infractions_sans_pv_fiable (0 ici, 1 pour nav/env) pour permettre
+-- de l'exclure explicitement côté Metabase si besoin.
 fish_controls AS (
     SELECT
         'FISH' AS source,
@@ -173,12 +200,13 @@ fish_controls AS (
         toUInt16(1) AS nb_controles,
         toUInt16(f.infraction_report) AS nb_infractions_avec_pv,
         toUInt16(if(f.infraction = 1 AND f.infraction_report = 0, 1, 0)) AS nb_infractions_sans_pv,
+        toUInt8(0) AS nb_infractions_sans_pv_fiable,
         f.infraction_natinfs AS natinf_codes,
         f.latitude AS latitude,
         f.longitude AS longitude
     FROM monitorfish.analytics_controls_full_data f
-    WHERE startsWith(upper(f.control_unit), 'ULAM')
-       OR startsWith(upper(f.control_unit), 'PAM')
+    WHERE (startsWith(upper(f.control_unit), 'ULAM') OR startsWith(upper(f.control_unit), 'PAM'))
+      AND f.control_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 ),
 
 -- ---- Source ENV ----
@@ -214,6 +242,7 @@ env_controls AS (
         toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controles,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
+        toUInt8(1) AS nb_infractions_sans_pv_fiable,
         arrayMap(x -> toString(x), coalesce(ei.natinf_codes, [])) AS natinf_codes,
         a.latitude AS latitude,
         a.longitude AS longitude
@@ -224,6 +253,7 @@ env_controls AS (
         startsWith(upper(a.control_unit), 'ULAM')
         OR (a.administration = 'DIRM / DM' AND startsWith(upper(a.control_unit), 'PAM'))
       )
+      AND a.action_start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 )
 
 SELECT *, now() AS updated_at FROM nav_controls
