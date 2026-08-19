@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from pytest import fixture
@@ -61,9 +62,15 @@ def init_analytics_controls_full_data():
     )
 
     # ENV : 1 action de contrôle avec infraction WITH_REPORT (avec PV),
-    # même mission de test.
+    # même mission de test. UUID générés côté Python (pas generateUUIDv4()
+    # côté ClickHouse : pattern non utilisé ailleurs dans ce repo, évité
+    # plutôt que supposé -- cf. discussion en chat) pour rester
+    # déterministe et éviter un aller-retour SELECT pour récupérer l'id
+    # généré.
+    env_action_id = str(uuid.uuid4())
+    env_infraction_id = str(uuid.uuid4())
     client.command(
-        """
+        f"""
         INSERT INTO monitorenv.analytics_actions
             (id, mission_id, action_start_datetime_utc, year,
              mission_start_datetime_utc, mission_end_datetime_utc,
@@ -73,7 +80,7 @@ def init_analytics_controls_full_data():
              theme_level_1, longitude, latitude, infraction,
              number_of_controls)
         VALUES
-            (generateUUIDv4(), 999100, '2025-06-02 09:00:00', 2025,
+            ('{env_action_id}', 999100, '2025-06-02 09:00:00', 2025,
              '2025-06-02 08:00:00', '2025-06-02 18:00:00',
              'CONTROL', 'CONTROL', 'SA', 999100,
              'ULAM TEST 999100', 'DDTM 33', 1, 1,
@@ -82,16 +89,12 @@ def init_analytics_controls_full_data():
              1)
         """
     )
-    env_action_id_row = client.query_df(
-        "SELECT id FROM monitorenv.analytics_actions WHERE mission_id = 999100 LIMIT 1"
-    )
-    env_action_id = str(env_action_id_row["id"][0])
     client.command(
         f"""
         INSERT INTO monitorenv.actions_infractions
             (env_action_id, infraction_id, natinf, infraction_type, vessel_name)
         VALUES
-            ('{env_action_id}', generateUUIDv4(), [67890], 'WITH_REPORT', 'Navire Test ENV')
+            ('{env_action_id}', '{env_infraction_id}', [67890], 'WITH_REPORT', 'Navire Test ENV')
         """
     )
 
