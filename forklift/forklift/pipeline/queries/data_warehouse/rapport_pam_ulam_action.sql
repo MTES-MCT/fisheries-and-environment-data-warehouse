@@ -145,6 +145,28 @@ action_targets AS (
     LEFT JOIN rapportnav_proxy.infraction_natinf_2 n ON n.infraction_id = i.id
     GROUP BY t.action_id
 ),
+-- Politique publique des contrôles NAV -- confirmée sur les maquettes
+-- Metabase (table "Nombre d'actions de contrôle par politique publique",
+-- identique sur les dashboards ULAM et PAM) : Pêche professionnelle /
+-- Equipement de sécurité / Police de la navigation / Gens de mer /
+-- Environnement-pollution / Autres. Les 4 dernières viennent de
+-- control_2.control_type (ADMINISTRATIVE/GENS_DE_MER/NAVIGATION/SECURITY
+-- -- champ DIFFÉRENT de mission_action.control_type, qui lui est du texte
+-- libre uniquement pour OTHER_CONTROL). Pêche professionnelle et
+-- Environnement/pollution viennent des sources FISH/ENV (fixes, cf.
+-- fish_rows/env_rows plus bas) -- control_2 est nav-only.
+-- ⚠️ Une action peut avoir plusieurs contrôles ; si leurs control_type
+-- diffèrent (rare), on garde le plus fréquent (topK) plutôt que d'en
+-- perdre un silencieusement.
+action_control_policy AS (
+    SELECT
+        toString(t.action_id) AS action_id,
+        arrayElement(topK(1)(toString(c.control_type)), 1) AS control_type_predominant
+    FROM rapportnav_proxy.control_2 c
+    INNER JOIN rapportnav_proxy.target_2 t ON t.id = c.target_id
+    WHERE coalesce(c.has_been_done, false) = true
+    GROUP BY t.action_id
+),
 -- Référentiel libellé français / politique publique / thématique par
 -- action_type NAV (dictionnaire métier "Types et sous-types d'actions",
 -- export CSV du 2026-08-14).
@@ -280,7 +302,21 @@ nav_rows AS (
             ''
         )) AS action_subsubtype,
         toString(coalesce(nullIf(atm.libelle_francais, ''), toString(ma.action_type))) AS libelle_francais,
-        toString(coalesce(atm.politique_publique, '')) AS politique_publique,
+        -- politique_publique : control_2.control_type prime sur
+        -- action_type_mapping pour les actions ayant un contrôle logué
+        -- (cf. action_control_policy) -- repli sur action_type_mapping
+        -- (classification générique par action_type) sinon.
+        toString(coalesce(
+            nullIf(multiIf(
+                acp.control_type_predominant = 'NAVIGATION', 'Police de la navigation',
+                acp.control_type_predominant = 'GENS_DE_MER', 'Gens de mer',
+                acp.control_type_predominant = 'SECURITY', 'Equipement de sécurité',
+                acp.control_type_predominant = 'ADMINISTRATIVE', 'Autres',
+                ''
+            ), ''),
+            atm.politique_publique,
+            ''
+        )) AS politique_publique,
         toString(coalesce(atm.thematique, '')) AS thematique,
         toString(coalesce(atm.categorie_activite, '')) AS categorie_activite,
         toString(coalesce(atm.sous_categorie_activite, '')) AS sous_categorie_activite,
@@ -317,6 +353,7 @@ nav_rows AS (
     LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
     LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
+    LEFT JOIN action_control_policy acp ON acp.action_id = toString(ma.id)
     -- action_type déjà unifié (CONTROL) : atm.action_type = 'CONTROL'
     -- matche toute la famille. action_subtype_key ne différencie que
     -- CONTROL et UNIT_MANAGEMENT_TRAINING.
@@ -366,8 +403,11 @@ fish_rows AS (
         toString(multiIf(f.control_type = 'OBSERVATION', '', toString(f.control_type))) AS action_subsubtype,
         toString(multiIf(f.control_type = 'OBSERVATION', 'Observation', 'Contrôle de pêche')) AS libelle_francais,
         -- politique_publique fixe (pas de classification interne côté
-        -- MonitorFish) ; thematique = segment de flotte si disponible.
-        'Pêches maritimes' AS politique_publique,
+        -- MonitorFish) -- libellé exact confirmé sur les maquettes
+        -- Metabase ULAM et PAM ("Pêche professionnelle", cf.
+        -- action_control_policy plus haut) ; thematique = segment de
+        -- flotte si disponible.
+        'Pêche professionnelle' AS politique_publique,
         toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
         toString(multiIf(f.control_type = 'OBSERVATION', 'Autre activité terrain', 'Contrôles')) AS categorie_activite,
         toString(multiIf(f.control_type = 'OBSERVATION', 'Observation', 'Contrôle navires (pêche)')) AS sous_categorie_activite,
@@ -437,10 +477,16 @@ env_rows AS (
         toString(a.theme_level_2) AS action_subtype,
         '' AS action_subsubtype,
         toString(a.theme_level_1) AS libelle_francais,
-        -- En attente de la liste de valeurs de theme_level_1 pour mapper
-        -- politique_publique/thematique -- laissées vides plutôt que
-        -- devinées. Bruts exposés via env_theme_level_1/2 ci-dessous.
-        '' AS politique_publique,
+        -- politique_publique fixe -- libellé exact confirmé sur les
+        -- maquettes ULAM et PAM ("Environnement / pollution", cf.
+        -- action_control_policy plus haut ; toutes les lignes ENV de
+        -- cette table sont déjà filtrées action_type='CONTROL', donc la
+        -- valeur fixe s'applique à 100% du périmètre). thematique reste
+        -- en attente de la liste de valeurs de theme_level_1 (12 valeurs
+        -- partiellement connues via une maquette PAM, certaines
+        -- tronquées -- pas encore confirmées) -- laissée vide plutôt que
+        -- devinée. Bruts exposés via env_theme_level_1/2 ci-dessous.
+        'Environnement / pollution' AS politique_publique,
         '' AS thematique,
         'Contrôles' AS categorie_activite,
         'Contrôle environnement' AS sous_categorie_activite,

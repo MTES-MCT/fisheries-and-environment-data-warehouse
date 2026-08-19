@@ -32,6 +32,15 @@
 -- has_diving_during_operation, is_control_during_security_day n'existent
 -- pas côté fish/env, 0 par défaut pour ces sources).
 --
+-- politique_publique : Pêche professionnelle / Equipement de sécurité /
+-- Police de la navigation / Gens de mer / Environnement-pollution /
+-- Autres -- confirmé sur les maquettes Metabase ULAM ET PAM (même table
+-- "politique publique" sur les deux dashboards). NAV dérivé de
+-- control_2.control_type (ADMINISTRATIVE/GENS_DE_MER/NAVIGATION/SECURITY
+-- -- champ DIFFÉRENT de mission_action.control_type, texte libre pour
+-- OTHER_CONTROL seulement) ; FISH/ENV fixes (pas de classification
+-- interne dans ces systèmes).
+--
 -- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql ET après les
 -- flows sync_table_with_pandas qui alimentent monitorfish.analytics_controls_full_data
 -- / monitorenv.analytics_actions / monitorenv.actions_infractions (aucune
@@ -107,6 +116,18 @@ action_targets AS (
     LEFT JOIN rapportnav_proxy.control_2 c ON c.target_id = t.id AND coalesce(c.has_been_done, false) = true
     GROUP BY t.action_id
 ),
+-- Politique publique des contrôles NAV, cf. rapport_pam_ulam_action.sql
+-- (mêmes 4 valeurs control_2.control_type -> Police de la navigation/
+-- Gens de mer/Equipement de sécurité/Autres), dupliquée ici.
+action_control_policy AS (
+    SELECT
+        toString(t.action_id) AS action_id,
+        arrayElement(topK(1)(toString(c.control_type)), 1) AS control_type_predominant
+    FROM rapportnav_proxy.control_2 c
+    INNER JOIN rapportnav_proxy.target_2 t ON t.id = c.target_id
+    WHERE coalesce(c.has_been_done, false) = true
+    GROUP BY t.action_id
+),
 
 -- ---- Source NAV : famille CONTROL unifiée uniquement ----
 nav_control_rows AS (
@@ -141,7 +162,20 @@ nav_control_rows AS (
             nullIf(ma.control_type, ''),
             ''
         )) AS action_subsubtype,
-        toString(coalesce(cpm.politique_publique, '')) AS politique_publique,
+        -- politique_publique : control_2.control_type prime, repli sur
+        -- control_policy_mapping (générique par action_subtype) sinon --
+        -- cf. rapport_pam_ulam_action.sql.
+        toString(coalesce(
+            nullIf(multiIf(
+                acp.control_type_predominant = 'NAVIGATION', 'Police de la navigation',
+                acp.control_type_predominant = 'GENS_DE_MER', 'Gens de mer',
+                acp.control_type_predominant = 'SECURITY', 'Equipement de sécurité',
+                acp.control_type_predominant = 'ADMINISTRATIVE', 'Autres',
+                ''
+            ), ''),
+            cpm.politique_publique,
+            ''
+        )) AS politique_publique,
         toString(coalesce(cpm.thematique, '')) AS thematique,
         toDate(toStartOfMonth(ma.start_datetime_utc)) AS mois,
         toUInt16(coalesce(acl.nb_controls, 0)) AS nb_controles,
@@ -159,6 +193,7 @@ nav_control_rows AS (
     INNER JOIN mission_unit_pairs mup ON mup.mission_id = ma.mission_id
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
     LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
+    LEFT JOIN action_control_policy acp ON acp.action_id = toString(ma.id)
     LEFT JOIN control_policy_mapping cpm
         ON cpm.action_subtype_key = multiIf(
             ma.action_type = 'CONTROL_NAUTICAL_LEISURE', 'NAUTICAL_LEISURE',
@@ -186,7 +221,7 @@ fish_control_rows AS (
         )) AS unit_type,
         'FISH' AS action_subtype,
         toString(f.control_type) AS action_subsubtype,
-        'Pêches maritimes' AS politique_publique,
+        'Pêche professionnelle' AS politique_publique,
         toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
         toDate(toStartOfMonth(f.control_datetime_utc)) AS mois,
         toUInt16(1) AS nb_controles,
@@ -228,7 +263,7 @@ env_control_rows AS (
         )) AS unit_type,
         toString(a.theme_level_2) AS action_subtype,
         '' AS action_subsubtype,
-        '' AS politique_publique,
+        'Environnement / pollution' AS politique_publique,
         '' AS thematique,
         toDate(toStartOfMonth(a.action_start_datetime_utc)) AS mois,
         toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controles,
