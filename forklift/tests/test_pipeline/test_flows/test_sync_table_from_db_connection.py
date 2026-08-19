@@ -107,11 +107,29 @@ def test_sync_table_from_db_connection(
         print("DEBUG mission_action for mission 999100:", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action WHERE mission_id = 999100"
         ))
-        print("DEBUG the actual base FROM used by rapport_pam_ulam_moyen.sql:", client.query_df(
+        print("DEBUG mission_action_resource joined to mission_action (used by rapport_pam_ulam_moyen.sql):", client.query_df(
             "SELECT count() AS n FROM rapportnav_proxy.mission_action_resource mar "
             "INNER JOIN rapportnav_proxy.mission_action ma ON ma.id = mar.action_id "
             "INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id "
             "WHERE ma.mission_id = 999100"
+        ))
+        print("DEBUG mission_action.control_type populated (needed since the grain change, V777.08):", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.mission_action "
+            "WHERE mission_id = 999100 AND control_type IS NOT NULL"
+        ))
+
+    if destination_table == "fact_cible_pam_ulam":
+        print("DEBUG target_2 for our test action (999100/...0004):", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.target_2 "
+            "WHERE action_id = '99910000-0000-0000-0000-000000000004'"
+        ))
+        print("DEBUG control_2 has_been_done=true for our test target:", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.control_2 "
+            "WHERE target_id = '99910100-0000-0000-0000-000000000001' AND has_been_done = true"
+        ))
+        print("DEBUG infraction_2 for our test controls:", client.query_df(
+            "SELECT count() AS n, groupArray(infraction_type) AS types FROM rapportnav_proxy.infraction_2 "
+            "WHERE control_id = '99910200-0000-0000-0000-000000000001'"
         ))
 
     df = client.query_df(

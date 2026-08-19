@@ -17,6 +17,14 @@
 -- Seules les colonnes utiles aux requêtes ULAM sont renseignées ; le
 -- reste (colonnes métier non utilisées ici) part à NULL par défaut,
 -- comme dans V777.05.
+-- ⚠️ control_type='ADMINISTRATIVE' ajouté sur l'action CONTROL (...0004) :
+-- nécessaire pour exercer rapport_pam_ulam_moyen.sql / rapport_pam_ulam_cible.sql
+-- (grain "par sous-type de contrôle" = mission_action.control_type, cf.
+-- discussion en chat) -- sans cette valeur, l'action serait exclue par
+-- leur filtre WHERE control_type IS NOT NULL et les 2 tables ressortiraient
+-- vides en test. Même valeur que le control_2 has_been_done=true de
+-- V777.11 (cohérence du scénario, même si les 2 champs sont indépendants
+-- en pratique).
 -- =====================================================================
 INSERT INTO public.mission_action (
     id,
@@ -29,12 +37,13 @@ INSERT INTO public.mission_action (
     resource_type,
     nbr_of_hours,
     is_complete_for_stats,
-    reason
+    reason,
+    control_type
 ) VALUES
-    ('99910000-0000-0000-0000-000000000001', 999100, 'STATUS', '2025-06-02 08:00:00', NULL, 'NAVIGATING', NULL, NULL, NULL, true, NULL),
-    ('99910000-0000-0000-0000-000000000002', 999100, 'STATUS', '2025-06-02 10:00:00', NULL, 'ANCHORED',   NULL, NULL, NULL, true, NULL),
-    ('99910000-0000-0000-0000-000000000003', 999100, 'STATUS', '2025-06-02 14:00:00', NULL, 'NAVIGATING', NULL, NULL, NULL, true, NULL),
-    ('99910000-0000-0000-0000-000000000004', 999100, 'CONTROL', '2025-06-02 09:00:00', '2025-06-02 10:00:00', NULL, NULL, NULL, NULL, true, NULL),
-    ('99910000-0000-0000-0000-000000000005', 999100, 'TRAINING', '2025-06-02 11:00:00', '2025-06-02 14:00:00', NULL, 'SURVIE', NULL, NULL, true, NULL),
-    ('99910000-0000-0000-0000-000000000006', 999100, 'RESOURCES_MAINTENANCE', '2025-06-02 15:00:00', '2025-06-02 17:00:00', NULL, NULL, 'RIGID_HULL', NULL, true, NULL),
-    ('99910000-0000-0000-0000-000000000007', 999100, 'RESOURCES_MAINTENANCE', '2025-06-02 15:30:00', '2025-06-02 17:00:00', NULL, NULL, 'CAR', NULL, true, NULL);
+    ('99910000-0000-0000-0000-000000000001', 999100, 'STATUS', '2025-06-02 08:00:00', NULL, 'NAVIGATING', NULL, NULL, NULL, true, NULL, NULL),
+    ('99910000-0000-0000-0000-000000000002', 999100, 'STATUS', '2025-06-02 10:00:00', NULL, 'ANCHORED',   NULL, NULL, NULL, true, NULL, NULL),
+    ('99910000-0000-0000-0000-000000000003', 999100, 'STATUS', '2025-06-02 14:00:00', NULL, 'NAVIGATING', NULL, NULL, NULL, true, NULL, NULL),
+    ('99910000-0000-0000-0000-000000000004', 999100, 'CONTROL', '2025-06-02 09:00:00', '2025-06-02 10:00:00', NULL, NULL, NULL, NULL, true, NULL, 'ADMINISTRATIVE'),
+    ('99910000-0000-0000-0000-000000000005', 999100, 'TRAINING', '2025-06-02 11:00:00', '2025-06-02 14:00:00', NULL, 'SURVIE', NULL, NULL, true, NULL, NULL),
+    ('99910000-0000-0000-0000-000000000006', 999100, 'RESOURCES_MAINTENANCE', '2025-06-02 15:00:00', '2025-06-02 17:00:00', NULL, NULL, 'RIGID_HULL', NULL, true, NULL, NULL),
+    ('99910000-0000-0000-0000-000000000007', 999100, 'RESOURCES_MAINTENANCE', '2025-06-02 15:30:00', '2025-06-02 17:00:00', NULL, NULL, 'CAR', NULL, true, NULL, NULL);
