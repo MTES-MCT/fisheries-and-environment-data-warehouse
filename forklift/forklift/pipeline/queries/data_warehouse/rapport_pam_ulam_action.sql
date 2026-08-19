@@ -200,14 +200,28 @@ action_targets AS (
 ),
 -- Référentiel libellé français / politique publique / thématique par
 -- action_type NAV, repris du dictionnaire de données métier "Types et
--- sous-types d'actions" (export CSV du 2026-08-14). Clé = action_type
--- seul, sauf UNIT_MANAGEMENT_TRAINING (action_subtype = champ contrôlé,
--- pas du texte libre).
+-- sous-types d'actions" (export CSV du 2026-08-14).
+-- ⚠️ RESTRUCTURÉ en cours de PR (cf. discussion en chat, données réelles à
+-- l'appui : vessel_type/leisure_type/fishing_gear_type/sector_type/
+-- control_type ne sont jamais renseignés en même temps sur une action --
+-- un seul champ "détail" par action_type). CONTROL_NAUTICAL_LEISURE,
+-- CONTROL_SLEEPING_FISHING_GEAR, CONTROL_SECTOR et OTHER_CONTROL (qui
+-- étaient 4 action_type distincts) sont maintenant regroupés sous un seul
+-- action_type='CONTROL', différencié par action_subtype (NAUTICAL_LEISURE/
+-- SLEEPING_FISHING_GEAR/SECTOR/OTHER_CONTROL/'' pour un contrôle standard).
+-- SECURITY_VISIT reste un action_type à part (pas absorbé) -- son
+-- security_visit_type est fiable (vrai enum SecurityVisitType, pas du
+-- texte libre) mais n'a pas de granularité de mapping distincte dans le
+-- dictionnaire source, donc pas de ligne dédiée ici (clé '').
+-- Clé = (action_type, action_subtype_key) où action_subtype_key ne
+-- distingue que CONTROL (sous-types ci-dessus) et UNIT_MANAGEMENT_TRAINING
+-- (action_subtype = champ contrôlé, pas du texte libre) -- tout le reste
+-- utilise la clé '' (mapping par défaut de l'action_type).
 -- ⚠️ TRAINING (le "vrai") : action_subtype vient d'un champ texte libre
 -- (ma.training_type), des dizaines de valeurs distinctes dans le
 -- dictionnaire source -- impossible à mapper ligne à ligne. Libellé par
 -- défaut de l'action_type appliqué à toute action TRAINING quel que soit
--- le texte saisi.
+-- le texte saisi (clé '', jamais ma.training_type).
 action_type_mapping AS (
     SELECT 'ANTI_POLLUTION' AS action_type, '' AS action_subtype_key, 'Opération de lutte anti-pollution' AS libelle_francais, 'Contrôle des activités maritimes' AS politique_publique, 'Environnement marin' AS thematique
     UNION ALL SELECT 'BAAEM_PERMANENCE', '', 'Permanence BAAEM - bureau de l''action de l''Etat en mer', 'Contrôle des activités maritimes', 'Transversal'
@@ -215,10 +229,13 @@ action_type_mapping AS (
     -- Libellés suffixés "?" dans le dictionnaire source (CONTACT, INQUIRY) :
     -- incertitude du métier sur le nom, reprise telle quelle.
     UNION ALL SELECT 'CONTACT', '', 'Accueil public ?', 'Contrôle des activités maritimes', 'Transversal'
+    -- Famille CONTROL unifiée (cf. avertissement ci-dessus) : 5 lignes,
+    -- une par ancien action_type de la famille.
     UNION ALL SELECT 'CONTROL', '', 'Contrôle', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'CONTROL_NAUTICAL_LEISURE', '', 'Contrôle de loisirs nautiques', 'Contrôle des activités maritimes', 'Loisirs nautiques'
-    UNION ALL SELECT 'CONTROL_SECTOR', '', 'Thématique de contrôle', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'CONTROL_SLEEPING_FISHING_GEAR', '', 'Contrôle d''engin de pêche dormant', 'Contrôle des activités maritimes', 'Pêches maritimes'
+    UNION ALL SELECT 'CONTROL', 'NAUTICAL_LEISURE', 'Contrôle de loisirs nautiques', 'Contrôle des activités maritimes', 'Loisirs nautiques'
+    UNION ALL SELECT 'CONTROL', 'SECTOR', 'Thématique de contrôle', 'Contrôle des activités maritimes', 'Transversal'
+    UNION ALL SELECT 'CONTROL', 'SLEEPING_FISHING_GEAR', 'Contrôle d''engin de pêche dormant', 'Contrôle des activités maritimes', 'Pêches maritimes'
+    UNION ALL SELECT 'CONTROL', 'OTHER_CONTROL', 'Autre contrôle', 'Contrôle des activités maritimes', 'Transversal'
     UNION ALL SELECT 'HEARING_CONDUCT', '', 'Préparation et conduite d''audition', 'Contrôle des activités maritimes', 'Transversal'
     UNION ALL SELECT 'ILLEGAL_IMMIGRATION', '', 'Opération de lutte contre l''immigration illégale', 'Contrôle des activités maritimes', 'Flux migratoires'
     UNION ALL SELECT 'INQUIRY', '', 'Enquête/ préparation de contrôle ?', 'Contrôle des activités maritimes', 'Transversal'
@@ -228,7 +245,6 @@ action_type_mapping AS (
     UNION ALL SELECT 'NAUTICAL_EVENT', '', 'Surveillance de manifestation nautique', 'Contrôle des activités maritimes', 'Occupation du domaine public maritime'
     UNION ALL SELECT 'NOTE', '', 'Note libre', 'Contrôle des activités maritimes', 'Transversal'
     UNION ALL SELECT 'OTHER', '', 'Autre (vie et gestion de l''unité)', 'Contrôle des activités maritimes', 'Transversal'
-    UNION ALL SELECT 'OTHER_CONTROL', '', 'Autre contrôle', 'Contrôle des activités maritimes', 'Transversal'
     UNION ALL SELECT 'PUBLIC_ORDER', '', 'Ordre public', 'Maintien de l''ordre public', ''
     UNION ALL SELECT 'PV_DRAFTING', '', 'Rédaction de PV', 'Contrôle des activités maritimes', 'Transversal'
     UNION ALL SELECT 'REPRESENTATION', '', 'Représentation', 'Contrôle des activités maritimes', 'Transversal'
@@ -261,21 +277,43 @@ nav_rows AS (
             dateDiff('second', ma.start_datetime_utc, ma.end_datetime_utc) / 3600.0,
             coalesce(toFloat64(ma.nbr_of_hours), 0)
         )) AS duration_h,
-        toString(ma.action_type) AS action_type,
+        -- action_type unifié : CONTROL absorbe les 4 anciens action_type de
+        -- la famille contrôle (cf. avertissement sur action_type_mapping) --
+        -- SECURITY_VISIT n'est PAS absorbé (choix confirmé en chat).
         toString(multiIf(
+            ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL'), 'CONTROL',
+            toString(ma.action_type)
+        )) AS action_type,
+        -- action_subtype (niveau 2) : pour la famille CONTROL, dérivé de
+        -- l'ancien action_type (NAUTICAL_LEISURE/SLEEPING_FISHING_GEAR/
+        -- SECTOR/OTHER_CONTROL/'' pour un contrôle standard) -- pour le
+        -- reste, même logique qu'avant (fusionne aussi security_visit_type,
+        -- un vrai enum contrôlé, dans le même mécanisme).
+        toString(multiIf(
+            ma.action_type = 'CONTROL_NAUTICAL_LEISURE', 'NAUTICAL_LEISURE',
+            ma.action_type = 'CONTROL_SLEEPING_FISHING_GEAR', 'SLEEPING_FISHING_GEAR',
+            ma.action_type = 'CONTROL_SECTOR', 'SECTOR',
+            ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
             ma.action_type = 'TRAINING', coalesce(ma.training_type, ''),
             ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
             ma.action_type = 'RESOURCES_MAINTENANCE', coalesce(ma.resource_type, ''),
+            ma.action_type = 'SECURITY_VISIT', coalesce(ma.security_visit_type, ''),
             coalesce(ma.reason, '')
         )) AS action_subtype,
-        toString(coalesce(ma.control_type, '')) AS control_type,
-        toString(coalesce(nullIf(ma.vessel_type, ''), nullIf(ma.leisure_type, ''), nullIf(ma.fishing_gear_type, ''), nullIf(ma.sector_establishment_type, ''), '')) AS cible_label,
-        toString(coalesce(ma.vessel_type, '')) AS vessel_type,
-        toString(coalesce(ma.vessel_size, '')) AS vessel_size,
-        toString(coalesce(ma.leisure_type, '')) AS leisure_type,
-        toString(coalesce(ma.fishing_gear_type, '')) AS fishing_gear_type,
-        toString(coalesce(ma.sector_establishment_type, '')) AS sector_establishment_type,
-        toString(coalesce(ma.security_visit_type, '')) AS security_visit_type,
+        -- action_subsubtype (niveau 3, NOUVEAU) : remplace les anciennes
+        -- colonnes control_type/vessel_type/vessel_size/leisure_type/
+        -- fishing_gear_type/sector_establishment_type (jamais 2 renseignées
+        -- à la fois sur une même action, confirmé sur données réelles --
+        -- cf. discussion en chat) par un seul coalesce. Uniquement
+        -- significatif pour la famille CONTROL en pratique.
+        toString(coalesce(
+            nullIf(ma.vessel_type, ''),
+            nullIf(ma.leisure_type, ''),
+            nullIf(ma.fishing_gear_type, ''),
+            nullIf(ma.sector_establishment_type, ''),
+            nullIf(ma.control_type, ''),
+            ''
+        )) AS action_subsubtype,
         toString(coalesce(nullIf(atm.libelle_francais, ''), toString(ma.action_type))) AS libelle_francais,
         toString(coalesce(atm.politique_publique, '')) AS politique_publique,
         toString(coalesce(atm.thematique, '')) AS thematique,
@@ -316,10 +354,23 @@ nav_rows AS (
     LEFT JOIN action_resources ar ON ar.action_id = toString(ma.id)
     LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
-    -- action_subtype_key : ne différencie que UNIT_MANAGEMENT_TRAINING.
+    -- Jointure mapping : action_type déjà unifié (CONTROL) côté requête,
+    -- donc atm.action_type = 'CONTROL' matche directement pour toute la
+    -- famille. action_subtype_key ne différencie que CONTROL (sous-types
+    -- NAUTICAL_LEISURE/SLEEPING_FISHING_GEAR/SECTOR/OTHER_CONTROL) et
+    -- UNIT_MANAGEMENT_TRAINING -- PAS security_visit_type/training_type
+    -- (texte libre ou sans granularité de mapping dédiée, cf. avertissement
+    -- sur action_type_mapping).
     LEFT JOIN action_type_mapping atm
-        ON atm.action_type = toString(ma.action_type)
+        ON atm.action_type = toString(multiIf(
+            ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL'), 'CONTROL',
+            toString(ma.action_type)
+        ))
         AND atm.action_subtype_key = multiIf(
+            ma.action_type = 'CONTROL_NAUTICAL_LEISURE', 'NAUTICAL_LEISURE',
+            ma.action_type = 'CONTROL_SLEEPING_FISHING_GEAR', 'SLEEPING_FISHING_GEAR',
+            ma.action_type = 'CONTROL_SECTOR', 'SECTOR',
+            ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
             ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
             ''
         )
@@ -348,14 +399,7 @@ fish_rows AS (
         toFloat64(0) AS duration_h,
         toString(f.control_type) AS action_type,
         '' AS action_subtype,
-        toString(f.control_type) AS control_type,
-        toString(coalesce(f.vessel_name, '')) AS cible_label,
-        '' AS vessel_type,
-        '' AS vessel_size,
-        '' AS leisure_type,
-        '' AS fishing_gear_type,
-        '' AS sector_establishment_type,
-        '' AS security_visit_type,
+        toString(coalesce(f.vessel_name, '')) AS action_subsubtype,
         toString(f.control_type) AS libelle_francais,
         -- Politique publique/thématique FIXES : MonitorFish n'a aucune
         -- classification interne, cf. avertissement en tête de fichier.
@@ -425,15 +469,8 @@ env_rows AS (
         toDateTime64(coalesce(a.action_end_datetime_utc, a.action_start_datetime_utc), 6) AS end_datetime_utc,
         toFloat64(0) AS duration_h,
         toString(a.action_type) AS action_type,
-        '' AS action_subtype,
-        '' AS control_type,
-        '' AS cible_label,
-        '' AS vessel_type,
-        '' AS vessel_size,
-        '' AS leisure_type,
-        '' AS fishing_gear_type,
-        '' AS sector_establishment_type,
-        '' AS security_visit_type,
+        toString(a.theme_level_2) AS action_subtype,
+        '' AS action_subsubtype,
         toString(a.theme_level_1) AS libelle_francais,
         -- ⚠️ EN ATTENTE : pas de mapping theme_level_1 -> politique_publique
         -- construit -- vraie liste des thèmes non trouvée dans le code
