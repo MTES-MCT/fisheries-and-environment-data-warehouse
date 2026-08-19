@@ -208,6 +208,13 @@ SELECT
     coalesce(mu.unit_types, []) AS unit_types,
     coalesce(mu.facades, []) AS facades,
     toInt32(coalesce(mgi.service_id, 0)) AS service_id,
+    -- Filtre "Bordée" (maquette PAM) : rapportnav_proxy.service.name
+    -- (unique) porte cette granularité -- un même control_unit PAM peut
+    -- avoir plusieurs services liés via service_control_unit (ex "PAM
+    -- Themis A" / "PAM Themis B" pour les 2 bordées), confirmé contre
+    -- ServiceModel.kt (rapportnav2). service_id est déjà exposé ci-dessus
+    -- mais pas exploitable seul pour filtrer par bordée sans le nom.
+    toString(coalesce(svc.name, '')) AS service_name,
     -- assumeNotNull : envm.start_datetime_utc est Nullable côté proxy, mais
     -- le WHERE en fin de requête (>= 2025-01-01) exclut déjà toute ligne
     -- NULL avant le SELECT -- nécessaire pour servir de clé ORDER BY
@@ -313,6 +320,7 @@ SELECT
     now() AS updated_at
 FROM rapportnav_proxy.mission_general_info mgi
 INNER JOIN monitorenv_proxy.missions envm ON envm.id = mgi.mission_id
+LEFT JOIN rapportnav_proxy.service svc ON svc.id = mgi.service_id
 -- INNER JOIN (pas LEFT) : mission_units ne contient que les missions
 -- avec au moins une unité PAM ou ULAM (cf. pam_ulam_control_units plus
 -- haut) -- c'est ce qui filtre le rapport aux missions PAM et ULAM.

@@ -32,6 +32,12 @@
 -- has_diving_during_operation, is_control_during_security_day n'existent
 -- pas côté fish/env, 0 par défaut pour ces sources).
 --
+-- terrain_control (MER/TERRE/AIR) : NAV via mission_action.control_method
+-- (enum ControlMethod, vérifié contre ComputeNavControlPolicy.kt), FISH
+-- via control_type (SEA_CONTROL/LAND_CONTROL/AIR_*), ENV sans équivalent
+-- identifié (vide). Répond à la demande maquette "répartition mer/terre"
+-- -- PAS déduit du moyen employé.
+--
 -- politique_publique : Pêche professionnelle / Equipement de sécurité /
 -- Police de la navigation / Gens de mer / Environnement-pollution /
 -- Autres -- confirmé sur les maquettes Metabase ULAM ET PAM (même table
@@ -162,6 +168,17 @@ nav_control_rows AS (
             nullIf(ma.control_type, ''),
             ''
         )) AS action_subsubtype,
+        -- Répartition mer/terre/air -- mission_action.control_method
+        -- (rapportnav2 enum ControlMethod : AIR/LAND/SEA), vérifié contre
+        -- ComputeNavControlPolicy.kt qui l'utilise exactement pour cette
+        -- distinction ("nbControlsSea"/"nbControlsLand"). PAS déduit du
+        -- moyen employé (cf. avertissement maquette).
+        toString(multiIf(
+            ma.control_method = 'SEA', 'MER',
+            ma.control_method = 'LAND', 'TERRE',
+            ma.control_method = 'AIR', 'AIR',
+            ''
+        )) AS terrain_control,
         -- politique_publique : control_2.control_type prime, repli sur
         -- control_policy_mapping (générique par action_subtype) sinon --
         -- cf. rapport_pam_ulam_action.sql.
@@ -221,6 +238,14 @@ fish_control_rows AS (
         )) AS unit_type,
         'FISH' AS action_subtype,
         toString(f.control_type) AS action_subsubtype,
+        -- f.control_type porte déjà la méthode (SEA_CONTROL/LAND_CONTROL/
+        -- AIR_CONTROL/AIR_SURVEILLANCE), pas besoin d'un champ séparé.
+        toString(multiIf(
+            f.control_type = 'SEA_CONTROL', 'MER',
+            f.control_type = 'LAND_CONTROL', 'TERRE',
+            f.control_type IN ('AIR_CONTROL', 'AIR_SURVEILLANCE'), 'AIR',
+            ''
+        )) AS terrain_control,
         'Pêche professionnelle' AS politique_publique,
         toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
         toDate(toStartOfMonth(f.control_datetime_utc)) AS mois,
@@ -263,6 +288,9 @@ env_control_rows AS (
         )) AS unit_type,
         toString(a.theme_level_2) AS action_subtype,
         '' AS action_subsubtype,
+        -- Pas d'équivalent mer/terre/air identifié côté ENV
+        -- (analytics_actions n'a pas de champ méthode/lieu de contrôle).
+        '' AS terrain_control,
         'Environnement / pollution' AS politique_publique,
         '' AS thematique,
         toDate(toStartOfMonth(a.action_start_datetime_utc)) AS mois,
@@ -300,6 +328,7 @@ SELECT
     unit_type,
     action_subtype,
     action_subsubtype,
+    terrain_control,
     politique_publique,
     thematique,
     mois,
@@ -316,4 +345,4 @@ SELECT
 FROM all_rows
 GROUP BY
     source, control_unit_id, unit_name, facade, unit_type,
-    action_subtype, action_subsubtype, politique_publique, thematique, mois;
+    action_subtype, action_subsubtype, terrain_control, politique_publique, thematique, mois;

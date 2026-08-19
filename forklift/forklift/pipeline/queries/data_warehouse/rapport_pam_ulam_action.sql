@@ -6,9 +6,10 @@
 -- séparer CONTROLE / AUTRES ACTIONS pour minimiser les colonnes vides.
 --
 -- Pourquoi 3 sources : mission_action (nav) ne contient que les actions
--- saisies dans RapportNav. FISH/ENV n'ont pas de notion d'activité
--- hors-contrôle -- ils n'apparaissent donc que pour des contrôles, via
--- les tables déjà construites (pas créées pour cette table) :
+-- saisies dans RapportNav. FISH n'a pas de notion d'activité hors-
+-- contrôle -- il n'apparaît donc que pour des contrôles. ENV EN A UNE
+-- (SURVEILLANCE, cf. plus bas) -- les deux apparaissent via les tables
+-- déjà construites (pas créées pour cette table) :
 --   - monitorfish.analytics_controls_full_data (quotidien)
 --   - monitorenv.analytics_actions + monitorenv.actions_infractions (horaire)
 --
@@ -28,14 +29,17 @@
 --     FISH mélange donc WITHOUT_RECORD et PENDING (cf.
 --     nb_infractions_sans_pv_fiable = 0 pour FISH).
 --   - ENV : infraction_type a 3 valeurs fiables (WAITING/WITH_REPORT/
---     WITHOUT_REPORT).
---   - politique_publique/thematique FISH : fixe 'Pêches maritimes' (pas
---     de classification interne côté MonitorFish), thematique = segment
---     de flotte si disponible.
---   - politique_publique/thematique ENV : vides pour l'instant --
---     theme_level_1 (monitorenv.analytics_actions) n'a pas de liste de
---     valeurs de référence connue, à compléter dès qu'elle est fournie
---     (ne pas deviner les libellés). Bruts exposés en attendant via
+--     WITHOUT_REPORT). analytics_actions couvre CONTROL ET SURVEILLANCE
+--     (déjà filtré ainsi par la requête source monitorenv_remote/
+--     analytics_actions.sql) -- surveillance_duration alimente duration_h
+--     pour les lignes SURVEILLANCE.
+--   - politique_publique fixe pour FISH ("Pêche professionnelle") et ENV
+--     ("Environnement / pollution") -- confirmé sur les maquettes
+--     Metabase ULAM et PAM (table "politique publique", 6 catégories
+--     identiques sur les deux dashboards). thematique FISH = segment de
+--     flotte si disponible ; thematique ENV reste en attente de la liste
+--     de valeurs de theme_level_1 (partiellement connue, cf. plus bas) --
+--     ne pas deviner les libellés. Bruts exposés en attendant via
 --     env_theme_level_1/env_theme_level_2/env_plan.
 --
 -- Filtre "missions à partir de 2025" sur les 3 sources (sinon ENV
@@ -167,6 +171,29 @@ action_control_policy AS (
     WHERE coalesce(c.has_been_done, false) = true
     GROUP BY t.action_id
 ),
+-- Durée des actions STATUS -- pas de end_datetime_utc propre, la "fin"
+-- réelle est le début du prochain STATUS de la même mission (même
+-- logique leadInFrame que heures_de_mer dans rapport_pam_ulam_mission.sql,
+-- dupliquée ici au niveau action plutôt que mission). STATUS n'est plus
+-- exclu de cette table (cf. action_type='STATUS' dans nav_rows) : couvre
+-- la maquette PAM "Activité du navire et de l'unité" (Navigation/
+-- Mouillage/Présence à quai/Indisponibilité) via action_subtype/
+-- action_subsubtype plutôt que des colonnes dédiées sur
+-- fact_mission_pam_ulam.
+status_action_durations AS (
+    SELECT
+        ma.id AS action_id,
+        dateDiff('second', ma.start_datetime_utc, leadInFrame(
+            ma.start_datetime_utc,
+            1,
+            ifNull(envm.end_datetime_utc, ma.start_datetime_utc)
+        ) OVER (
+            PARTITION BY ma.mission_id ORDER BY ma.start_datetime_utc
+        )) / 3600.0 AS duration_h
+    FROM rapportnav_proxy.mission_action ma
+    INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id
+    WHERE ma.action_type = 'STATUS'
+),
 -- Référentiel libellé français / politique publique / thématique par
 -- action_type NAV (dictionnaire métier "Types et sous-types d'actions",
 -- export CSV du 2026-08-14).
@@ -235,6 +262,38 @@ action_type_mapping AS (
     UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'DIVING', 'Entraînement', 'Contrôle des activités maritimes', 'Transversal', 'Formations', 'Entraînement unité'
     UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'MAN_OVERBOARD_RECOVERY', 'Formation', 'Assistance/ sauvetage', 'Assistance/ sauvetage', 'Formations', 'Entraînement unité'
     UNION ALL SELECT 'UNIT_MANAGEMENT_TRAINING', 'TECHNICAL_INTERVENTION_SHOOTING', 'Formation', 'Maintien de l''ordre public', 'Gestes Techniques Professionnels d''Intervention', 'Formations', 'Entraînement unité'
+    -- STATUS (rapportnav2 ActionStatusType) : libellés vérifiés contre
+    -- mapActionStatusTypeToHumanString (rapportnav2). categorie_activite/
+    -- politique_publique/thematique volontairement vides -- STATUS n'est
+    -- pas une "activité" au sens de la taxonomie 8 catégories, cf.
+    -- avertissement dans nav_rows.
+    UNION ALL SELECT 'STATUS', 'NAVIGATING', 'Navigation', '', '', '', ''
+    UNION ALL SELECT 'STATUS', 'ANCHORED', 'Mouillage', '', '', '', ''
+    UNION ALL SELECT 'STATUS', 'DOCKED', 'Présence à quai', '', '', '', ''
+    UNION ALL SELECT 'STATUS', 'UNAVAILABLE', 'Indisponibilité', '', '', '', ''
+    -- 4 action_type trouvés dans l'enum ActionType.kt (rapportnav2) mais
+    -- absents du dictionnaire "Types et sous-types d'actions" (export CSV
+    -- du 2026-08-14) utilisé pour construire ce référentiel -- sans
+    -- mapping, ces 4 tombaient silencieusement en repli vide
+    -- (libelle_francais=action_type brut, politique_publique/thematique/
+    -- categorie_activite vides). Libellés français ET politique_publique/
+    -- thematique NON confirmés métier, à valider :
+    --   - FISHING_SURVEILLANCE : probablement "surveillance pêche" (cf.
+    --     maquette "Surveillance pêche - encadrée CNSP / libre") -- pas de
+    --     champ trouvé pour distinguer encadrée/libre à ce stade.
+    --   - VIGIMER : dispositif de vigilance/sûreté maritime, groupé avec
+    --     BAAEM_PERMANENCE/NAUTICAL_EVENT dans AEMSeaSafety.kt.
+    --   - CONDUCT_HEARING : coexiste avec HEARING_CONDUCT (déjà mappé
+    --     ci-dessus) dans l'enum ET dans ValidationPolicies.kt -- 2 entrées
+    --     distinctes actives, pas un doublon/typo. Mappé identique à
+    --     HEARING_CONDUCT faute de mieux comprendre la différence.
+    --   - SURVEILLANCE : valeur générique, coexiste avec LAND_SURVEILLANCE/
+    --     MARITIME_SURVEILLANCE/FISHING_SURVEILLANCE (surveillances plus
+    --     spécifiques) -- rôle exact non clarifié.
+    UNION ALL SELECT 'FISHING_SURVEILLANCE', '', 'Surveillance pêche', 'Pêches maritimes', 'Pêches maritimes', 'Surveillances', 'Surveillance pêche'
+    UNION ALL SELECT 'VIGIMER', '', 'VIGIMER', 'Maintien de l''ordre public', 'Transversal', 'Autre activité terrain', 'VIGIMER'
+    UNION ALL SELECT 'CONDUCT_HEARING', '', 'Préparation et conduite d''audition', 'Contrôle des activités maritimes', 'Transversal', 'Préparation et suivi des ctrl', 'Préparation et conduite d''audition'
+    UNION ALL SELECT 'SURVEILLANCE', '', 'Surveillance', 'Contrôle des activités maritimes', 'Transversal', 'Surveillances', 'Surveillance générale'
 ),
 
 -- ---- Source NAV : toutes les actions (contrôles et non-contrôles) ----
@@ -249,9 +308,13 @@ nav_rows AS (
         mup.unit_type AS unit_type,
         toDateTime64(ma.start_datetime_utc, 6) AS start_datetime_utc,
         toDateTime64(ma.end_datetime_utc, 6) AS end_datetime_utc,
-        toFloat64(if(
+        -- STATUS n'a pas de end_datetime_utc propre -- durée reconstituée
+        -- via status_action_durations (leadInFrame sur le prochain STATUS
+        -- de la mission), cf. commentaire sur cette CTE plus haut.
+        toFloat64(multiIf(
+            ma.action_type = 'STATUS', coalesce(sad.duration_h, 0),
             ma.end_datetime_utc IS NOT NULL AND ma.end_datetime_utc >= ma.start_datetime_utc,
-            dateDiff('second', ma.start_datetime_utc, ma.end_datetime_utc) / 3600.0,
+                dateDiff('second', ma.start_datetime_utc, ma.end_datetime_utc) / 3600.0,
             coalesce(toFloat64(ma.nbr_of_hours), 0)
         )) AS duration_h,
         -- action_type unifié : CONTROL absorbe les 4 anciens action_type de
@@ -276,6 +339,11 @@ nav_rows AS (
             ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
             ma.action_type = 'RESOURCES_MAINTENANCE', coalesce(ma.resource_type, ''),
             ma.action_type = 'SECURITY_VISIT', coalesce(ma.security_visit_type, ''),
+            -- STATUS (rapportnav2 ActionStatusType, vérifié) :
+            -- NAVIGATING/ANCHORED/DOCKED/UNAVAILABLE -- couvre la maquette
+            -- PAM "Activité du navire" (Navigation/Mouillage/Présence à
+            -- quai/Indisponibilité).
+            ma.action_type = 'STATUS', coalesce(ma.status, ''),
             coalesce(ma.reason, '')
         )) AS action_subtype,
         -- action_subsubtype (niveau 3) : remplace control_type/vessel_type/
@@ -287,7 +355,14 @@ nav_rows AS (
         -- sector_establishment_type = type d'établissement précis dans
         -- cette filière) -- concaténés plutôt que coalescés pour ne pas en
         -- perdre un des deux.
+        -- ma.reason ne rejoint le coalesce que pour STATUS (raison
+        -- DOCKED/UNAVAILABLE -- Météo/Maintenance/.../Technique/
+        -- Personnel, cf. ActionStatusReason.kt) -- gardé conditionnel
+        -- pour ne pas dupliquer la valeur déjà utilisée comme
+        -- action_subtype (fallback coalesce(ma.reason,'')) sur les autres
+        -- action_type.
         toString(coalesce(
+            if(ma.action_type = 'STATUS', nullIf(ma.reason, ''), NULL),
             nullIf(ma.vessel_type, ''),
             nullIf(ma.leisure_type, ''),
             nullIf(ma.fishing_gear_type, ''),
@@ -354,9 +429,10 @@ nav_rows AS (
     LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
     LEFT JOIN action_control_policy acp ON acp.action_id = toString(ma.id)
+    LEFT JOIN status_action_durations sad ON sad.action_id = ma.id
     -- action_type déjà unifié (CONTROL) : atm.action_type = 'CONTROL'
     -- matche toute la famille. action_subtype_key ne différencie que
-    -- CONTROL et UNIT_MANAGEMENT_TRAINING.
+    -- CONTROL, UNIT_MANAGEMENT_TRAINING et STATUS.
     LEFT JOIN action_type_mapping atm
         ON atm.action_type = toString(multiIf(
             ma.action_type IN ('CONTROL', 'CONTROL_NAUTICAL_LEISURE', 'CONTROL_SLEEPING_FISHING_GEAR', 'CONTROL_SECTOR', 'OTHER_CONTROL'), 'CONTROL',
@@ -369,12 +445,16 @@ nav_rows AS (
             ma.action_type = 'OTHER_CONTROL', 'OTHER_CONTROL',
             ma.action_type = 'CONTROL' AND nullIf(ma.vessel_type, '') IS NOT NULL, 'SHIP',
             ma.action_type = 'UNIT_MANAGEMENT_TRAINING', coalesce(ma.unit_management_training_type, ''),
+            ma.action_type = 'STATUS', coalesce(ma.status, ''),
             ''
         )
-    -- STATUS = marqueurs de changement d'état nav (ANCHORED/NAVIGATING/...),
-    -- pas une "activité" au sens métier du rapport.
-    WHERE ma.action_type != 'STATUS'
-      AND ma.start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+    -- STATUS désormais inclus (cf. action_type='STATUS' ci-dessus) --
+    -- couvre "Activité du navire" côté PAM. Reste exclu de la taxonomie 8
+    -- catégories (categorie_activite/sous_categorie_activite vides pour
+    -- STATUS dans action_type_mapping, cf. plus haut) pour ne pas
+    -- gonfler artificiellement les sommes "Répartition des activités 8
+    -- catégories" avec des heures de mouillage/à quai/indisponibilité.
+    WHERE ma.start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 ),
 
 -- ---- Source FISH : contrôles seulement ----
@@ -472,29 +552,38 @@ env_rows AS (
         )) AS unit_type,
         toDateTime64(a.action_start_datetime_utc, 6) AS start_datetime_utc,
         toDateTime64(coalesce(a.action_end_datetime_utc, a.action_start_datetime_utc), 6) AS end_datetime_utc,
-        toFloat64(0) AS duration_h,
+        -- a.surveillance_duration : calculée uniquement pour action_type=
+        -- 'SURVEILLANCE' par la requête source (monitorenv_remote/
+        -- analytics_actions.sql) -- NULL pour CONTROL, comme côté FISH.
+        toFloat64(coalesce(a.surveillance_duration, 0)) AS duration_h,
         toString(a.action_type) AS action_type,
         toString(a.theme_level_2) AS action_subtype,
         '' AS action_subsubtype,
         toString(a.theme_level_1) AS libelle_francais,
         -- politique_publique fixe -- libellé exact confirmé sur les
         -- maquettes ULAM et PAM ("Environnement / pollution", cf.
-        -- action_control_policy plus haut ; toutes les lignes ENV de
-        -- cette table sont déjà filtrées action_type='CONTROL', donc la
-        -- valeur fixe s'applique à 100% du périmètre). thematique reste
-        -- en attente de la liste de valeurs de theme_level_1 (12 valeurs
+        -- action_control_policy plus haut). thematique reste en attente
+        -- de la liste de valeurs de theme_level_1 (12 valeurs
         -- partiellement connues via une maquette PAM, certaines
         -- tronquées -- pas encore confirmées) -- laissée vide plutôt que
         -- devinée. Bruts exposés via env_theme_level_1/2 ci-dessous.
         'Environnement / pollution' AS politique_publique,
         '' AS thematique,
-        'Contrôles' AS categorie_activite,
-        'Contrôle environnement' AS sous_categorie_activite,
+        -- ⚠️ analytics_actions.sql (requête source, déjà en place) filtre
+        -- action_type IN ('CONTROL', 'SURVEILLANCE') -- les surveillances
+        -- ENV étaient donc déjà présentes dans la table déjà construite,
+        -- mais exclues ici par un WHERE trop restrictif (corrigé plus
+        -- bas). categorie_activite distingue maintenant les deux.
+        toString(multiIf(a.action_type = 'SURVEILLANCE', 'Surveillances', 'Contrôles')) AS categorie_activite,
+        toString(multiIf(a.action_type = 'SURVEILLANCE', 'Surveillance environnement', 'Contrôle environnement')) AS sous_categorie_activite,
         toString(a.theme_level_1) AS env_theme_level_1,
         toString(a.theme_level_2) AS env_theme_level_2,
         toString(a.plan) AS env_plan,
-        toUInt16(1) AS nb_targets,
-        toUInt16(1) AS nb_control_types,
+        -- nb_targets/nb_control_types n'ont de sens que pour un contrôle
+        -- (1 cible/1 sous-type par ligne, cf. fish_rows) -- 0 pour une
+        -- surveillance.
+        toUInt16(if(a.action_type = 'CONTROL', 1, 0)) AS nb_targets,
+        toUInt16(if(a.action_type = 'CONTROL', 1, 0)) AS nb_control_types,
         toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controls,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
@@ -520,7 +609,7 @@ env_rows AS (
         a.longitude AS longitude
     FROM monitorenv.analytics_actions a
     LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
-    WHERE a.action_type = 'CONTROL'
+    WHERE a.action_type IN ('CONTROL', 'SURVEILLANCE')
       AND (
         startsWith(upper(a.control_unit), 'ULAM')
         OR (a.administration = 'DIRM / DM' AND startsWith(upper(a.control_unit), 'PAM'))
