@@ -10,8 +10,9 @@
 -- =====================================================================
 WITH
 -- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
--- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
--- pas dans ce rapport).
+-- (scanne en direct monitorenv_proxy.control_units, filtré au nom PAM/ULAM --
+-- pas besoin d'ajout manuel pour qu'une unité apparaisse ici, cf. le fix de
+-- dim_unit_reference.sql).
 pam_ulam_control_units AS (
     SELECT
         control_unit_id,
@@ -75,6 +76,41 @@ heures_de_mer AS (
         sumIf(dateDiff('second', start_datetime_utc, corrected_end_datetime_utc) / 3600.0,
               status = 'NAVIGATING') AS heures_navigation_hypothese_moteur
     FROM status_actions
+    GROUP BY mission_id
+),
+-- "Jour de mer" : vérifié contre GetNbOfDaysAtSeaFromNavigationStatus.kt
+-- (rapportnav2) -- un jour calendaire compte comme "jour de mer" dès que
+-- le cumul ANCHORED+NAVIGATING ce jour-là dépasse 4h (seuil strict,
+-- >4h). Chaque intervalle STATUS est éclaté par jour calendaire
+-- (ARRAY JOIN) pour gérer les statuts à cheval sur minuit, comme le fait
+-- le code source. ⚠️ Le jour calendaire est calculé dans le fuseau du
+-- serveur ClickHouse (UTC), pas explicitement Europe/Paris comme le code
+-- rapportnav2 (zoneId=systemDefault()) -- écart possible d'un jour en
+-- cas de statut à cheval sur minuit heure de Paris mais pas minuit UTC.
+status_day_overlap AS (
+    SELECT
+        mission_id,
+        jour,
+        dateDiff('second',
+            greatest(start_datetime_utc, toDateTime(jour)),
+            least(corrected_end_datetime_utc, toDateTime(jour) + INTERVAL 1 DAY)
+        ) / 3600.0 AS heures_ce_jour
+    FROM status_actions
+    ARRAY JOIN arrayMap(
+        x -> toDate(start_datetime_utc) + x,
+        range(toUInt32(toDate(corrected_end_datetime_utc) - toDate(start_datetime_utc)) + 1)
+    ) AS jour
+    WHERE status IN ('NAVIGATING', 'ANCHORED')
+),
+jours_de_mer AS (
+    SELECT
+        mission_id,
+        countIf(total_heures_jour > 4) AS nb_jours_de_mer
+    FROM (
+        SELECT mission_id, jour, sum(heures_ce_jour) AS total_heures_jour
+        FROM status_day_overlap
+        GROUP BY mission_id, jour
+    )
     GROUP BY mission_id
 ),
 
@@ -298,6 +334,7 @@ SELECT
     toFloat64(coalesce(hm.computed_hours_at_sea, 0)) AS computed_hours_at_sea,
     toFloat64(coalesce(hmn.heures_moyen_nautique, 0)) AS heures_moyen_nautique,
     toFloat64(coalesce(hm.heures_navigation_hypothese_moteur, 0)) AS heures_navigation_hypothese_moteur,
+    toUInt16(coalesce(jdm.nb_jours_de_mer, 0)) AS nb_jours_de_mer,
     toFloat64(coalesce(mgi.distance_in_nautical_miles, 0)) AS distance_nm,
     toFloat64(coalesce(mgi.consumed_fuel_in_liters, 0)) AS consumed_fuel_liters,
     toFloat64(coalesce(mgi.consumed_go_in_liters, 0)) AS consumed_go_liters,
@@ -327,6 +364,7 @@ LEFT JOIN rapportnav_proxy.service svc ON svc.id = mgi.service_id
 INNER JOIN mission_units mu    ON mu.mission_id = mgi.mission_id
 LEFT JOIN intermin im           ON im.mission_general_info_id = mgi.id
 LEFT JOIN heures_de_mer hm      ON hm.mission_id = mgi.mission_id
+LEFT JOIN jours_de_mer jdm      ON jdm.mission_id = mgi.mission_id
 LEFT JOIN mission_resources mr  ON mr.mission_id = mgi.mission_id
 LEFT JOIN heures_moyen_nautique_par_mission hmn ON hmn.mission_id = mgi.mission_id
 LEFT JOIN nav_completeness nc   ON nc.mission_id = mgi.mission_id

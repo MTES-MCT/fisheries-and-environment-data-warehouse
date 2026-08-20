@@ -142,6 +142,26 @@ def test_sync_table_from_db_connection(
             "WHERE control_id = '99910200-0000-0000-0000-000000000001'"
         ))
 
+    if destination_table == "fact_controle_croise_pam_ulam":
+        print("DEBUG service_control_unit (999001/999002):", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.service_control_unit "
+            "WHERE service_id IN (999001, 999002)"
+        ))
+        print("DEBUG inquiry rows (service 999001/999002):", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.inquiry WHERE service_id IN (999001, 999002)"
+        ))
+        print("DEBUG dim_unit_reference PAM/ULAM test units (999100/999102):", client.query_df(
+            "SELECT control_unit_id, unit_type FROM rapportnav.dim_unit_reference "
+            "WHERE control_unit_id IN (999100, 999102)"
+        ))
+        print("DEBUG the actual JOIN used by rapport_pam_ulam_controle_croise.sql:", client.query_df(
+            "SELECT count() AS n FROM rapportnav_proxy.inquiry i "
+            "INNER JOIN rapportnav_proxy.service_control_unit scu ON scu.service_id = i.service_id "
+            "INNER JOIN monitorenv_proxy.control_units cu ON cu.id = scu.control_unit_id "
+            "INNER JOIN rapportnav.dim_unit_reference uu ON uu.control_unit_id = cu.id AND uu.unit_type IN ('PAM', 'ULAM') "
+            "WHERE i.service_id IN (999001, 999002)"
+        ))
+
     df = client.query_df(
         (
             "SELECT * FROM "

@@ -16,15 +16,23 @@
 -- version vide/périmée sans erreur visible. Cf. marge choisie dans
 -- sync_table_from_db_connection.csv (28 4 * * *, avant tout le reste).
 --
--- control_unit_id : liste manuellement maintenue des ~30 unités PAM/ULAM
--- connues (pas une vraie table monitorenv -- ce référentiel n'existe nulle
--- part côté source). Si une nouvelle unité PAM/ULAM apparaît côté
--- monitorenv AVANT d'être ajoutée ici, elle sera quand même incluse dans
--- les rapports (le filtre d'inclusion pam_ulam_control_units scanne TOUTES
--- les control_units en direct, indépendamment de cette liste), mais avec
--- facade/nom_ou_ville_origine/zone_maritime vides -- seul unit_type reste
--- disponible via le repli sur le nom fait par les requêtes consommatrices
--- (cf. leur commentaire "coalesce(nullIf(uref.unit_type, ''), ...)").
+-- control_unit_id : la table SOURCE de cette requête est désormais
+-- monitorenv_proxy.control_units (scannée en direct, filtrée aux noms
+-- commençant par PAM/ULAM), PAS manual_reference -- correction d'un bug :
+-- la version précédente driving sur manual_reference (LEFT JOIN vers
+-- control_units) ne pouvait JAMAIS faire remonter une unité absente de
+-- cette liste manuelle, contrairement à ce qu'affirmait ce commentaire
+-- (et contrairement à ce qu'attendent les 5 requêtes rapport_pam_ulam_*.sql/
+-- missions_aem.sql, qui INNER JOIN pam_ulam_control_units -- une unité
+-- absente de dim_unit_reference y était donc invisible côté NAV, sans
+-- erreur visible). Repéré en vérifiant la couverture des fixtures de test
+-- (999100/999102, absents de la liste manuelle -- cf. discussion en chat).
+-- manual_reference reste la SEULE source de facade_ref/zone_maritime/
+-- nom_ou_ville_origine (~30 unités connues, enrichissement optionnel) --
+-- une unité PAM/ULAM absente de cette liste apparaît quand même désormais,
+-- avec ces 3 colonnes vides et unit_type dérivé du nom (déjà le
+-- comportement documenté par les requêtes consommatrices, ex.
+-- "coalesce(nullIf(uref.unit_type, ''), ...)").
 -- =====================================================================
 WITH
 manual_reference AS (
@@ -67,7 +75,7 @@ manual_reference AS (
 )
 
 SELECT
-    manual.control_unit_id AS control_unit_id,
+    cu.id AS control_unit_id,
     -- Nom monitorenv à date, résolu ici pour information/debug seulement
     -- (les requêtes consommatrices utilisent leur propre control_units.name
     -- au moment du join, pas cette copie qui peut dater de la dernière
@@ -82,5 +90,12 @@ SELECT
         'AUTRE'
     )) AS unit_type,
     now() AS updated_at
-FROM manual_reference manual
-LEFT JOIN monitorenv_proxy.control_units cu ON cu.id = manual.control_unit_id;
+FROM monitorenv_proxy.control_units cu
+LEFT JOIN manual_reference manual ON manual.control_unit_id = cu.id
+-- Filtre au nom : garde dim_unit_reference borné aux vraies unités PAM/ULAM
+-- (pas une copie de toute la table control_units). Une unité manuelle dont
+-- le nom aurait changé et ne matche plus AUCUN préfixe disparaît ainsi du
+-- référentiel -- cas non rencontré à ce jour, mais à surveiller.
+WHERE
+    startsWith(upper(coalesce(cu.name, '')), 'PAM')
+    OR startsWith(upper(coalesce(cu.name, '')), 'ULAM');

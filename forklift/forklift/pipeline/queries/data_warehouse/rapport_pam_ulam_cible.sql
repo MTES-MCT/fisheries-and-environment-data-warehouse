@@ -54,8 +54,9 @@
 -- =====================================================================
 WITH
 -- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
--- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
--- pas dans ce rapport).
+-- (scanne en direct monitorenv_proxy.control_units, filtré au nom PAM/ULAM --
+-- pas besoin d'ajout manuel pour qu'une unité apparaisse ici, cf. le fix de
+-- dim_unit_reference.sql).
 pam_ulam_control_units AS (
     SELECT
         control_unit_id,

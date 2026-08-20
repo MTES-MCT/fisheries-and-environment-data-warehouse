@@ -52,8 +52,9 @@
 -- =====================================================================
 WITH
 -- Référentiel unités PAM/ULAM : source unique rapportnav.dim_unit_reference
--- (liste manuellement maintenue -- une unité pas encore ajoutée n'apparaît
--- pas dans ce rapport).
+-- (scanne en direct monitorenv_proxy.control_units, filtré au nom PAM/ULAM --
+-- pas besoin d'ajout manuel pour qu'une unité apparaisse ici, cf. le fix de
+-- dim_unit_reference.sql).
 pam_ulam_control_units AS (
     SELECT
         control_unit_id,
@@ -193,6 +194,21 @@ status_action_durations AS (
     FROM rapportnav_proxy.mission_action ma
     INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id
     WHERE ma.action_type = 'STATUS'
+),
+-- Chronologie des statuts navire par mission (NAVIGATING/ANCHORED/DOCKED/
+-- UNAVAILABLE), utilisée pour enrichir CHAQUE action NAV (contrôles ET
+-- reste) du statut du navire au moment où elle a eu lieu -- via ASOF JOIN
+-- plus bas (le statut le plus récent dont le début est <= au début de
+-- l'action). Utile pour croiser n'importe quelle activité avec le statut
+-- du navire (ex : "contrôles réalisés à quai"), pas seulement les
+-- contrôles.
+status_timeline AS (
+    SELECT
+        mission_id,
+        start_datetime_utc,
+        status
+    FROM rapportnav_proxy.mission_action
+    WHERE action_type = 'STATUS'
 ),
 -- Référentiel libellé français / politique publique / thématique par
 -- action_type NAV (dictionnaire métier "Types et sous-types d'actions",
@@ -420,7 +436,12 @@ nav_rows AS (
         coalesce(ar.resource_types, []) AS resource_types,
         coalesce(ar.terrain_types, []) AS terrain_types,
         ma.latitude AS latitude,
-        ma.longitude AS longitude
+        ma.longitude AS longitude,
+        -- Statut du navire au moment de CETTE action (toute action, pas
+        -- seulement les contrôles) -- cf. status_timeline plus haut.
+        -- Vide si l'action a lieu avant le tout premier STATUS de la
+        -- mission (aucun statut connu à cet instant).
+        toString(coalesce(st.status, '')) AS statut_navire
     FROM rapportnav_proxy.mission_action ma
     -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au
     -- moins une unité PAM ou ULAM.
@@ -430,6 +451,9 @@ nav_rows AS (
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
     LEFT JOIN action_control_policy acp ON acp.action_id = toString(ma.id)
     LEFT JOIN status_action_durations sad ON sad.action_id = ma.id
+    -- ASOF : pour chaque action, le STATUS le plus récent démarré à ou
+    -- avant le début de l'action (dans la même mission).
+    ASOF LEFT JOIN status_timeline st ON st.mission_id = ma.mission_id AND st.start_datetime_utc <= ma.start_datetime_utc
     -- action_type déjà unifié (CONTROL) : atm.action_type = 'CONTROL'
     -- matche toute la famille. action_subtype_key ne différencie que
     -- CONTROL, UNIT_MANAGEMENT_TRAINING et STATUS.
@@ -520,7 +544,9 @@ fish_rows AS (
         CAST([], 'Array(String)') AS resource_types,
         CAST(['MER'], 'Array(String)') AS terrain_types,
         f.latitude AS latitude,
-        f.longitude AS longitude
+        f.longitude AS longitude,
+        -- Pas de notion de statut navire côté MonitorFish.
+        '' AS statut_navire
     FROM monitorfish.analytics_controls_full_data f
     WHERE (startsWith(upper(f.control_unit), 'ULAM') OR startsWith(upper(f.control_unit), 'PAM'))
       AND f.control_datetime_utc >= toDateTime('2025-01-01 00:00:00')
@@ -606,7 +632,9 @@ env_rows AS (
         CAST([], 'Array(String)') AS resource_types,
         CAST(['MER'], 'Array(String)') AS terrain_types,
         a.latitude AS latitude,
-        a.longitude AS longitude
+        a.longitude AS longitude,
+        -- Pas de notion de statut navire côté MonitorEnv.
+        '' AS statut_navire
     FROM monitorenv.analytics_actions a
     LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
     WHERE a.action_type IN ('CONTROL', 'SURVEILLANCE')
