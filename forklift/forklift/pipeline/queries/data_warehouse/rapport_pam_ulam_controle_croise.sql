@@ -58,6 +58,24 @@ service_units AS (
     FROM rapportnav_proxy.service_control_unit scu
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = scu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
+),
+-- Isole rapportnav_proxy.inquiry dans sa propre CTE, sans filtre : évite
+-- que ClickHouse pousse le WHERE >= toDateTime(...) plus bas directement
+-- sur la table PostgreSQL distante -- repéré en CI, cf. discussion en
+-- chat : ClickHouse sérialise ce filtre en littéral entier côté Postgres
+-- ("start_datetime_utc >= 1735689600"), qui rejette la comparaison
+-- timestamptz >= integer (même famille de bug que le has_been_done = true
+-- poussé en "= 1" dans le test). rapport_pam_ulam_cible.sql filtre
+-- rapportnav_proxy.mission_action de la même façon (table pilote du FROM,
+-- WHERE direct) sans ce problème -- mais cette CTE-ci (nav_control_rows)
+-- a plusieurs LEFT JOIN supplémentaires vers d'autres CTEs elles-mêmes
+-- adossées à rapportnav_proxy (control_2/target_2), contre un seul INNER
+-- JOIN ici vers une relation déjà entièrement locale (service_units) --
+-- hypothèse : la requête plus simple ici a été jugée éligible à la
+-- poussée par l'optimiseur ClickHouse, l'autre non. Pas de certitude
+-- absolue (pas de ClickHouse local pour vérifier le mécanisme exact).
+inquiry_rows AS (
+    SELECT * FROM rapportnav_proxy.inquiry
 )
 
 SELECT
@@ -86,12 +104,18 @@ SELECT
         0
     ))) AS heures_totales,
     now() AS updated_at
-FROM rapportnav_proxy.inquiry i
+FROM inquiry_rows i
 -- INNER JOIN : filtre aux contrôles croisés rattachés à un service ayant
 -- au moins une unité PAM ou ULAM ; fanout intentionnel 1 ligne par unité
 -- individuelle.
 INNER JOIN service_units su ON su.service_id = i.service_id
-WHERE i.start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+-- assumeNotNull(...) ici aussi (pas juste un no-op) : empêche ClickHouse
+-- de reconnaître un pattern "colonne brute op littéral" poussable vers
+-- PostgreSQL -- cf. commentaire sur inquiry_rows plus haut. Sans certitude
+-- absolue que ceci suffise (pas de ClickHouse local pour vérifier) ; si le
+-- literal DateTime->entier réapparaît en CI malgré la CTE + ce wrapping,
+-- il faudra une fixture-level table matérialisée à la place.
+WHERE assumeNotNull(i.start_datetime_utc) >= toDateTime('2025-01-01 00:00:00')
 GROUP BY
     su.control_unit_id, su.unit_name, su.facade, su.unit_type,
     i.status, i.origin,
