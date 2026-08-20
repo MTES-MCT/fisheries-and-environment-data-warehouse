@@ -23,12 +23,18 @@
 --    monitorfish_proxy.mission_actions
 -- 8) [métier] Référentiel unité -> nom d'origine / façade / zone maritime,
 --    fourni manuellement (pas sourcé dans le code) : clé = control_unit_id
---    (monitorenv_proxy.control_units.id), pour les 27 ULAM et les 6 PAM
---    connues (dim_unit_reference_by_id). Pas de bordée A/B côté
---    MonitorEnv : une seule entrée par navire.
---    facade provient exclusivement de facade_ref (référentiel unité,
---    dérivé du control_unit_id) -- aucune référence à
+--    (monitorenv_proxy.control_units.id), pour les ~27 ULAM et les 6 PAM
+--    connues. Pas de bordée A/B côté MonitorEnv : une seule entrée par
+--    navire. facade provient exclusivement de rapportnav.dim_unit_reference
+--    (référentiel unité, dérivé du control_unit_id) -- aucune référence à
 --    monitorenv_proxy.missions.facade.
+--    Ce référentiel vit maintenant dans sa propre table
+--    (rapportnav.dim_unit_reference, alimentée par dim_unit_reference.sql)
+--    plutôt que dupliqué en CTE ici -- source unique partagée avec les 3
+--    requêtes rapport_pam_ulam_*.sql (cf. discussion en chat). ⚠️ Ce
+--    fichier DOIT continuer à tourner après dim_unit_reference.sql dans
+--    sync_table_from_db_connection.csv (aucune dépendance native entre
+--    lignes de ce flow -- cf. commentaire détaillé dans dim_unit_reference.sql).
 -- =====================================================================
 
 WITH
@@ -101,48 +107,6 @@ mission_service AS (
         cu.id AS control_unit_id
     FROM monitorenv_proxy.missions_control_units mcu
     LEFT JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
-),
-
--- Référentiel ULAM -> nom d'origine / façade / zone maritime, clé =
--- control_unit_id (monitorenv_proxy.control_units.id). ULAM 29 Nord =
--- Brest, ULAM 29 Sud = Douarnenez.
-dim_unit_reference_by_id AS (
-    SELECT 10194 AS control_unit_id, 'DDTM 06' AS nom_ou_ville_origine, 'MED' AS facade_ref, 'Méditerranée' AS zone_maritime
-    UNION ALL SELECT 10039, 'DDTM 13',              'MED',  'Méditerranée'
-    UNION ALL SELECT 10452, 'DDTM 14',              'MEMN', 'Manche-Mer du Nord'
-    UNION ALL SELECT 10204, 'DDTM 22',              'NAMO', 'Atlantique'
-    UNION ALL SELECT 10457, 'DDTM 29 Nord',         'NAMO', 'Atlantique'  -- Brest
-    UNION ALL SELECT 10288, 'DDTM 29 Sud',          'NAMO', 'Atlantique'  -- Douarnenez
-    UNION ALL SELECT 10074, 'DMLC',                 'MED',  'Méditerranée' -- 2A
-    UNION ALL SELECT 10192, 'DMLC',                 'MED',  'Méditerranée' -- 2B
-    UNION ALL SELECT 10225, 'DDTM 33',              'SA',   'Atlantique'
-    UNION ALL SELECT 10255, 'DDTM 17',              'SA',   'Atlantique'
-    UNION ALL SELECT 10420, 'DDTM 34/30',           'MED',  'Méditerranée'
-    UNION ALL SELECT 10176, 'DDTM 35',              'NAMO', 'Atlantique'
-    UNION ALL SELECT 10428, 'DDTM 44',              'NAMO', 'Atlantique'
-    UNION ALL SELECT 10210, 'DDTM 50',              'MEMN', 'Manche-Mer du Nord'
-    UNION ALL SELECT 10449, 'DDTM 56',              'NAMO', 'Atlantique'
-    UNION ALL SELECT 10050, 'DDTM 59',              'MEMN', 'Manche-Mer du Nord'
-    UNION ALL SELECT 10318, 'DDTM 62/80',           'MEMN', 'Manche-Mer du Nord'
-    UNION ALL SELECT 10364, 'DDTM 64/40',           'SA',   'Atlantique'
-    UNION ALL SELECT 10303, 'DDTM 66/11',           'MED',  'Méditerranée'
-    UNION ALL SELECT 10423, 'DDTM 76/27',           'MEMN', 'Manche-Mer du Nord'
-    UNION ALL SELECT 10166, 'DDTM 83',              'MED',  'Méditerranée'
-    UNION ALL SELECT 10171, 'DDTM 85',              'NAMO', 'Atlantique'
-    UNION ALL SELECT 10169, 'DM Guadeloupe (971)',  'Guadeloupe', 'Antilles'
-    UNION ALL SELECT 10327, 'DM Martinique (972)',  'Martinique', 'Antilles'
-    UNION ALL SELECT 10265, 'DGTM Guyane (973)',    'Guyane', 'Guyane'
-    UNION ALL SELECT 10183, 'DM SOI (974)',         'La Réunion', 'Sud de l''Océan indien'
-    UNION ALL SELECT 10430, 'DTAM St Pierre et Miquelon (975)', 'Saint-Pierre et Miquelon', 'Saint-Pierre et Miquelon'
-    UNION ALL SELECT 10047, 'DEALM Mayotte (976)',  'Mayotte', 'Sud de l''Océan indien'
-    -- Ajoute ici tout ULAM supplémentaire découvert en base.
-    -- PAM : pas de bordée A/B côté MonitorEnv, une seule entrée par navire.
-    UNION ALL SELECT 10080, 'DIRM NAMO',            'NAMO', 'Atlantique'          -- PAM Themis
-    UNION ALL SELECT 10121, 'DIRM MEMN',            'MEMN', 'Manche-Mer du Nord'  -- PAM Jeanne Barret
-    UNION ALL SELECT 10141, 'DIRM MED',             'MED',  'Méditerranée'        -- PAM Gyptis
-    UNION ALL SELECT 10404, 'DIRM SA',              'SA',   'Atlantique'          -- PAM Iris
-    UNION ALL SELECT 10345, 'DM SOI (974)',        'La Réunion', 'Sud de l''Océan indien'  -- PAM Osiris II
-    UNION ALL SELECT 10519, 'DGTM Guyane (973)',    'Guyane', 'Guyane'             -- PAM Cayenne : agrégée avec l'ULAM Guyane
 ),
 
 nav_completeness AS (
@@ -345,7 +309,7 @@ SELECT
     toString(ms.unit_name)              AS unite_nom,
     toInt32(coalesce(mu.nb_unites_distinctes, 0)) AS unite_nb_distinctes,
 
-    -- Référence ajoutée via dim_unit_reference_by_id (clé control_unit_id) :
+    -- Référence ajoutée via rapportnav.dim_unit_reference (clé control_unit_id) :
     toString(coalesce(nullIf(urid.nom_ou_ville_origine, ''), ms.unit_name)) AS nom_ou_ville_origine,
     toString(coalesce(nullIf(urid.zone_maritime, ''), '')) AS zone_maritime,
 
@@ -447,7 +411,7 @@ LEFT JOIN heures_de_mer_nav hm                  ON hm.mission_id = m.id
 LEFT JOIN control_targets_nav ct                ON ct.mission_id = m.id
 LEFT JOIN mission_units mu                      ON mu.mission_id = m.id
 LEFT JOIN mission_service ms                    ON ms.mission_id = m.id
-LEFT JOIN dim_unit_reference_by_id urid          ON urid.control_unit_id = ms.control_unit_id
+LEFT JOIN rapportnav.dim_unit_reference urid     ON urid.control_unit_id = ms.control_unit_id
 LEFT JOIN nav_completeness nc                   ON nc.mission_id = m.id
 LEFT JOIN rapportnav_proxy.mission_general_info gi ON gi.mission_id = m.id
 -- rm : table mission (UUID) côté rapportnav, jointe via
