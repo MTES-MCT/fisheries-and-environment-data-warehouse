@@ -73,7 +73,12 @@ SELECT
         ''
     )) AS type_cible,
     toString(coalesce(i.conclusion, '')) AS conclusion,
-    toDate(toStartOfMonth(i.start_datetime_utc)) AS mois,
+    -- assumeNotNull : i.start_datetime_utc est Nullable côté proxy, mais le
+    -- WHERE en fin de requête (>= 2025-01-01) exclut déjà toute ligne NULL
+    -- avant le SELECT -- nécessaire pour servir de clé ORDER BY (même
+    -- contrainte allow_nullable_key que rapport_pam_ulam_mission.sql /
+    -- missions_aem.sql, repérée en CI -- cf. discussion en chat).
+    toDate(toStartOfMonth(assumeNotNull(i.start_datetime_utc))) AS mois,
     count(*) AS nb_controles_croises,
     sum(toFloat64(if(
         i.end_datetime_utc IS NOT NULL AND i.end_datetime_utc >= i.start_datetime_utc,
@@ -96,4 +101,4 @@ GROUP BY
         ''
     ),
     i.conclusion,
-    toDate(toStartOfMonth(i.start_datetime_utc));
+    toDate(toStartOfMonth(assumeNotNull(i.start_datetime_utc)));
