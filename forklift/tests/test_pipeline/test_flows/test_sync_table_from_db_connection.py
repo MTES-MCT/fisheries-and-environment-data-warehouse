@@ -138,8 +138,18 @@ def test_sync_table_from_db_connection(
             "WHERE action_id = '99910000-0000-0000-0000-000000000004'"
         ))
         print("DEBUG control_2 has_been_done=true for our test target:", client.query_df(
+            # Bare boolean predicate, not "= true" : rapportnav_proxy pushes
+            # this WHERE down to the real Postgres column (genuine boolean
+            # type there) -- ClickHouse renders a literal "true" comparison
+            # as "= 1" in the generated Postgres SQL, and Postgres rejects
+            # "boolean = integer" outright (caught by an actual CI run,
+            # cf. discussion en chat -- pre-existing bug in this debug print,
+            # never hit before since Docker/a live DB weren't reachable
+            # earlier in this work). The production queries avoid this by
+            # wrapping in coalesce(...) = true, which apparently takes a
+            # different (working) pushdown path.
             "SELECT count() AS n FROM rapportnav_proxy.control_2 "
-            "WHERE target_id = '99910100-0000-0000-0000-000000000001' AND has_been_done = true"
+            "WHERE target_id = '99910100-0000-0000-0000-000000000001' AND has_been_done"
         ))
         print("DEBUG infraction_2 for our test controls:", client.query_df(
             "SELECT count() AS n, groupArray(infraction_type) AS types FROM rapportnav_proxy.infraction_2 "
