@@ -382,10 +382,17 @@ SELECT
     --   - NAV : pas de champ identifié à date pour un mer/terre/air par
     --     action (à la différence du niveau mission via mission_types) --
     --     à documenter/creuser si ce niveau de détail est demandé.
-    arrayMap(
+    -- arraySort() : mission_types est un ensemble non ordonné côté
+    -- monitorenv (vérifié -- tout le backend le lit par appartenance,
+    -- "MissionTypeEnum.X in missionTypes", jamais par position ; seule
+    -- règle de validation = non-vide). ['LAND','SEA'] et ['SEA','LAND']
+    -- sont donc le même fait métier avec un ordre de saisie différent --
+    -- trié pour qu'ils se groupent ensemble en rapport plutôt que comme
+    -- 2 combinaisons distinctes.
+    arraySort(arrayMap(
         x -> multiIf(x = 'SEA', 'MER', x = 'LAND', 'TERRE', x = 'AIR', 'AIR', toString(x)),
         coalesce(envm.mission_types, [])
-    ) AS mission_terrain_types,
+    )) AS mission_terrain_types,
     toUInt8(envm.end_datetime_utc IS NOT NULL AND envm.end_datetime_utc < now()) AS is_mission_finished,
     toUInt8(coalesce(nc.toutes_actions_nav_completes, 0)) AS nav_toutes_actions_completes,
     -- Règle "Missions rapportées" (maquette v2, tooltip) : "Seules les
