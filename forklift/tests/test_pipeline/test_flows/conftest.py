@@ -51,13 +51,17 @@ def init_analytics_controls_full_data():
              is_under_jdp, control_datetime_utc, control_year, control_unit,
              administration, vessel_name, facade, longitude, latitude,
              infraction, fishing_infraction, infraction_report,
-             infraction_natinfs)
+             infraction_natinfs, infraction_count_with_record,
+             infraction_count_without_record, infraction_count_pending,
+             infraction_count_total)
         VALUES
             (999100, 999100, 999100, 999100, 'SEA_CONTROL',
              false, '2025-06-02 09:00:00', 2025, 'ULAM TEST 999100',
              'DDTM 33', 'Navire Test FISH', 'SA', -1.15, 44.85,
              1, 1, 1,
-             ['12345'])
+             ['12345'], 1,
+             0, 0,
+             1)
         """
     )
 

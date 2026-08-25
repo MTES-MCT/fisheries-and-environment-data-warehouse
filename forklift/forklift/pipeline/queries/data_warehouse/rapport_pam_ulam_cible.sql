@@ -259,9 +259,13 @@ fish_control_rows AS (
         toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
         toDate(toStartOfMonth(f.control_datetime_utc)) AS mois,
         toUInt16(1) AS nb_controles,
-        toUInt16(f.infraction_report) AS nb_infractions_avec_pv,
-        toUInt16(if(f.infraction = 1 AND f.infraction_report = 0, 1, 0)) AS nb_infractions_sans_pv,
-        toUInt16(0) AS nb_infractions_en_attente,
+        -- Comptage exact (cf. commentaire détaillé dans
+        -- rapport_pam_ulam_action.sql) -- infraction_count_* ajoutés à
+        -- monitorfish_remote/analytics_controls_full_data.sql, remplace
+        -- l'ancienne approximation 0/1.
+        toUInt16(f.infraction_count_with_record) AS nb_infractions_avec_pv,
+        toUInt16(f.infraction_count_without_record) AS nb_infractions_sans_pv,
+        toUInt16(f.infraction_count_pending) AS nb_infractions_en_attente,
         toUInt16(1) AS nb_cibles,
         -- Pas d'équivalent AMP/bande 300/plongée/journée sécu côté FISH.
         toUInt16(0) AS nb_controles_amp,

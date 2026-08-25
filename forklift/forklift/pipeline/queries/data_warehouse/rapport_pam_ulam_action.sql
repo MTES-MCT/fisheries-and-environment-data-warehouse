@@ -24,10 +24,12 @@
 --     ULAM) plutôt que d'un join sur dim_unit_reference via
 --     control_unit_id, ce qui serait plus robuste.
 --   - FISH : nb_controls toujours 1 (pas de amount_of_controls côté
---     MonitorFish). analytics_controls_full_data n'expose que la
---     présence d'une infraction WITH_RECORD -- nb_infractions_sans_pv
---     FISH mélange donc WITHOUT_RECORD et PENDING (cf.
---     nb_infractions_sans_pv_fiable = 0 pour FISH).
+--     MonitorFish). analytics_controls_full_data expose désormais un
+--     comptage exact par InfractionType (WITH_RECORD/WITHOUT_RECORD/
+--     PENDING, colonnes infraction_count_* ajoutées à
+--     monitorfish_remote/analytics_controls_full_data.sql) --
+--     nb_infractions_sans_pv_fiable = 1 pour FISH comme pour NAV/ENV
+--     (n'était qu'une approximation 0/1 avant, cf. historique Git).
 --   - ENV : infraction_type a 3 valeurs fiables (WAITING/WITH_REPORT/
 --     WITHOUT_REPORT). analytics_actions couvre CONTROL ET SURVEILLANCE
 --     (déjà filtré ainsi par la requête source monitorenv_remote/
@@ -594,10 +596,20 @@ fish_rows AS (
         toUInt16(if(f.control_type IN ('OBSERVATION', 'AIR_SURVEILLANCE'), 0, 1)) AS nb_targets,
         toUInt16(if(f.control_type IN ('OBSERVATION', 'AIR_SURVEILLANCE'), 0, 1)) AS nb_control_types,
         toUInt16(if(f.control_type IN ('OBSERVATION', 'AIR_SURVEILLANCE'), 0, 1)) AS nb_controls,
-        toUInt16(f.infraction_report) AS nb_infractions_avec_pv,
-        toUInt16(if(f.infraction = 1 AND f.infraction_report = 0, 1, 0)) AS nb_infractions_sans_pv,
-        toUInt8(0) AS nb_infractions_sans_pv_fiable,
-        toUInt16(0) AS nb_infractions_en_attente,
+        -- Comptage exact désormais disponible : infraction_count_* ajoutés
+        -- à la CTE controls_infraction_natinfs_array de
+        -- monitorfish_remote/analytics_controls_full_data.sql -- un
+        -- COUNT(*) réel par valeur d'InfractionType (monitorfish, 3
+        -- valeurs : WITH_RECORD/WITHOUT_RECORD/PENDING), remplace
+        -- l'ancienne approximation 0/1 déduite de infraction/
+        -- infraction_report qui perdait le vrai nombre d'infractions par
+        -- contrôle. PENDING correspond au même concept que WAITING côté
+        -- ENV -> nb_infractions_en_attente. Fiable désormais, comme pour
+        -- NAV/ENV.
+        toUInt16(f.infraction_count_with_record) AS nb_infractions_avec_pv,
+        toUInt16(f.infraction_count_without_record) AS nb_infractions_sans_pv,
+        toUInt8(1) AS nb_infractions_sans_pv_fiable,
+        toUInt16(f.infraction_count_pending) AS nb_infractions_en_attente,
         f.infraction_natinfs AS natinf_codes,
         toUInt16(0) AS nbr_of_control_declare,
         toUInt16(0) AS nbr_of_control_amp,

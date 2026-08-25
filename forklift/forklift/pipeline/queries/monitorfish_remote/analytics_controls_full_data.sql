@@ -72,7 +72,20 @@ controls_infraction_natinfs_array AS (
         ARRAY_AGG(DISTINCT infraction_type) FILTER (WHERE infraction_type IS NOT NULL) AS infraction_types,
         ARRAY_AGG(DISTINCT infraction_threat) FILTER (WHERE infraction_threat IS NOT NULL) AS infraction_threats,
         ARRAY_AGG(DISTINCT infraction_threat_characterization) FILTER (WHERE infraction_threat_characterization IS NOT NULL) AS infraction_threat_characterizations,
-        STRING_AGG(NULLIF(infraction_comments, ''), ' - ') AS infraction_comments
+        STRING_AGG(NULLIF(infraction_comments, ''), ' - ') AS infraction_comments,
+        -- Comptage EXACT des infractions individuelles sur ce contrôle (une
+        -- ligne par infraction dans controls_infraction_natinf_category,
+        -- une par élément du tableau JSON "infractions" de l'action
+        -- source) -- distinct des colonnes ARRAY_AGG(DISTINCT ...)
+        -- ci-dessus, qui dédupliquent par nature et perdent le compte réel
+        -- (ex: 2 infractions WITH_RECORD sur le même contrôle ne
+        -- ressortaient qu'une fois dans infraction_types). InfractionType
+        -- (backend monitorfish) n'a que 3 valeurs : WITH_RECORD/
+        -- WITHOUT_RECORD/PENDING.
+        COUNT(*) FILTER (WHERE infraction_type = 'WITH_RECORD') AS infraction_count_with_record,
+        COUNT(*) FILTER (WHERE infraction_type = 'WITHOUT_RECORD') AS infraction_count_without_record,
+        COUNT(*) FILTER (WHERE infraction_type = 'PENDING') AS infraction_count_pending,
+        COUNT(*) AS infraction_count_total
     FROM controls_infraction_natinf_category
     GROUP BY id
 )
@@ -108,6 +121,10 @@ SELECT
     COALESCE(infraction_natinfs, '{Aucune infraction}'::VARCHAR[]) AS infraction_natinfs,
     COALESCE(infraction_threats, '{Aucune infraction}'::VARCHAR[]) AS infraction_threats,
     COALESCE(infraction_threat_characterizations, '{Aucune infraction}'::VARCHAR[]) AS infraction_threat_characterizations,
+    COALESCE(inf.infraction_count_with_record, 0) AS infraction_count_with_record,
+    COALESCE(inf.infraction_count_without_record, 0) AS infraction_count_without_record,
+    COALESCE(inf.infraction_count_pending, 0) AS infraction_count_pending,
+    COALESCE(inf.infraction_count_total, 0) AS infraction_count_total,
     COALESCE(seizure_and_diversion, false) AS seizure_and_diversion,
     species,
     gears,
