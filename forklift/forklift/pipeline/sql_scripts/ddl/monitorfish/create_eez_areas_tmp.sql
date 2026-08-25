@@ -8,4 +8,4 @@ CREATE TABLE {database:Identifier}.{table:Identifier} (
     area_km2 Nullable(Float64)
 )
 ENGINE MergeTree
-ORDER BY iso_sov1
+ORDER BY ogc_fid
