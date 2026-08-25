@@ -28,3 +28,4 @@ WHERE
     action_type = 'CONTROL'
     AND env_actions.completion = 'COMPLETED'
     AND missions.deleted = 'false'
+    AND infraction->'natinf' != 'null'
