@@ -27,9 +27,11 @@
 --     MonitorFish). analytics_controls_full_data expose désormais un
 --     comptage exact par InfractionType (WITH_RECORD/WITHOUT_RECORD/
 --     PENDING, colonnes infraction_count_* ajoutées à
---     monitorfish_remote/analytics_controls_full_data.sql) --
---     nb_infractions_sans_pv_fiable = 1 pour FISH comme pour NAV/ENV
---     (n'était qu'une approximation 0/1 avant, cf. historique Git).
+--     monitorfish_remote/analytics_controls_full_data.sql) -- même
+--     fiabilité que NAV/ENV désormais (c'était une approximation 0/1
+--     avant ; nb_infractions_sans_pv_fiable, qui marquait cet écart,
+--     a été retiré une fois les 3 sources alignées -- devenu toujours
+--     à 1, donc sans valeur informative, cf. historique Git).
 --   - ENV : infraction_type a 3 valeurs fiables (WAITING/WITH_REPORT/
 --     WITHOUT_REPORT). analytics_actions couvre CONTROL ET SURVEILLANCE
 --     (déjà filtré ainsi par la requête source monitorenv_remote/
@@ -454,7 +456,6 @@ nav_rows AS (
         toUInt16(coalesce(acl.nb_controls, 0)) AS nb_controls,
         toUInt16(coalesce(acl.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(acl.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
-        toUInt8(1) AS nb_infractions_sans_pv_fiable,
         toUInt16(coalesce(acl.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
         arrayMap(x -> toString(x), coalesce(atg.natinf_codes, [])) AS natinf_codes,
         toUInt16(coalesce(ma.nbr_of_control, 0)) AS nbr_of_control_declare,
@@ -608,7 +609,6 @@ fish_rows AS (
         -- NAV/ENV.
         toUInt16(f.infraction_count_with_record) AS nb_infractions_avec_pv,
         toUInt16(f.infraction_count_without_record) AS nb_infractions_sans_pv,
-        toUInt8(1) AS nb_infractions_sans_pv_fiable,
         toUInt16(f.infraction_count_pending) AS nb_infractions_en_attente,
         f.infraction_natinfs AS natinf_codes,
         toUInt16(0) AS nbr_of_control_declare,
@@ -711,7 +711,6 @@ env_rows AS (
         toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controls,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
-        toUInt8(1) AS nb_infractions_sans_pv_fiable,
         toUInt16(coalesce(ei.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
         arrayMap(x -> toString(x), coalesce(ei.natinf_codes, [])) AS natinf_codes,
         toUInt16(0) AS nbr_of_control_declare,
