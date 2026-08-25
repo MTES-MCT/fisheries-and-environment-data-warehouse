@@ -208,14 +208,59 @@ mission_action_hours AS (
     GROUP BY mission_id
 ),
 -- Nombre d'agents assignés à la mission (rapportnav_proxy.mission_crew).
--- Absences (mission_crew_absence) non exclues -- non demandé, à affiner
--- si le décompte doit exclure les agents absents sur la période.
+-- Absences (mission_crew_absence, cf. crew_absences plus bas) non
+-- exclues ici -- nb_agents reste l'effectif affecté, pas l'effectif
+-- présent ; à affiner si le décompte doit exclure les agents absents sur
+-- la période.
 mission_crew_counts AS (
     SELECT
         mission_id,
         uniqExact(agent_id) AS nb_agents
     FROM rapportnav_proxy.mission_crew
     WHERE mission_id IS NOT NULL AND agent_id IS NOT NULL
+    GROUP BY mission_id
+),
+-- "Équipage -- arrêt maladie/récupération, stagiaires accueillis"
+-- (maquette PAM) : fonctionnalité RapportNav confirmée disponible
+-- (schéma + backend + UI, vérifié dans le repo cloné -- crew-absence-
+-- form.tsx et consorts, tests inclus) -- pas un stub, contrairement à ce
+-- qui avait été noté avant vérification.
+-- mission_crew_absence.reason est TEXT libre en base (pas de contrainte
+-- CHECK/enum Postgres), mais un seul chemin de saisie existe (le
+-- formulaire PAM) qui n'écrit que les 8 valeurs de
+-- MissionCrewAbsenceReason (crew-type.ts) -- mappées ci-dessous vers
+-- leur libellé français (use-crew-absence-reason.tsx), avec repli sur la
+-- valeur brute si jamais une autre apparaît (donnée à surveiller, pas à
+-- masquer).
+crew_absences AS (
+    SELECT
+        mc.mission_id,
+        uniqExact(mca.mission_crew_id) AS nb_agents_en_absence,
+        groupUniqArray(toString(multiIf(
+            mca.reason = 'SICK_LEAVE', 'Arrêt maladie',
+            mca.reason = 'TRAINING', 'Formation',
+            mca.reason = 'RECOVERING', 'Récupération',
+            mca.reason = 'HOLIDAYS', 'Congés',
+            mca.reason = 'MEETING', 'Réunion',
+            mca.reason = 'MEDICAL_APPOINTMENT', 'Visite médicale',
+            mca.reason = 'DISPATCHED_ELSEWHERE', 'Renfort extérieur',
+            mca.reason = 'OTHER', 'Autre',
+            coalesce(mca.reason, '')
+        ))) AS absence_reasons
+    FROM rapportnav_proxy.mission_crew_absence mca
+    INNER JOIN rapportnav_proxy.mission_crew mc ON mc.id = mca.mission_crew_id
+    WHERE mc.mission_id IS NOT NULL
+    GROUP BY mc.mission_id
+),
+-- Stagiaires : rapportnav_proxy.mission_passenger, PAS mission_crew --
+-- modélisés comme "passagers" avec un flag is_intern (case "Stagiaire"
+-- du formulaire passagers PAM), aucun rôle STAGIAIRE dans agent_role.
+crew_trainees AS (
+    SELECT
+        mission_id,
+        uniqExact(id) AS nb_stagiaires
+    FROM rapportnav_proxy.mission_passenger
+    WHERE mission_id IS NOT NULL AND coalesce(is_intern, false) = true
     GROUP BY mission_id
 )
 
@@ -295,6 +340,12 @@ SELECT
         coalesce(mah.total_action_hours, 0) * coalesce(mcc.nb_agents, 0),
         0
     )) AS heures_renfort_exterieur,
+    toUInt16(coalesce(mcc.nb_agents, 0)) AS nb_agents,
+    -- "Équipage -- arrêt maladie/récupération, stagiaires accueillis"
+    -- (maquette PAM) -- cf. crew_absences/crew_trainees plus haut.
+    toUInt16(coalesce(ca.nb_agents_en_absence, 0)) AS nb_agents_en_absence,
+    coalesce(ca.absence_reasons, []) AS absence_reasons,
+    toUInt16(coalesce(ct.nb_stagiaires, 0)) AS nb_stagiaires,
     -- "Temps en JDP" / "nombre de missions JDP" : même principe, mais le
     -- cas EXTERNAL_REINFORCEMENT_TIME_REPORT exige en plus un
     -- reinforcement_type renseigné (pas nécessairement 'JDP' -- tel que
@@ -423,6 +474,8 @@ LEFT JOIN heures_moyen_nautique_par_mission hmn ON hmn.mission_id = mgi.mission_
 LEFT JOIN nav_completeness nc   ON nc.mission_id = mgi.mission_id
 LEFT JOIN mission_action_hours mah ON mah.mission_id = mgi.mission_id
 LEFT JOIN mission_crew_counts mcc  ON mcc.mission_id = mgi.mission_id
+LEFT JOIN crew_absences ca         ON ca.mission_id = mgi.mission_id
+LEFT JOIN crew_trainees ct         ON ct.mission_id = mgi.mission_id
 -- ⚠️ même filtre de date codé en dur que query_aem_par_mission_3_bases_clickhouse.sql
 -- (portée jamais expliquée dans le code source) -- à confirmer avec Alexandre,
 -- ou à retirer si le rapport PAM+ULAM doit couvrir tout l'historique.
