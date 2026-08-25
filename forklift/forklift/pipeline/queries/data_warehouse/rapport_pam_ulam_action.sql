@@ -35,8 +35,9 @@
 --     pour les lignes SURVEILLANCE.
 --   - politique_publique fixe pour FISH ("Pêche professionnelle") et ENV
 --     ("Environnement / pollution") -- confirmé sur les maquettes
---     Metabase ULAM et PAM (table "politique publique", 6 catégories
---     identiques sur les deux dashboards). thematique FISH = segment de
+--     Metabase ULAM et PAM (table "politique publique", 7 catégories
+--     identiques sur les deux dashboards -- Administratif distinct
+--     d'Autres, cf. commentaire sur ADMINISTRATIVE plus bas). thematique FISH = segment de
 --     flotte si disponible ; thematique ENV reste en attente de la liste
 --     de valeurs de theme_level_1 (partiellement connue, cf. plus bas) --
 --     ne pas deviner les libellés. Bruts exposés en attendant via
@@ -154,12 +155,16 @@ action_targets AS (
 -- Metabase (table "Nombre d'actions de contrôle par politique publique",
 -- identique sur les dashboards ULAM et PAM) : Pêche professionnelle /
 -- Equipement de sécurité / Police de la navigation / Gens de mer /
--- Environnement-pollution / Autres. Les 4 dernières viennent de
--- control_2.control_type (ADMINISTRATIVE/GENS_DE_MER/NAVIGATION/SECURITY
--- -- champ DIFFÉRENT de mission_action.control_type, qui lui est du texte
--- libre uniquement pour OTHER_CONTROL). Pêche professionnelle et
--- Environnement/pollution viennent des sources FISH/ENV (fixes, cf.
--- fish_rows/env_rows plus bas) -- control_2 est nav-only.
+-- Administratif / Environnement-pollution / Autres. Les 5 dernières
+-- viennent de control_2.control_type (ADMINISTRATIVE/GENS_DE_MER/
+-- NAVIGATION/SECURITY -- champ DIFFÉRENT de mission_action.control_type,
+-- qui lui est du texte libre uniquement pour OTHER_CONTROL) --
+-- ADMINISTRATIVE -> "Administratif", distinct d'"Autres" (confirmé :
+-- politique propre, "administrative", dans ComputeControlPolicies.kt
+-- côté rapportnav2 -- PAS la même chose que la politique "other").
+-- Pêche professionnelle et Environnement/pollution viennent des sources
+-- FISH/ENV (fixes, cf. fish_rows/env_rows plus bas) -- control_2 est
+-- nav-only.
 -- ⚠️ Une action peut avoir plusieurs contrôles ; si leurs control_type
 -- diffèrent (rare), on garde le plus fréquent (topK) plutôt que d'en
 -- perdre un silencieusement.
@@ -425,7 +430,12 @@ nav_rows AS (
                 acp.control_type_predominant = 'NAVIGATION', 'Police de la navigation',
                 acp.control_type_predominant = 'GENS_DE_MER', 'Gens de mer',
                 acp.control_type_predominant = 'SECURITY', 'Equipement de sécurité',
-                acp.control_type_predominant = 'ADMINISTRATIVE', 'Autres',
+                -- ADMINISTRATIVE est une politique distincte de la
+                -- catégorie fourre-tout "Autres" (confirmé : c'est un
+                -- champ séparé, "administrative", dans
+                -- ComputeControlPolicies.kt côté rapportnav2, pas la même
+                -- chose que "other").
+                acp.control_type_predominant = 'ADMINISTRATIVE', 'Administratif',
                 ''
             ), ''),
             atm.politique_publique,

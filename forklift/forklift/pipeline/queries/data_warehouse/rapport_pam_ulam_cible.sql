@@ -39,13 +39,16 @@
 -- -- PAS déduit du moyen employé.
 --
 -- politique_publique : Pêche professionnelle / Equipement de sécurité /
--- Police de la navigation / Gens de mer / Environnement-pollution /
--- Autres -- confirmé sur les maquettes Metabase ULAM ET PAM (même table
--- "politique publique" sur les deux dashboards). NAV dérivé de
--- control_2.control_type (ADMINISTRATIVE/GENS_DE_MER/NAVIGATION/SECURITY
--- -- champ DIFFÉRENT de mission_action.control_type, texte libre pour
--- OTHER_CONTROL seulement) ; FISH/ENV fixes (pas de classification
--- interne dans ces systèmes).
+-- Police de la navigation / Gens de mer / Administratif /
+-- Environnement-pollution / Autres -- confirmé sur les maquettes
+-- Metabase ULAM ET PAM (même table "politique publique" sur les deux
+-- dashboards). NAV dérivé de control_2.control_type (ADMINISTRATIVE/
+-- GENS_DE_MER/NAVIGATION/SECURITY -- champ DIFFÉRENT de
+-- mission_action.control_type, texte libre pour OTHER_CONTROL
+-- seulement) ; ADMINISTRATIVE -> "Administratif", distinct d'"Autres"
+-- (politique propre "administrative" dans ComputeControlPolicies.kt côté
+-- rapportnav2, différente de "other"). FISH/ENV fixes (pas de
+-- classification interne dans ces systèmes).
 --
 -- ⚠️ Ce fichier DOIT tourner après dim_unit_reference.sql ET après les
 -- flows sync_table_with_pandas qui alimentent monitorfish.analytics_controls_full_data
@@ -188,7 +191,12 @@ nav_control_rows AS (
                 acp.control_type_predominant = 'NAVIGATION', 'Police de la navigation',
                 acp.control_type_predominant = 'GENS_DE_MER', 'Gens de mer',
                 acp.control_type_predominant = 'SECURITY', 'Equipement de sécurité',
-                acp.control_type_predominant = 'ADMINISTRATIVE', 'Autres',
+                -- ADMINISTRATIVE est une politique distincte de la
+                -- catégorie fourre-tout "Autres" (confirmé : c'est un
+                -- champ séparé, "administrative", dans
+                -- ComputeControlPolicies.kt côté rapportnav2, pas la même
+                -- chose que "other").
+                acp.control_type_predominant = 'ADMINISTRATIVE', 'Administratif',
                 ''
             ), ''),
             cpm.politique_publique,
