@@ -210,6 +210,29 @@ status_timeline AS (
     FROM rapportnav_proxy.mission_action
     WHERE action_type = 'STATUS'
 ),
+-- "Focus BAAEM -- nb assistance/sauvetage dans le cadre d'une opération
+-- BAAEM" (maquette PAM) : BAAEM_PERMANENCE est une action à intervalle
+-- réel (start ET end renseignés, vérifié contre
+-- mission-action-item-baaem-performance.tsx / dates-schema.ts côté
+-- rapportnav2 -- formulaire "plage de dates", pas un simple horodatage)
+-- -- même principe que le statut navire plus haut : interpoler cet
+-- intervalle sur les AUTRES actions de la même mission pour savoir
+-- lesquelles tombent "pendant une permanence BAAEM". Tableau par mission
+-- (pas ASOF JOIN, qui ne gère qu'un événement ponctuel) : une mission
+-- peut avoir plusieurs permanences, arrayExists vérifie l'appartenance à
+-- N'IMPORTE LAQUELLE. ⚠️ Concept a priori PAM uniquement (BAAEM = Bureau
+-- de l'Action de l'État en Mer, patrouilleurs) -- présent ici pour
+-- couvrir le cas où une unité ULAM y participerait, mais pas confirmé
+-- comme un scénario réel.
+baaem_permanence_by_mission AS (
+    SELECT
+        mission_id,
+        groupArray(start_datetime_utc) AS permanence_starts,
+        groupArray(end_datetime_utc) AS permanence_ends
+    FROM rapportnav_proxy.mission_action
+    WHERE action_type = 'BAAEM_PERMANENCE' AND end_datetime_utc IS NOT NULL
+    GROUP BY mission_id
+),
 -- Référentiel libellé français / politique publique / thématique par
 -- action_type NAV (dictionnaire métier "Types et sous-types d'actions",
 -- export CSV du 2026-08-14).
@@ -441,7 +464,17 @@ nav_rows AS (
         -- seulement les contrôles) -- cf. status_timeline plus haut.
         -- Vide si l'action a lieu avant le tout premier STATUS de la
         -- mission (aucun statut connu à cet instant).
-        toString(coalesce(st.status, '')) AS statut_navire
+        toString(coalesce(st.status, '')) AS statut_navire,
+        -- Cette action tombe-t-elle pendant une permanence BAAEM de la
+        -- même mission (cf. baaem_permanence_by_mission plus haut) --
+        -- permet ensuite un simple count(*) WHERE action_type='RESCUE'
+        -- AND is_during_baaem_permanence=1 pour "Focus BAAEM -- nb
+        -- assistance/sauvetage dans le cadre d'une opération BAAEM".
+        toUInt8(arrayExists(
+            (s, e) -> ma.start_datetime_utc >= s AND ma.start_datetime_utc <= e,
+            coalesce(bpm.permanence_starts, []),
+            coalesce(bpm.permanence_ends, [])
+        )) AS is_during_baaem_permanence
     FROM rapportnav_proxy.mission_action ma
     -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au
     -- moins une unité PAM ou ULAM.
@@ -454,6 +487,7 @@ nav_rows AS (
     -- ASOF : pour chaque action, le STATUS le plus récent démarré à ou
     -- avant le début de l'action (dans la même mission).
     ASOF LEFT JOIN status_timeline st ON st.mission_id = ma.mission_id AND st.start_datetime_utc <= ma.start_datetime_utc
+    LEFT JOIN baaem_permanence_by_mission bpm ON bpm.mission_id = ma.mission_id
     -- action_type déjà unifié (CONTROL) : atm.action_type = 'CONTROL'
     -- matche toute la famille. action_subtype_key ne différencie que
     -- CONTROL, UNIT_MANAGEMENT_TRAINING et STATUS.
@@ -585,7 +619,10 @@ fish_rows AS (
         f.latitude AS latitude,
         f.longitude AS longitude,
         -- Pas de notion de statut navire côté MonitorFish.
-        '' AS statut_navire
+        '' AS statut_navire,
+        -- Pas de notion de permanence BAAEM côté MonitorFish (concept
+        -- RapportNav uniquement, cf. baaem_permanence_by_mission).
+        toUInt8(0) AS is_during_baaem_permanence
     FROM monitorfish.analytics_controls_full_data f
     WHERE (startsWith(upper(f.control_unit), 'ULAM') OR startsWith(upper(f.control_unit), 'PAM'))
       AND f.control_datetime_utc >= toDateTime('2025-01-01 00:00:00')
@@ -673,7 +710,10 @@ env_rows AS (
         a.latitude AS latitude,
         a.longitude AS longitude,
         -- Pas de notion de statut navire côté MonitorEnv.
-        '' AS statut_navire
+        '' AS statut_navire,
+        -- Pas de notion de permanence BAAEM côté MonitorEnv (concept
+        -- RapportNav uniquement, cf. baaem_permanence_by_mission).
+        toUInt8(0) AS is_during_baaem_permanence
     FROM monitorenv.analytics_actions a
     LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
     WHERE a.action_type IN ('CONTROL', 'SURVEILLANCE')

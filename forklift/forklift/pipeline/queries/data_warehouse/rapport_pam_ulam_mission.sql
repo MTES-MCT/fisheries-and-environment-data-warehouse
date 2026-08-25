@@ -244,6 +244,17 @@ SELECT
     -- ServiceModel.kt (rapportnav2). service_id est déjà exposé ci-dessus
     -- mais pas exploitable seul pour filtrer par bordée sans le nom.
     toString(coalesce(svc.name, '')) AS service_name,
+    -- "Surveillance pêche encadrée CNSP ou libre" (maquette ULAM) : qui a
+    -- ouvert la mission. monitorenv_proxy.missions.open_by est du texte
+    -- LIBRE (colonne renommée depuis "author", champ formulaire "Ouvert
+    -- par" côté RapportNav/MonitorEnv -- vérifié contre
+    -- GeneralInformationsForm.tsx et MissionModel.kt, PAS un enum
+    -- CACEM/CNSP/unité). Exposé brut plutôt que classé : vérifier les
+    -- vraies valeurs saisies avant de construire un regroupement
+    -- CACEM/CNSP/unité côté Metabase (mêmes précautions que
+    -- env_theme_level_1). Rejoindre sur mission_id pour l'attacher aux
+    -- actions/cibles de la mission si besoin.
+    toString(coalesce(envm.open_by, '')) AS mission_open_by,
     -- assumeNotNull : envm.start_datetime_utc est Nullable côté proxy, mais
     -- le WHERE en fin de requête (>= 2025-01-01) exclut déjà toute ligne
     -- NULL avant le SELECT -- nécessaire pour servir de clé ORDER BY
