@@ -498,14 +498,30 @@ fish_rows AS (
         toDateTime64(f.control_datetime_utc, 6) AS start_datetime_utc,
         toDateTime64(f.control_datetime_utc, 6) AS end_datetime_utc,
         toFloat64(0) AS duration_h,
-        -- Même hiérarchie que NAV : SEA_CONTROL/LAND_CONTROL/AIR_CONTROL/
-        -- AIR_SURVEILLANCE -> action_type='CONTROL', action_subtype='FISH',
-        -- action_subsubtype=méthode de contrôle réelle. OBSERVATION reste à
-        -- part (pas un contrôle).
-        toString(multiIf(f.control_type = 'OBSERVATION', 'OBSERVATION', 'CONTROL')) AS action_type,
+        -- ⚠️ CORRIGÉ (repéré en revue) : AIR_SURVEILLANCE était traité comme
+        -- un CONTROL au même titre que SEA_CONTROL/LAND_CONTROL/AIR_CONTROL
+        -- -- faux. Vérifié contre MissionActionType.kt/FishActionCard.tsx
+        -- (repo monitorfish cloné) : AIR_SURVEILLANCE est un vol de
+        -- reconnaissance sur plusieurs pistes ("N pistes survolées"), sans
+        -- navire ciblé -- l'app elle-même l'exclut de isControlAction et de
+        -- numberOfControls (les regroupe avec OBSERVATION comme "pas un
+        -- contrôle"). SEA_CONTROL/LAND_CONTROL/AIR_CONTROL restent seuls
+        -- CONTROL ; action_subtype='FISH', action_subsubtype=méthode de
+        -- contrôle réelle. AIR_SURVEILLANCE -> action_type='SURVEILLANCE'
+        -- (même famille que le SURVEILLANCE ENV plus bas). OBSERVATION
+        -- reste à part.
+        toString(multiIf(
+            f.control_type = 'OBSERVATION', 'OBSERVATION',
+            f.control_type = 'AIR_SURVEILLANCE', 'SURVEILLANCE',
+            'CONTROL'
+        )) AS action_type,
         toString(multiIf(f.control_type = 'OBSERVATION', '', 'FISH')) AS action_subtype,
         toString(multiIf(f.control_type = 'OBSERVATION', '', toString(f.control_type))) AS action_subsubtype,
-        toString(multiIf(f.control_type = 'OBSERVATION', 'Observation', 'Contrôle de pêche')) AS libelle_francais,
+        toString(multiIf(
+            f.control_type = 'OBSERVATION', 'Observation',
+            f.control_type = 'AIR_SURVEILLANCE', 'Surveillance aérienne',
+            'Contrôle de pêche'
+        )) AS libelle_francais,
         -- politique_publique fixe (pas de classification interne côté
         -- MonitorFish) -- libellé exact confirmé sur les maquettes
         -- Metabase ULAM et PAM ("Pêche professionnelle", cf.
@@ -513,14 +529,27 @@ fish_rows AS (
         -- flotte si disponible.
         'Pêche professionnelle' AS politique_publique,
         toString(coalesce(nullIf(f.segment, ''), 'Pêches maritimes')) AS thematique,
-        toString(multiIf(f.control_type = 'OBSERVATION', 'Autre activité terrain', 'Contrôles')) AS categorie_activite,
-        toString(multiIf(f.control_type = 'OBSERVATION', 'Observation', 'Contrôle navires (pêche)')) AS sous_categorie_activite,
+        toString(multiIf(
+            f.control_type = 'OBSERVATION', 'Autre activité terrain',
+            f.control_type = 'AIR_SURVEILLANCE', 'Surveillances',
+            'Contrôles'
+        )) AS categorie_activite,
+        toString(multiIf(
+            f.control_type = 'OBSERVATION', 'Observation',
+            f.control_type = 'AIR_SURVEILLANCE', 'Surveillance pêche (aérienne)',
+            'Contrôle navires (pêche)'
+        )) AS sous_categorie_activite,
         '' AS env_theme_level_1,
         '' AS env_theme_level_2,
         '' AS env_plan,
-        toUInt16(1) AS nb_targets,
-        toUInt16(1) AS nb_control_types,
-        toUInt16(1) AS nb_controls,
+        -- nb_targets/nb_control_types/nb_controls : 0 pour OBSERVATION et
+        -- AIR_SURVEILLANCE (ni l'un ni l'autre n'est un contrôle -- même
+        -- correction que ci-dessus, ces 3 champs étaient à 1 pour TOUTES
+        -- les lignes FISH sans condition, gonflant nb_controls sur les
+        -- observations/surveillances aériennes).
+        toUInt16(if(f.control_type IN ('OBSERVATION', 'AIR_SURVEILLANCE'), 0, 1)) AS nb_targets,
+        toUInt16(if(f.control_type IN ('OBSERVATION', 'AIR_SURVEILLANCE'), 0, 1)) AS nb_control_types,
+        toUInt16(if(f.control_type IN ('OBSERVATION', 'AIR_SURVEILLANCE'), 0, 1)) AS nb_controls,
         toUInt16(f.infraction_report) AS nb_infractions_avec_pv,
         toUInt16(if(f.infraction = 1 AND f.infraction_report = 0, 1, 0)) AS nb_infractions_sans_pv,
         toUInt8(0) AS nb_infractions_sans_pv_fiable,
@@ -542,7 +571,17 @@ fish_rows AS (
         toUInt16(0) AS nb_resources_linked,
         CAST([], 'Array(Int32)') AS resource_ids,
         CAST([], 'Array(String)') AS resource_types,
-        CAST(['MER'], 'Array(String)') AS terrain_types,
+        -- ⚠️ CORRIGÉ (même revue) : était hardcodé ['MER'] pour toutes les
+        -- lignes FISH, y compris AIR_CONTROL/AIR_SURVEILLANCE -- faux pour
+        -- un contrôle/surveillance aérien. Dérivé de f.control_type comme
+        -- terrain_control sur fact_cible_pam_ulam (même mapping déjà
+        -- vérifié là-bas).
+        arrayFilter(x -> x != '', [multiIf(
+            f.control_type = 'SEA_CONTROL', 'MER',
+            f.control_type = 'LAND_CONTROL', 'TERRE',
+            f.control_type IN ('AIR_CONTROL', 'AIR_SURVEILLANCE'), 'AIR',
+            ''
+        )]) AS terrain_types,
         f.latitude AS latitude,
         f.longitude AS longitude,
         -- Pas de notion de statut navire côté MonitorFish.

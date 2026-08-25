@@ -261,7 +261,15 @@ fish_control_rows AS (
         toUInt16(0) AS nb_controles_avec_plongee,
         toUInt16(0) AS nb_controles_journee_securite
     FROM monitorfish.analytics_controls_full_data f
-    WHERE f.control_type != 'OBSERVATION'
+    -- ⚠️ CORRIGÉ (même revue que fact_action_pam_ulam) : AIR_SURVEILLANCE
+    -- exclu ici aussi, pas seulement OBSERVATION. fact_cible_pam_ulam a
+    -- pour grain "1 cible contrôlée" -- une surveillance aérienne
+    -- (plusieurs pistes survolées, aucun navire ciblé précis, cf.
+    -- FishActionCard.tsx/MissionActionType.kt côté monitorfish) n'a pas de
+    -- cible unique à rattacher ici, contrairement à SEA_CONTROL/
+    -- LAND_CONTROL/AIR_CONTROL qui contrôlent un navire précis. Reste
+    -- présente sur fact_action_pam_ulam (action_type='SURVEILLANCE').
+    WHERE f.control_type NOT IN ('OBSERVATION', 'AIR_SURVEILLANCE')
       AND (startsWith(upper(f.control_unit), 'ULAM') OR startsWith(upper(f.control_unit), 'PAM'))
       AND f.control_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 ),
