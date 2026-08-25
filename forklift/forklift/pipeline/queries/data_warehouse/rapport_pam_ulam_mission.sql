@@ -66,15 +66,7 @@ heures_de_mer AS (
     SELECT
         mission_id,
         sumIf(dateDiff('second', start_datetime_utc, corrected_end_datetime_utc) / 3600.0,
-              status IN ('ANCHORED', 'NAVIGATING')) AS computed_hours_at_sea,
-        -- ⚠️ HYPOTHÈSE À VÉRIFIER : "heures moteur" ≈ heures où le statut
-        -- mission est NAVIGATING seul (bateau qui avance), à l'exclusion
-        -- d'ANCHORED (mouillage, moteur probablement coupé ou au ralenti).
-        -- Personne n'a confirmé ce mapping côté métier -- à valider avant
-        -- toute utilisation en dashboard. Ne peut pas être ventilé par
-        -- moyen (les actions STATUS n'ont pas de resource_id).
-        sumIf(dateDiff('second', start_datetime_utc, corrected_end_datetime_utc) / 3600.0,
-              status = 'NAVIGATING') AS heures_navigation_hypothese_moteur
+              status IN ('ANCHORED', 'NAVIGATING')) AS computed_hours_at_sea
     FROM status_actions
     GROUP BY mission_id
 ),
@@ -150,14 +142,15 @@ resource_dim AS (
         ) AS terrain_category
     FROM monitorenv_proxy.control_unit_resources
 ),
+-- nb_resources_used seul ici désormais -- mission_terrain_types (plus bas
+-- dans le SELECT final) ne se déduit plus des moyens employés, cf.
+-- commentaire sur cette colonne.
 mission_resources AS (
     SELECT
         ma.mission_id,
-        groupUniqArray(toString(rd.terrain_category)) AS mission_terrain_types,
         uniqExact(mar.resource_id) AS nb_resources_used
     FROM rapportnav_proxy.mission_action_resource mar
     INNER JOIN rapportnav_proxy.mission_action ma ON ma.id = mar.action_id
-    LEFT JOIN resource_dim rd ON rd.resource_id = mar.resource_id
     GROUP BY ma.mission_id
 ),
 
@@ -257,6 +250,18 @@ SELECT
     -- (même contrainte allow_nullable_key que mission_id plus haut).
     toDateTime64(assumeNotNull(envm.start_datetime_utc), 6) AS start_datetime_utc,
     toDateTime64(envm.end_datetime_utc, 6) AS end_datetime_utc,
+    -- "Nombre d'heures de mission" (maquette PAM, Infos générales) :
+    -- durée de la mission ENTIÈRE, du début à la fin (envm.start/end_
+    -- datetime_utc), toutes actions confondues -- PAS une somme des
+    -- durées d'actions individuelles (les actions ne couvrent pas
+    -- forcément tout le temps de mission sans trou, et se chevauchent
+    -- parfois). 0 tant que la mission n'est pas terminée
+    -- (end_datetime_utc NULL).
+    toFloat64(if(
+        envm.end_datetime_utc IS NOT NULL,
+        dateDiff('second', envm.start_datetime_utc, envm.end_datetime_utc) / 3600.0,
+        0
+    )) AS mission_duration_h,
     toString(multiIf(
         envm.end_datetime_utc IS NULL OR envm.start_datetime_utc IS NULL, 'UNAVAILABLE',
         envm.start_datetime_utc < now() AND envm.end_datetime_utc > now(), 'IN_PROGRESS',
@@ -333,13 +338,43 @@ SELECT
     toFloat64(coalesce(mgi.nb_hour_at_sea, 0)) AS declared_hours_at_sea,
     toFloat64(coalesce(hm.computed_hours_at_sea, 0)) AS computed_hours_at_sea,
     toFloat64(coalesce(hmn.heures_moyen_nautique, 0)) AS heures_moyen_nautique,
-    toFloat64(coalesce(hm.heures_navigation_hypothese_moteur, 0)) AS heures_navigation_hypothese_moteur,
+    -- heures_navigation_hypothese_moteur : laissé à 0 volontairement.
+    -- Alimentait auparavant une hypothèse non confirmée (statut NAVIGATING
+    -- seul = "moteur en action") -- en cours de définition côté métier
+    -- (implémentation propre pas encore livrée). Ne pas réutiliser cette
+    -- colonne tant qu'elle reste à 0 ; à repeupler une fois la définition
+    -- confirmée.
+    toFloat64(0) AS heures_navigation_hypothese_moteur,
     toUInt16(coalesce(jdm.nb_jours_de_mer, 0)) AS nb_jours_de_mer,
     toFloat64(coalesce(mgi.distance_in_nautical_miles, 0)) AS distance_nm,
     toFloat64(coalesce(mgi.consumed_fuel_in_liters, 0)) AS consumed_fuel_liters,
     toFloat64(coalesce(mgi.consumed_go_in_liters, 0)) AS consumed_go_liters,
     toUInt16(coalesce(mr.nb_resources_used, 0)) AS nb_resources_used,
-    coalesce(mr.mission_terrain_types, []) AS mission_terrain_types,
+    -- mission_terrain_types : au niveau mission, monitorenv_proxy.
+    -- missions.mission_types est LA source (text[], valeurs AIR/LAND/SEA --
+    -- MissionTypeEnum.kt côté monitorenv, migration V0.072). Remplace
+    -- l'ancienne déduction à partir des moyens employés sur les actions de
+    -- la mission (mission_action_resource -> control_unit_resources.type),
+    -- qui n'était qu'une approximation. Une mission NAV sans sortie
+    -- terrain (aucun véhicule/navire de l'unité engagé) a mission_types
+    -- vide/NULL -- vu et attendu, pas une anomalie.
+    -- ⚠️ Ceci reste au niveau MISSION (1 tableau par mission). Une
+    -- ventilation au niveau ACTION (comme le fait déjà terrain_control
+    -- sur fact_action_pam_ulam/fact_cible_pam_ulam pour les contrôles)
+    -- n'a PAS le même niveau de confiance pour les 3 sources :
+    --   - FISH : mission_action.action_type LAND_CONTROL/SEA_CONTROL se
+    --     mappe directement sur TERRE/MER (mêmes valeurs que control_type
+    --     côté MonitorFish, déjà exploité par terrain_control).
+    --   - ENV : renseigné seulement parfois, via vehicle_type sur l'action
+    --     -- pas un champ fiable à 100%, comportement à vérifier données en
+    --     main avant de l'utiliser.
+    --   - NAV : pas de champ identifié à date pour un mer/terre/air par
+    --     action (à la différence du niveau mission via mission_types) --
+    --     à documenter/creuser si ce niveau de détail est demandé.
+    arrayMap(
+        x -> multiIf(x = 'SEA', 'MER', x = 'LAND', 'TERRE', x = 'AIR', 'AIR', toString(x)),
+        coalesce(envm.mission_types, [])
+    ) AS mission_terrain_types,
     toUInt8(envm.end_datetime_utc IS NOT NULL AND envm.end_datetime_utc < now()) AS is_mission_finished,
     toUInt8(coalesce(nc.toutes_actions_nav_completes, 0)) AS nav_toutes_actions_completes,
     -- Règle "Missions rapportées" (maquette v2, tooltip) : "Seules les
