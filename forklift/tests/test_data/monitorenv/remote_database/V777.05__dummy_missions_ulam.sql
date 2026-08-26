@@ -1,0 +1,22 @@
+-- =====================================================================
+-- Fixture MonitorEnv pour le rapport ULAM : mission de test 999100.
+-- INSERT pur (pas de DELETE FROM), ID dédié distinct de tout ID réel.
+-- Séparé en un fichier par table (au lieu d'un seul fichier à 5
+-- INSERT) : Flyway exécute chaque fichier comme une transaction unique,
+-- donc un échec sur une table annulait silencieusement les 4 autres.
+-- Isoler chaque table permet de voir laquelle échoue réellement plutôt
+-- que de tout perdre d'un coup.
+-- Vérifié contre le schéma réel (github.com/MTES-MCT/monitorenv) :
+-- missions.unit a été DROP (V0.046) ; mission_type (singulier) a été
+-- remplacé par mission_types text[] (V0.072) ; mission_source est
+-- NOT NULL sans défaut (V0.054), enum mission_source_type depuis
+-- V0.064.1.
+-- ⚠️ 'RAPPORT_NAV' évité volontairement : valeur ajoutée à l'enum par
+-- V0.168 (ALTER TYPE ... ADD VALUE) -- piège Postgres connu, une valeur
+-- ajoutée ainsi n'est pas garantie utilisable selon comment les
+-- migrations Flyway suivantes sont transactionnées. 'MONITORENV' est une
+-- valeur d'origine de l'enum (V0.064.1), sans ce risque -- suffisant
+-- pour satisfaire la contrainte NOT NULL, la valeur exacte n'est pas
+-- exploitée par les requêtes ULAM.
+INSERT INTO public.missions (id, start_datetime_utc, end_datetime_utc, mission_types, mission_source, facade)
+VALUES (999100, '2025-06-02 08:00:00', '2025-06-02 18:00:00', ARRAY['SEA'], 'MONITORENV', 'MED');
