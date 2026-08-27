@@ -88,9 +88,23 @@ status_day_overlap AS (
             least(corrected_end_datetime_utc, toDateTime(jour) + INTERVAL 1 DAY)
         ) / 3600.0 AS heures_ce_jour
     FROM status_actions
+    -- ⚠️ CORRIGÉ (crash en prod) : toUInt32(Date - Date) sur une donnée
+    -- corrompue/aberrante (corrected_end_datetime_utc avant
+    -- start_datetime_utc, ou très loin dans le futur -- leadInFrame ou
+    -- envm.end_datetime_utc en cause, pas identifié précisément) fait
+    -- déborder toUInt32 par wraparound (diff négative) ou produit un
+    -- nombre de jours réellement énorme -> range() plante avec "greater
+    -- than the allowed maximum of 500000000". Calcul en Int64 (pas de
+    -- wraparound), diff négative ramenée à 0, plafonnée à 400 jours --
+    -- aucune permanence/statut légitime ne devrait dépasser ça. La
+    -- mission concernée aura un nb_jours_de_mer sous-estimé plutôt que
+    -- de faire échouer toute la table.
     ARRAY JOIN arrayMap(
         x -> toDate(start_datetime_utc) + x,
-        range(toUInt32(toDate(corrected_end_datetime_utc) - toDate(start_datetime_utc)) + 1)
+        range(least(toUInt32(greatest(
+            toInt64(toDate(corrected_end_datetime_utc) - toDate(start_datetime_utc)),
+            0
+        )), 400) + 1)
     ) AS jour
     WHERE status IN ('NAVIGATING', 'ANCHORED')
 ),
