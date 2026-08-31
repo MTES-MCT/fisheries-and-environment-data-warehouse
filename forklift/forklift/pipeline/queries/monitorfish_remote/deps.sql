@@ -1,6 +1,7 @@
 WITH deps AS (
     SELECT
         operation_type,
+        operation_number,
         report_id,
         referenced_report_id,
         cfr,
@@ -37,7 +38,7 @@ WITH deps AS (
         log_type = 'DEP'
 ),
 
-dep_reports AS (SELECT DISTINCT report_id, referenced_report_id, operation_type, flag_state FROM deps),
+dep_reports AS (SELECT DISTINCT report_id, operation_number, referenced_report_id, operation_type, flag_state FROM deps),
 
 dels_targeting_deps AS (
 
@@ -54,7 +55,7 @@ dels_targeting_deps AS (
 ),
 
 cors_targeting_deps AS (
-   SELECT cor.referenced_report_id, cor.report_id, cor.flag_state
+   SELECT cor.referenced_report_id, cor.operation_number, cor.flag_state
    FROM logbook_reports cor
    JOIN dep_reports
    ON cor.referenced_report_id = dep_reports.report_id
@@ -76,9 +77,9 @@ acknowledged_report_ids AS (
        AND referenced_report_id IN (
            SELECT operation_number FROM dels_targeting_deps
            UNION ALL
-           SELECT report_id FROM cors_targeting_deps
+           SELECT operation_number FROM cors_targeting_deps
            UNION ALL
-           SELECT report_id FROM dep_reports
+           SELECT operation_number FROM dep_reports
        )
 ),
 
@@ -94,7 +95,7 @@ acknowledged_cors_targeting_deps AS (
     SELECT referenced_report_id
     FROM cors_targeting_deps
     WHERE
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN') -- flag_states for which we received RET messages
 )
 
@@ -127,7 +128,7 @@ SELECT
 FROM deps
 WHERE
    (
-       report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+       operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
        OR flag_state NOT IN ('FRA', 'GUF', 'VEN')
    )
    AND report_id NOT IN (

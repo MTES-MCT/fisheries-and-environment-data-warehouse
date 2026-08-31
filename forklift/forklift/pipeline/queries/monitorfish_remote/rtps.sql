@@ -1,6 +1,7 @@
 WITH rtps AS (
     SELECT
         operation_type,
+        operation_number,
         report_id,
         referenced_report_id,
         logbook_reports.cfr,
@@ -29,7 +30,7 @@ WITH rtps AS (
         log_type = 'RTP'
 ),
 
-rtp_reports AS (SELECT DISTINCT report_id, referenced_report_id, operation_type, flag_state FROM rtps),
+rtp_reports AS (SELECT DISTINCT report_id, operation_number, referenced_report_id, operation_type, flag_state FROM rtps),
 
 dels_targeting_rtps AS (
 
@@ -46,7 +47,7 @@ dels_targeting_rtps AS (
 ),
 
 cors_targeting_rtps AS (
-   SELECT cor.referenced_report_id, cor.report_id, cor.flag_state
+   SELECT cor.referenced_report_id, cor.operation_number, cor.flag_state
    FROM logbook_reports cor
    JOIN rtp_reports
    ON cor.referenced_report_id = rtp_reports.report_id
@@ -68,9 +69,9 @@ acknowledged_report_ids AS (
        AND referenced_report_id IN (
            SELECT operation_number FROM dels_targeting_rtps
            UNION ALL
-           SELECT report_id FROM cors_targeting_rtps
+           SELECT operation_number FROM cors_targeting_rtps
            UNION ALL
-           SELECT report_id FROM rtp_reports
+           SELECT operation_number FROM rtp_reports
        )
 ),
 
@@ -86,7 +87,7 @@ acknowledged_cors_targeting_rtps AS (
     SELECT referenced_report_id
     FROM cors_targeting_rtps
     WHERE
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN') -- flag_states for which we received RET messages
 )
 
@@ -110,7 +111,7 @@ SELECT
 FROM rtps
 WHERE
     (
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN')
     )
     AND report_id NOT IN (

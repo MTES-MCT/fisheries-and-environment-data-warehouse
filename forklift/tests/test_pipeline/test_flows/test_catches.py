@@ -25,7 +25,7 @@ def drop_catches():
 def expected_catches() -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "report_id": ["4", "6", "7", "7"],
+            "report_id": ["r4", "r6", "r7", "r7"],
             "cfr": ["ABC000542519", "ABC000542519", "ABC000542519", "ABC000542519"],
             "flag_state": ["FRA", "FRA", "FRA", "FRA"],
             "trip_number": ["20210001", "20210002", "20210002", "20210002"],
@@ -58,7 +58,7 @@ def expected_catches() -> pd.DataFrame:
 def expected_bft_catches() -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "report_id": ["31"],
+            "report_id": ["r31"],
             "cfr": ["CFR000999999"],
             "flag_state": ["FRA"],
             "trip_number": ["20230008"],

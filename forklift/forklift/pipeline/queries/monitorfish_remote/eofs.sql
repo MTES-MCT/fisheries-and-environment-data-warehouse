@@ -1,6 +1,7 @@
 WITH eofs AS (
     SELECT
         operation_type,
+        operation_number,
         report_id,
         referenced_report_id,
         logbook_reports.cfr,
@@ -22,7 +23,7 @@ WITH eofs AS (
         log_type = 'EOF'
 ),
 
-eof_reports AS (SELECT DISTINCT report_id, referenced_report_id, operation_type, flag_state FROM eofs),
+eof_reports AS (SELECT DISTINCT report_id, operation_number, referenced_report_id, operation_type, flag_state FROM eofs),
 
 dels_targeting_eofs AS (
 
@@ -39,7 +40,7 @@ dels_targeting_eofs AS (
 ),
 
 cors_targeting_eofs AS (
-   SELECT cor.referenced_report_id, cor.report_id, cor.flag_state
+   SELECT cor.referenced_report_id, cor.operation_number, cor.flag_state
    FROM logbook_reports cor
    JOIN eof_reports
    ON cor.referenced_report_id = eof_reports.report_id
@@ -61,9 +62,9 @@ acknowledged_report_ids AS (
        AND referenced_report_id IN (
            SELECT operation_number FROM dels_targeting_eofs
            UNION ALL
-           SELECT report_id FROM cors_targeting_eofs
+           SELECT operation_number FROM cors_targeting_eofs
            UNION ALL
-           SELECT report_id FROM eof_reports
+           SELECT operation_number FROM eof_reports
        )
 ),
 
@@ -79,7 +80,7 @@ acknowledged_cors_targeting_eofs AS (
     SELECT referenced_report_id
     FROM cors_targeting_eofs
     WHERE
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN') -- flag_states for which we received RET messages
 )
 
@@ -98,7 +99,7 @@ SELECT
 FROM eofs
 WHERE
     (
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN')
     )
     AND report_id NOT IN (

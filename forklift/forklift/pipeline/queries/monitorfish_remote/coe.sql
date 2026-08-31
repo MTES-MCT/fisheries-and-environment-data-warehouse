@@ -1,6 +1,7 @@
 WITH coes AS (
     SELECT
         operation_type,
+        operation_number,
         report_id,
         referenced_report_id,
         cfr,
@@ -39,7 +40,7 @@ WITH coes AS (
         log_type IN ('COE', 'NOT-COE')
 ),
 
-coe_reports AS (SELECT DISTINCT report_id, referenced_report_id, operation_type, flag_state FROM coes),
+coe_reports AS (SELECT DISTINCT report_id, operation_number, referenced_report_id, operation_type, flag_state FROM coes),
 
 dels_targeting_coes AS (
 
@@ -56,7 +57,7 @@ dels_targeting_coes AS (
 ),
 
 cors_targeting_coes AS (
-   SELECT cor.referenced_report_id, cor.report_id, cor.flag_state
+   SELECT cor.referenced_report_id, cor.operation_number, cor.flag_state
    FROM logbook_reports cor
    JOIN coe_reports
    ON cor.referenced_report_id = coe_reports.report_id
@@ -78,9 +79,9 @@ acknowledged_report_ids AS (
        AND referenced_report_id IN (
            SELECT operation_number FROM dels_targeting_coes
            UNION ALL
-           SELECT report_id FROM cors_targeting_coes
+           SELECT operation_number FROM cors_targeting_coes
            UNION ALL
-           SELECT report_id FROM coe_reports
+           SELECT operation_number FROM coe_reports
        )
 ),
 
@@ -96,7 +97,7 @@ acknowledged_cors_targeting_coes AS (
     SELECT referenced_report_id
     FROM cors_targeting_coes
     WHERE
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN') -- flag_states for which we received RET messages
 )
 
@@ -130,7 +131,7 @@ SELECT
 FROM coes
 WHERE
     (
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN')
     )
     AND report_id NOT IN (
