@@ -1,6 +1,7 @@
 WITH coxs AS (
     SELECT
         operation_type,
+        operation_number,
         report_id,
         referenced_report_id,
         cfr,
@@ -39,7 +40,7 @@ WITH coxs AS (
         log_type IN ('COX', 'NOT-COX')
 ),
 
-cox_reports AS (SELECT DISTINCT report_id, referenced_report_id, operation_type, flag_state FROM coxs),
+cox_reports AS (SELECT DISTINCT report_id, operation_number, referenced_report_id, operation_type, flag_state FROM coxs),
 
 dels_targeting_coxs AS (
 
@@ -56,7 +57,7 @@ dels_targeting_coxs AS (
 ),
 
 cors_targeting_coxs AS (
-   SELECT cor.referenced_report_id, cor.report_id, cor.flag_state
+   SELECT cor.referenced_report_id, cor.operation_number, cor.flag_state
    FROM logbook_reports cor
    JOIN cox_reports
    ON cor.referenced_report_id = cox_reports.report_id
@@ -78,9 +79,9 @@ acknowledged_report_ids AS (
        AND referenced_report_id IN (
            SELECT operation_number FROM dels_targeting_coxs
            UNION ALL
-           SELECT report_id FROM cors_targeting_coxs
+           SELECT operation_number FROM cors_targeting_coxs
            UNION ALL
-           SELECT report_id FROM cox_reports
+           SELECT operation_number FROM cox_reports
        )
 ),
 
@@ -96,7 +97,7 @@ acknowledged_cors_targeting_coxs AS (
     SELECT referenced_report_id
     FROM cors_targeting_coxs
     WHERE
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN') -- flag_states for which we received RET messages
 )
 
@@ -130,7 +131,7 @@ SELECT
 FROM coxs
 WHERE
     (
-        report_id IN (SELECT referenced_report_id FROM acknowledged_report_ids)
+        operation_number IN (SELECT referenced_report_id FROM acknowledged_report_ids)
         OR flag_state NOT IN ('FRA', 'GUF', 'VEN')
     )
     AND report_id NOT IN (
