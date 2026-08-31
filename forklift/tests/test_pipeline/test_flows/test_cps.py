@@ -25,7 +25,7 @@ def drop_cps():
 def expected_cps() -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "report_id": ["31"],
+            "report_id": ["r33"],
             "cfr": ["CFR000999999"],
             "flag_state": ["FRA"],
             "trip_number": ["20230008"],
@@ -91,6 +91,6 @@ def test_cps(drop_cps):
 
     assert len(discards_after_two_runs) == len(discards_after_one_run) == 1
 
-    expected_report_ids = ["31"]
+    expected_report_ids = ["r33"]
     assert discards_after_one_run.report_id.tolist() == expected_report_ids
     assert discards_after_two_runs.report_id.tolist() == expected_report_ids

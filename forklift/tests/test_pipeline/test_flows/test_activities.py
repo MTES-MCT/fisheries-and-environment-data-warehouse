@@ -28,14 +28,14 @@ def mess_up_activity_datetime_utc():
     engine = create_engine("monitorfish_remote")
     with engine.begin() as con:
         initial_activity_datetime_utc = read_query(
-            "SELECT activity_datetime_utc FROM logbook_reports WHERE report_id = '12'",
+            "SELECT activity_datetime_utc FROM logbook_reports WHERE report_id = 'r12'",
             con=con,
         ).iloc[0, 0]
         con.execute(
             text(
                 "UPDATE logbook_reports "
                 "SET activity_datetime_utc = '1910-02-25 12:35:41' "
-                "WHERE report_id = '12'"
+                "WHERE report_id = 'r12'"
             )
         )
 
@@ -46,7 +46,7 @@ def mess_up_activity_datetime_utc():
             text(
                 "UPDATE logbook_reports "
                 "SET activity_datetime_utc = :initial_activity_datetime_utc "
-                "WHERE report_id = '12'"
+                "WHERE report_id = 'r12'"
             ),
             parameters={"initial_activity_datetime_utc": initial_activity_datetime_utc},
         )
@@ -165,22 +165,22 @@ def expected_activities() -> pd.DataFrame:
                 False,
             ],
             "report_id": [
-                "12",
-                "13",
-                "14",
-                "1",
-                "2",
-                "8",
-                "3",
-                "4",
-                "11",
-                "5",
-                "6",
-                "7",
-                "31",
-                "31",
-                "21",
-                "15",
+                "r12",
+                "r13",
+                "r14",
+                "r1",
+                "r2",
+                "r8",
+                "r3",
+                "r4",
+                "r11",
+                "r5",
+                "r6",
+                "r7",
+                "r31",
+                "r33",
+                "r21",
+                "r15",
             ],
             "status": ["ACCEPTED"] * 16,
         }
