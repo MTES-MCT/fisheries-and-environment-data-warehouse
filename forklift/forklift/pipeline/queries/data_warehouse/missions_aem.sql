@@ -215,9 +215,13 @@ env_agg AS (
         -- eu lieu (action_type='CONTROL'), seul le décompte détaillé
         -- manque -- cas notamment des contrôles ciblant un établissement
         -- plutôt qu'un navire, où ce champ n'est pas systématiquement
-        -- saisi. SURVEILLANCE compte toujours 1 par ligne (countIf) :
-        -- même principe, une surveillance peut cacher plusieurs contrôles
-        -- non détaillés dans le JSON, mais représente au moins 1 opération.
+        -- saisi. SURVEILLANCE compte 1 par ligne (countIf) pour la même
+        -- raison qu'une action = une opération -- PAS parce qu'elle
+        -- cacherait des contrôles non détaillés : vérifié dans le backend
+        -- monitorenv (EnvActionSurveillanceProperties.kt), une SURVEILLANCE
+        -- n'a aucun champ de décompte de contrôles (observations/awareness
+        -- seulement), donc rien à défaut-1 ici, cf. même correction sur
+        -- nb_controls dans rapport_pam_ulam_action.sql.
         sumIf(
             if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 1),
             ea.action_type = 'CONTROL'AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
