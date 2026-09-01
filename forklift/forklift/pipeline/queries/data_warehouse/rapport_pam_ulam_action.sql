@@ -541,10 +541,7 @@ nav_rows AS (
             (s, e) -> ma.start_datetime_utc >= s AND ma.start_datetime_utc <= e,
             coalesce(bpm.permanence_starts, []),
             coalesce(bpm.permanence_ends, [])
-        )) AS is_during_baaem_permanence,
-        -- "Bordée" (cf. mission_bordee plus haut) : uniquement pour les
-        -- unités PAM (pas de notion de bordée A/B côté ULAM).
-        toString(if(mup.unit_type = 'PAM', coalesce(mb.bordee_name, ''), '')) AS bordee
+        )) AS is_during_baaem_permanence
     FROM rapportnav_proxy.mission_action ma
     -- INNER JOIN (pas LEFT) : filtre aux actions dont la mission a au
     -- moins une unité PAM ou ULAM.
@@ -554,7 +551,6 @@ nav_rows AS (
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
     LEFT JOIN action_control_policy acp ON acp.action_id = toString(ma.id)
     LEFT JOIN status_action_durations sad ON sad.action_id = ma.id
-    LEFT JOIN mission_bordee mb ON mb.mission_id = ma.mission_id
     -- ASOF : pour chaque action, le STATUS le plus récent démarré à ou
     -- avant le début de l'action (dans la même mission).
     ASOF LEFT JOIN status_timeline st ON st.mission_id = ma.mission_id AND st.start_datetime_utc <= assumeNotNull(ma.start_datetime_utc)
@@ -702,16 +698,8 @@ fish_rows AS (
         '' AS statut_navire,
         -- Pas de notion de permanence BAAEM côté MonitorFish (concept
         -- RapportNav uniquement, cf. baaem_permanence_by_mission).
-        toUInt8(0) AS is_during_baaem_permanence,
-        -- "Bordée" (cf. mission_bordee plus haut) : mission_id est partagé
-        -- entre les 3 systèmes, donc résoluble ici aussi via rapportnav --
-        -- uniquement pour les unités PAM.
-        toString(if(
-            startsWith(upper(f.control_unit), 'PAM'), coalesce(mb.bordee_name, ''),
-            ''
-        )) AS bordee
+        toUInt8(0) AS is_during_baaem_permanence
     FROM monitorfish.analytics_controls_full_data f
-    LEFT JOIN mission_bordee mb ON mb.mission_id = f.mission_id
     WHERE (startsWith(upper(f.control_unit), 'ULAM') OR startsWith(upper(f.control_unit), 'PAM'))
       AND f.control_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 ),
@@ -837,22 +825,34 @@ env_rows AS (
         '' AS statut_navire,
         -- Pas de notion de permanence BAAEM côté MonitorEnv (concept
         -- RapportNav uniquement, cf. baaem_permanence_by_mission).
-        toUInt8(0) AS is_during_baaem_permanence,
-        -- "Bordée" (cf. mission_bordee plus haut) : mission_id est partagé
-        -- entre les 3 systèmes, donc résoluble ici aussi via rapportnav --
-        -- uniquement pour les unités PAM.
-        toString(if(
-            startsWith(upper(a.control_unit), 'PAM'), coalesce(mb.bordee_name, ''),
-            ''
-        )) AS bordee
+        toUInt8(0) AS is_during_baaem_permanence
     FROM env_actions_dedup a
     LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
-    LEFT JOIN mission_bordee mb ON mb.mission_id = a.mission_id
     WHERE a.action_type IN ('CONTROL', 'SURVEILLANCE')
+),
+
+all_rows AS (
+    SELECT * FROM nav_rows
+    UNION ALL
+    SELECT * FROM fish_rows
+    UNION ALL
+    SELECT * FROM env_rows
 )
 
-SELECT *, now() AS updated_at FROM nav_rows
-UNION ALL
-SELECT *, now() AS updated_at FROM fish_rows
-UNION ALL
-SELECT *, now() AS updated_at FROM env_rows;
+-- "Bordée" (cf. mission_bordee en tête de fichier) : calculée UNE SEULE
+-- fois ici, après le UNION ALL, plutôt que dans chacune des 3 sources --
+-- ClickHouse ne matérialise pas les CTE réutilisées plusieurs fois
+-- (WITH ... AS (...) est réévalué à chaque référence), donc rejoindre
+-- mission_bordee (elle-même un JOIN de 2 tables Postgres distantes) dans
+-- nav_rows ET fish_rows ET env_rows revenait à ouvrir 3x plus de
+-- connexions Postgres que nécessaire -- probable cause du
+-- POSTGRESQL_CONNECTION_FAILURE (code 614) en CI sur ce fichier
+-- spécifiquement (le plus riche en CTE/jointures distantes des 5
+-- rapport_pam_ulam_*.sql). Uniquement pour les unités PAM (pas de notion
+-- de bordée A/B côté ULAM).
+SELECT
+    r.*,
+    toString(if(r.unit_type = 'PAM', coalesce(mb.bordee_name, ''), '')) AS bordee,
+    now() AS updated_at
+FROM all_rows r
+LEFT JOIN mission_bordee mb ON mb.mission_id = r.mission_id;
