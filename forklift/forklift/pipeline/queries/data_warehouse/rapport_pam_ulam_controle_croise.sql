@@ -83,6 +83,11 @@ SELECT
     su.unit_name AS unit_name,
     su.facade AS facade,
     su.unit_type AS unit_type,
+    -- "Bordée" : ici, service_id EST directement le service/bordée du
+    -- contrôle croisé (pas besoin de repasser par mission_general_info,
+    -- contrairement aux 3 autres tables) -- uniquement pour les unités
+    -- PAM (pas de notion de bordée A/B côté ULAM).
+    toString(if(su.unit_type = 'PAM', coalesce(svc.name, ''), '')) AS bordee,
     toString(coalesce(i.status, '')) AS statut,
     toString(coalesce(i.origin, '')) AS origine,
     toString(multiIf(
@@ -109,6 +114,7 @@ FROM inquiry_rows i
 -- au moins une unité PAM ou ULAM ; fanout intentionnel 1 ligne par unité
 -- individuelle.
 INNER JOIN service_units su ON su.service_id = i.service_id
+LEFT JOIN rapportnav_proxy.service svc ON svc.id = su.service_id
 -- assumeNotNull(...) ici aussi (pas juste un no-op) : empêche ClickHouse
 -- de reconnaître un pattern "colonne brute op littéral" poussable vers
 -- PostgreSQL -- cf. commentaire sur inquiry_rows plus haut. Sans certitude
@@ -118,6 +124,7 @@ INNER JOIN service_units su ON su.service_id = i.service_id
 WHERE assumeNotNull(i.start_datetime_utc) >= toDateTime('2025-01-01 00:00:00')
 GROUP BY
     su.control_unit_id, su.unit_name, su.facade, su.unit_type,
+    toString(if(su.unit_type = 'PAM', coalesce(svc.name, ''), '')),
     i.status, i.origin,
     multiIf(
         i.vessel_id IS NOT NULL, 'NAVIRE',

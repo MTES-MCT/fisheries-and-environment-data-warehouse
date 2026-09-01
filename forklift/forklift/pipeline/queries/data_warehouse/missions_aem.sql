@@ -210,8 +210,16 @@ env_agg AS (
             dateDiff('second', ea.action_start_datetime_utc, ea.action_end_datetime_utc) / 3600.0,
             ea.action_type IN ('CONTROL', 'SURVEILLANCE') AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
         ) AS n4_1_1_nb_heures_de_mer,
+        -- nb_controls par défaut à 1 (pas 0) quand actionNumberOfControls
+        -- n'est pas renseigné sur une action CONTROL : le contrôle a bien
+        -- eu lieu (action_type='CONTROL'), seul le décompte détaillé
+        -- manque -- cas notamment des contrôles ciblant un établissement
+        -- plutôt qu'un navire, où ce champ n'est pas systématiquement
+        -- saisi. SURVEILLANCE compte toujours 1 par ligne (countIf) :
+        -- même principe, une surveillance peut cacher plusieurs contrôles
+        -- non détaillés dans le JSON, mais représente au moins 1 opération.
         sumIf(
-            if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 0),
+            if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 1),
             ea.action_type = 'CONTROL'AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
         )
         + countIf(
@@ -253,8 +261,9 @@ env_agg AS (
             has(ifNull(et.theme_ids, []), 104)
         ) AS n4_4_1_nb_heures_de_mer,
 
+        -- Même défaut à 1 (pas 0) que n4_1_3_nb_operations ci-dessus.
         sumIf(
-            if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 0),
+            if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 1),
             JSONExtractString(ea.value, 'vehicleType') = 'VESSEL' AND ea.action_type = 'CONTROL'
         )
         + countIf(JSONExtractString(ea.value, 'vehicleType') = 'VESSEL' AND ea.action_type = 'SURVEILLANCE')
