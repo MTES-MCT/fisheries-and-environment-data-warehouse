@@ -205,6 +205,25 @@ action_control_policy AS (
 -- Mouillage/Présence à quai/Indisponibilité) via action_subtype/
 -- action_subsubtype plutôt que des colonnes dédiées sur
 -- fact_mission_pam_ulam.
+-- Découpé en 2 CTE à plat (jamais de sous-requête imbriquée) -- même
+-- structure que status_actions/heures_de_mer dans
+-- rapport_pam_ulam_mission.sql, éprouvée en prod pour ce même calcul de
+-- lead-time sur rapportnav_proxy.mission_action + monitorenv_proxy.missions.
+status_leads AS (
+    SELECT
+        ma.id AS action_id,
+        ma.start_datetime_utc AS start_datetime_utc,
+        leadInFrame(
+            ma.start_datetime_utc,
+            1,
+            ifNull(envm.end_datetime_utc, ma.start_datetime_utc)
+        ) OVER (
+            PARTITION BY ma.mission_id ORDER BY ma.start_datetime_utc
+        ) AS lead_end_datetime_utc
+    FROM rapportnav_proxy.mission_action ma
+    INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id
+    WHERE ma.action_type = 'STATUS'
+),
 status_action_durations AS (
     SELECT
         action_id,
@@ -220,21 +239,7 @@ status_action_durations AS (
            dateDiff('second', start_datetime_utc, lead_end_datetime_utc) / 3600.0,
            0
         ) AS duration_h
-    FROM (
-        SELECT
-            ma.id AS action_id,
-            ma.start_datetime_utc AS start_datetime_utc,
-            leadInFrame(
-                ma.start_datetime_utc,
-                1,
-                ifNull(envm.end_datetime_utc, ma.start_datetime_utc)
-            ) OVER (
-                PARTITION BY ma.mission_id ORDER BY ma.start_datetime_utc
-            ) AS lead_end_datetime_utc
-        FROM rapportnav_proxy.mission_action ma
-        INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id
-        WHERE ma.action_type = 'STATUS'
-    )
+    FROM status_leads
 ),
 -- Chronologie des statuts navire par mission (NAVIGATING/ANCHORED/DOCKED/
 -- UNAVAILABLE), utilisée pour enrichir CHAQUE action NAV (contrôles ET
