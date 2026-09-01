@@ -303,6 +303,13 @@ SELECT
     -- ServiceModel.kt (rapportnav2). service_id est déjà exposé ci-dessus
     -- mais pas exploitable seul pour filtrer par bordée sans le nom.
     toString(coalesce(svc.name, '')) AS service_name,
+    -- "Bordée" : même colonne, même nom que sur les 4 autres tables
+    -- rapport_pam_ulam_*.sql (filtre unique et cohérent côté Metabase).
+    -- service_name ci-dessus reste exposé tel quel (brut, non filtré) pour
+    -- ne rien casser côté consommateurs existants ; bordee est la version
+    -- gardée pour les missions PAM uniquement (pas de notion de bordée
+    -- A/B côté ULAM, cf. dim_unit_reference.sql).
+    toString(if(has(coalesce(mu.unit_types, []), 'PAM'), coalesce(svc.name, ''), '')) AS bordee,
     -- "Surveillance pêche encadrée CNSP ou libre" (maquette ULAM) : qui a
     -- ouvert la mission. monitorenv_proxy.missions.open_by est du texte
     -- LIBRE (colonne renommée depuis "author", champ formulaire "Ouvert
