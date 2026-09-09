@@ -80,11 +80,7 @@ mission_unit_pairs AS (
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
 ),
--- "Bordée" (maquette PAM, cf. rapport_pam_ulam_action.sql/mission.sql pour
--- le même mécanisme) : nom du service rapportnav rattaché à la mission --
--- concept PAM uniquement, appliqué aux lignes unit_type='PAM' dans le
--- SELECT final quelle que soit la source (mission_id partagé entre les 3
--- systèmes).
+-- "Bordée" (maquette PAM) : nom du service rapportnav de la mission.
 mission_bordee AS (
     SELECT
         mgi.mission_id,
@@ -225,8 +221,7 @@ nav_control_rows AS (
         toUInt16(coalesce(ma.nbr_of_control_300m, 0)) AS nb_controles_300m,
         toUInt16(coalesce(ma.has_diving_during_operation, 0)) AS nb_controles_avec_plongee,
         toUInt16(coalesce(ma.is_control_during_security_day, 0)) AS nb_controles_journee_securite,
-        -- "Bordée" (cf. mission_bordee plus haut) : uniquement pour les
-        -- unités PAM.
+        -- Bordée : uniquement pour les unités PAM.
         toString(if(mup.unit_type = 'PAM', coalesce(mb.bordee_name, ''), '')) AS bordee
     FROM rapportnav_proxy.mission_action ma
     -- INNER JOIN : filtre aux missions ayant au moins une unité PAM ou
@@ -288,8 +283,7 @@ fish_control_rows AS (
         toUInt16(0) AS nb_controles_300m,
         toUInt16(0) AS nb_controles_avec_plongee,
         toUInt16(0) AS nb_controles_journee_securite,
-        -- "Bordée" (cf. mission_bordee plus haut) : mission_id partagé
-        -- entre les 3 systèmes -- uniquement pour les unités PAM.
+        -- Bordée : uniquement pour les unités PAM.
         toString(if(
             startsWith(upper(f.control_unit), 'PAM'), coalesce(mb.bordee_name, ''),
             ''
@@ -319,11 +313,7 @@ env_infractions_by_action AS (
     FROM monitorenv.actions_infractions
     GROUP BY env_action_id
 ),
--- monitorenv.analytics_actions (table externe, hors périmètre de ce repo --
--- ni sa requête source ni son schéma ne sont modifiés ici) contient
--- plusieurs lignes pour un même env_actions.id (fanout côté monitorenv).
--- Dédupliqué ICI, à la lecture, cf. commentaire détaillé dans
--- rapport_pam_ulam_action.sql (même mécanisme).
+-- Dédup à la lecture (fanout monitorenv.analytics_actions, table externe non modifiée) : 1 ligne par action id.
 env_actions_dedup AS (
     SELECT *
     FROM monitorenv.analytics_actions
@@ -354,11 +344,7 @@ env_control_rows AS (
         'Environnement / pollution' AS politique_publique,
         '' AS thematique,
         toDate(toStartOfMonth(a.action_start_datetime_utc)) AS mois,
-        -- nb_controles par défaut à 1 (pas 0) quand actionNumberOfControls
-        -- n'est pas renseigné -- même correction que
-        -- rapport_pam_ulam_action.sql/missions_aem.sql (contrôles
-        -- établissement notamment, où ce champ n'est pas systématiquement
-        -- saisi).
+        -- Défaut à 1 (pas 0) si actionNumberOfControls absent.
         toUInt16(coalesce(a.number_of_controls, 1)) AS nb_controles,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
@@ -369,8 +355,7 @@ env_control_rows AS (
         toUInt16(0) AS nb_controles_300m,
         toUInt16(0) AS nb_controles_avec_plongee,
         toUInt16(0) AS nb_controles_journee_securite,
-        -- "Bordée" (cf. mission_bordee plus haut) : mission_id partagé
-        -- entre les 3 systèmes -- uniquement pour les unités PAM.
+        -- Bordée : uniquement pour les unités PAM.
         toString(if(
             startsWith(upper(a.control_unit), 'PAM'), coalesce(mb.bordee_name, ''),
             ''

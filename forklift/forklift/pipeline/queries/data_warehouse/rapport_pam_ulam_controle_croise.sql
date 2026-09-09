@@ -83,10 +83,7 @@ SELECT
     su.unit_name AS unit_name,
     su.facade AS facade,
     su.unit_type AS unit_type,
-    -- "Bordée" : ici, service_id EST directement le service/bordée du
-    -- contrôle croisé (pas besoin de repasser par mission_general_info,
-    -- contrairement aux 3 autres tables) -- uniquement pour les unités
-    -- PAM (pas de notion de bordée A/B côté ULAM).
+    -- Bordée : uniquement pour les unités PAM.
     toString(if(su.unit_type = 'PAM', coalesce(svc.name, ''), '')) AS bordee,
     toString(coalesce(i.status, '')) AS statut,
     toString(coalesce(i.origin, '')) AS origine,

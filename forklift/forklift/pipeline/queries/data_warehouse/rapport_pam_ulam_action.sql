@@ -80,14 +80,7 @@ mission_unit_pairs AS (
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
 ),
--- "Bordée" (maquette PAM, cf. rapport_pam_ulam_mission.sql) : nom du
--- service rapportnav rattaché à la mission (mission_general_info.service_id
--- -> service.name). Concept PAM uniquement (pas de bordée A/B côté ULAM,
--- une seule entrée par navire, cf. dim_unit_reference.sql) -- appliqué
--- uniquement aux lignes unit_type='PAM' dans le SELECT final, quelle que
--- soit la source (NAV/FISH/ENV, mission_id étant partagé entre les 3
--- systèmes). Vide pour les autres lignes plutôt que de laisser un
--- service_id sans rapport avec l'unité affichée sur la ligne.
+-- "Bordée" (maquette PAM) : nom du service rapportnav de la mission.
 mission_bordee AS (
     SELECT
         mgi.mission_id,
@@ -205,10 +198,6 @@ action_control_policy AS (
 -- Mouillage/Présence à quai/Indisponibilité) via action_subtype/
 -- action_subsubtype plutôt que des colonnes dédiées sur
 -- fact_mission_pam_ulam.
--- Découpé en 2 CTE à plat (jamais de sous-requête imbriquée) -- même
--- structure que status_actions/heures_de_mer dans
--- rapport_pam_ulam_mission.sql, éprouvée en prod pour ce même calcul de
--- lead-time sur rapportnav_proxy.mission_action + monitorenv_proxy.missions.
 status_leads AS (
     SELECT
         ma.id AS action_id,
@@ -227,12 +216,7 @@ status_leads AS (
 status_action_durations AS (
     SELECT
         action_id,
-        -- Garde-fou (jamais de duration_h/end_datetime_utc "vide" ni
-        -- négatif) : même anomalie documentée dans
-        -- rapport_pam_ulam_mission.sql (leadInFrame/envm.end_datetime_utc
-        -- pouvant produire une fin antérieure au début) -- repli sur
-        -- start_datetime_utc (durée 0) plutôt que de laisser filtrer une
-        -- valeur négative jusque dans fact_action_pam_ulam.
+        -- Garde-fou anti durée négative/vide.
         if(lead_end_datetime_utc >= start_datetime_utc, lead_end_datetime_utc, start_datetime_utc)
             AS corrected_end_datetime_utc,
         if(lead_end_datetime_utc >= start_datetime_utc,
@@ -248,16 +232,7 @@ status_action_durations AS (
 -- l'action). Utile pour croiser n'importe quelle activité avec le statut
 -- du navire (ex : "contrôles réalisés à quai"), pas seulement les
 -- contrôles.
--- assumeNotNull(start_datetime_utc) : start_datetime_utc est Nullable côté
--- proxy (colonne Postgres nullable en théorie, jamais vide en pratique sur
--- une action réelle) -- ⚠️ CORRIGÉ (statut_navire vide notamment sur les
--- actions CONTROL) : ASOF JOIN sur une clé Nullable ne matche pas de façon
--- fiable selon les versions de ClickHouse (cf. les autres assumeNotNull()
--- de ce repo déjà utilisés pour contourner des soucis similaires avec des
--- colonnes Nullable, ex. rapport_pam_ulam_mission.sql/missions_aem.sql).
--- Wrappé aussi côté ma.start_datetime_utc dans la condition ASOF plus bas,
--- pas seulement ici, pour que les deux côtés de la comparaison soient
--- non-Nullable.
+-- assumeNotNull : ASOF JOIN sur clé Nullable ne matche pas de façon fiable.
 status_timeline AS (
     SELECT
         mission_id,
@@ -402,10 +377,7 @@ nav_rows AS (
         mup.facade AS facade,
         mup.unit_type AS unit_type,
         toDateTime64(ma.start_datetime_utc, 6) AS start_datetime_utc,
-        -- STATUS n'a pas de end_datetime_utc propre -- fin reconstituée via
-        -- status_action_durations.corrected_end_datetime_utc (même
-        -- leadInFrame que duration_h juste en dessous, cf. commentaire sur
-        -- cette CTE plus haut) plutôt que laissée vide.
+        -- STATUS : fin reconstituée via status_action_durations (leadInFrame).
         toDateTime64(multiIf(
             ma.action_type = 'STATUS', coalesce(sad.corrected_end_datetime_utc, ma.start_datetime_utc),
             ma.end_datetime_utc
@@ -715,19 +687,7 @@ env_infractions_by_action AS (
     FROM monitorenv.actions_infractions
     GROUP BY env_action_id
 ),
--- monitorenv.analytics_actions (table externe, hors périmètre de ce repo --
--- ni sa requête source ni son schéma ne sont modifiés ici) contient
--- plusieurs lignes pour un même env_actions.id : fanout côté monitorenv
--- (mission_type/awareness/geom/thème, entre autres -- mécanisme exact non
--- garanti stable dans le temps). On déduplique donc ICI, à la lecture,
--- plutôt que de dépendre d'un grain=action_id côté source : 1 ligne par id
--- gardée via LIMIT BY, toutes les colonnes utilisées ci-dessous
--- (number_of_controls, surveillance_duration, latitude/longitude,
--- administration, control_unit...) étant de toute façon constantes pour un
--- même id -- seul theme_level_1/2 varie réellement d'une ligne dupliquée à
--- l'autre (1 thème par ligne côté source) ; priorité à une ligne qui porte
--- un vrai sous-thème plutôt qu'au repli "Aucun sous-thème" pour un choix
--- représentatif, pas parfaitement exhaustif sur les actions multi-thèmes.
+-- Dédup à la lecture (fanout monitorenv.analytics_actions, table externe non modifiée) : 1 ligne par action id.
 env_actions_dedup AS (
     SELECT *
     FROM monitorenv.analytics_actions
@@ -786,19 +746,7 @@ env_rows AS (
         -- surveillance.
         toUInt16(if(a.action_type = 'CONTROL', 1, 0)) AS nb_targets,
         toUInt16(if(a.action_type = 'CONTROL', 1, 0)) AS nb_control_types,
-        -- nb_controls par défaut à 1 (pas 0) pour un CONTROL dont
-        -- actionNumberOfControls n'est pas renseigné dans le JSON --
-        -- notamment les contrôles ciblant un établissement plutôt qu'un
-        -- navire, où ce champ n'est pas systématiquement saisi : le
-        -- contrôle a bien eu lieu, seul le décompte détaillé manque
-        -- (même correction sur missions_aem.sql/n4_1_3_nb_operations).
-        -- PAS de défaut à 1 pour SURVEILLANCE : vérifié dans le backend
-        -- monitorenv (EnvActionSurveillanceProperties.kt) -- une action
-        -- SURVEILLANCE n'a QUE observations/awareness, aucun champ de
-        -- décompte de contrôles (contrairement à FISH où AIR_SURVEILLANCE
-        -- porte numberOfVesselsFlownOver, une notion différente de toute
-        -- façon). Rester à 0 est donc correct ici, pas une donnée
-        -- manquante à combler.
+        -- Défaut à 1 (pas 0) si actionNumberOfControls absent sur un CONTROL. Pas de défaut pour SURVEILLANCE (pas de champ équivalent côté monitorenv).
         toUInt16(if(a.action_type = 'CONTROL', coalesce(a.number_of_controls, 1), 0)) AS nb_controls,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
@@ -839,17 +787,7 @@ all_rows AS (
     SELECT * FROM env_rows
 )
 
--- "Bordée" (cf. mission_bordee en tête de fichier) : calculée UNE SEULE
--- fois ici, après le UNION ALL, plutôt que dans chacune des 3 sources --
--- ClickHouse ne matérialise pas les CTE réutilisées plusieurs fois
--- (WITH ... AS (...) est réévalué à chaque référence), donc rejoindre
--- mission_bordee (elle-même un JOIN de 2 tables Postgres distantes) dans
--- nav_rows ET fish_rows ET env_rows revenait à ouvrir 3x plus de
--- connexions Postgres que nécessaire -- probable cause du
--- POSTGRESQL_CONNECTION_FAILURE (code 614) en CI sur ce fichier
--- spécifiquement (le plus riche en CTE/jointures distantes des 5
--- rapport_pam_ulam_*.sql). Uniquement pour les unités PAM (pas de notion
--- de bordée A/B côté ULAM).
+-- Bordée jointe UNE SEULE fois après le UNION ALL (CTE non matérialisée -- éviter 3x les connexions Postgres).
 SELECT
     r.*,
     toString(if(r.unit_type = 'PAM', coalesce(mb.bordee_name, ''), '')) AS bordee,

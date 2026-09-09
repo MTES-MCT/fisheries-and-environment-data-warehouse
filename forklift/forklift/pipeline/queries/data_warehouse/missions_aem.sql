@@ -210,18 +210,7 @@ env_agg AS (
             dateDiff('second', ea.action_start_datetime_utc, ea.action_end_datetime_utc) / 3600.0,
             ea.action_type IN ('CONTROL', 'SURVEILLANCE') AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
         ) AS n4_1_1_nb_heures_de_mer,
-        -- nb_controls par défaut à 1 (pas 0) quand actionNumberOfControls
-        -- n'est pas renseigné sur une action CONTROL : le contrôle a bien
-        -- eu lieu (action_type='CONTROL'), seul le décompte détaillé
-        -- manque -- cas notamment des contrôles ciblant un établissement
-        -- plutôt qu'un navire, où ce champ n'est pas systématiquement
-        -- saisi. SURVEILLANCE compte 1 par ligne (countIf) pour la même
-        -- raison qu'une action = une opération -- PAS parce qu'elle
-        -- cacherait des contrôles non détaillés : vérifié dans le backend
-        -- monitorenv (EnvActionSurveillanceProperties.kt), une SURVEILLANCE
-        -- n'a aucun champ de décompte de contrôles (observations/awareness
-        -- seulement), donc rien à défaut-1 ici, cf. même correction sur
-        -- nb_controls dans rapport_pam_ulam_action.sql.
+        -- Défaut à 1 (pas 0) si actionNumberOfControls absent sur un CONTROL.
         sumIf(
             if(JSONHas(ea.value, 'actionNumberOfControls'), JSONExtractInt(ea.value, 'actionNumberOfControls'), 1),
             ea.action_type = 'CONTROL'AND NOT hasAny(ifNull(et.theme_ids, []), [19, 102])
