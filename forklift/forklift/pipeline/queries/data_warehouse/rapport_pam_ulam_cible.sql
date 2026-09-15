@@ -80,6 +80,14 @@ mission_unit_pairs AS (
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
 ),
+-- "Bordée" (maquette PAM) : nom du service rapportnav de la mission.
+mission_bordee AS (
+    SELECT
+        mgi.mission_id,
+        toString(coalesce(svc.name, '')) AS bordee_name
+    FROM rapportnav_proxy.mission_general_info mgi
+    LEFT JOIN rapportnav_proxy.service svc ON svc.id = mgi.service_id
+),
 -- Politique publique / thématique pour la famille CONTROL NAV -- extrait
 -- réduit de action_type_mapping (rapport_pam_ulam_action.sql) : mêmes 6
 -- clés (action_subtype), à resynchroniser si cette table change là-bas.
@@ -212,11 +220,14 @@ nav_control_rows AS (
         toUInt16(coalesce(ma.nbr_of_control_amp, 0)) AS nb_controles_amp,
         toUInt16(coalesce(ma.nbr_of_control_300m, 0)) AS nb_controles_300m,
         toUInt16(coalesce(ma.has_diving_during_operation, 0)) AS nb_controles_avec_plongee,
-        toUInt16(coalesce(ma.is_control_during_security_day, 0)) AS nb_controles_journee_securite
+        toUInt16(coalesce(ma.is_control_during_security_day, 0)) AS nb_controles_journee_securite,
+        -- Bordée : uniquement pour les unités PAM.
+        toString(if(mup.unit_type = 'PAM', coalesce(mb.bordee_name, ''), '')) AS bordee
     FROM rapportnav_proxy.mission_action ma
     -- INNER JOIN : filtre aux missions ayant au moins une unité PAM ou
     -- ULAM ; fanout intentionnel 1 ligne par unité individuelle.
     INNER JOIN mission_unit_pairs mup ON mup.mission_id = ma.mission_id
+    LEFT JOIN mission_bordee mb ON mb.mission_id = ma.mission_id
     LEFT JOIN action_controls acl ON acl.action_id = toString(ma.id)
     LEFT JOIN action_targets atg ON atg.action_id = toString(ma.id)
     LEFT JOIN action_control_policy acp ON acp.action_id = toString(ma.id)
@@ -271,8 +282,14 @@ fish_control_rows AS (
         toUInt16(0) AS nb_controles_amp,
         toUInt16(0) AS nb_controles_300m,
         toUInt16(0) AS nb_controles_avec_plongee,
-        toUInt16(0) AS nb_controles_journee_securite
+        toUInt16(0) AS nb_controles_journee_securite,
+        -- Bordée : uniquement pour les unités PAM.
+        toString(if(
+            startsWith(upper(f.control_unit), 'PAM'), coalesce(mb.bordee_name, ''),
+            ''
+        )) AS bordee
     FROM monitorfish.analytics_controls_full_data f
+    LEFT JOIN mission_bordee mb ON mb.mission_id = f.mission_id
     -- ⚠️ CORRIGÉ (même revue que fact_action_pam_ulam) : AIR_SURVEILLANCE
     -- exclu ici aussi, pas seulement OBSERVATION. fact_cible_pam_ulam a
     -- pour grain "1 cible contrôlée" -- une surveillance aérienne
@@ -296,6 +313,18 @@ env_infractions_by_action AS (
     FROM monitorenv.actions_infractions
     GROUP BY env_action_id
 ),
+-- Dédup à la lecture (fanout monitorenv.analytics_actions, table externe non modifiée) : 1 ligne par action id.
+env_actions_dedup AS (
+    SELECT *
+    FROM monitorenv.analytics_actions
+    WHERE (
+            startsWith(upper(control_unit), 'ULAM')
+            OR (administration = 'DIRM / DM' AND startsWith(upper(control_unit), 'PAM'))
+          )
+      AND action_start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+    ORDER BY id, (theme_level_2 = 'Aucun sous-thème') ASC
+    LIMIT 1 BY id
+),
 env_control_rows AS (
     SELECT
         'ENV' AS source,
@@ -315,7 +344,8 @@ env_control_rows AS (
         'Environnement / pollution' AS politique_publique,
         '' AS thematique,
         toDate(toStartOfMonth(a.action_start_datetime_utc)) AS mois,
-        toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controles,
+        -- Défaut à 1 (pas 0) si actionNumberOfControls absent.
+        toUInt16(coalesce(a.number_of_controls, 1)) AS nb_controles,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
         toUInt16(coalesce(ei.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
@@ -324,15 +354,16 @@ env_control_rows AS (
         toUInt16(0) AS nb_controles_amp,
         toUInt16(0) AS nb_controles_300m,
         toUInt16(0) AS nb_controles_avec_plongee,
-        toUInt16(0) AS nb_controles_journee_securite
-    FROM monitorenv.analytics_actions a
+        toUInt16(0) AS nb_controles_journee_securite,
+        -- Bordée : uniquement pour les unités PAM.
+        toString(if(
+            startsWith(upper(a.control_unit), 'PAM'), coalesce(mb.bordee_name, ''),
+            ''
+        )) AS bordee
+    FROM env_actions_dedup a
     LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
+    LEFT JOIN mission_bordee mb ON mb.mission_id = a.mission_id
     WHERE a.action_type = 'CONTROL'
-      AND (
-        startsWith(upper(a.control_unit), 'ULAM')
-        OR (a.administration = 'DIRM / DM' AND startsWith(upper(a.control_unit), 'PAM'))
-      )
-      AND a.action_start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
 ),
 
 all_rows AS (
@@ -347,6 +378,7 @@ SELECT
     unit_name,
     facade,
     unit_type,
+    bordee,
     action_subtype,
     action_subsubtype,
     terrain_control,
@@ -365,5 +397,5 @@ SELECT
     now() AS updated_at
 FROM all_rows
 GROUP BY
-    source, control_unit_id, unit_name, facade, unit_type,
+    source, control_unit_id, unit_name, facade, unit_type, bordee,
     action_subtype, action_subsubtype, terrain_control, politique_publique, thematique, mois;

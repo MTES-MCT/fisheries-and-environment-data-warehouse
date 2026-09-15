@@ -80,6 +80,14 @@ mission_unit_pairs AS (
     INNER JOIN monitorenv_proxy.control_units cu ON cu.id = mcu.control_unit_id
     INNER JOIN pam_ulam_control_units uu ON uu.control_unit_id = cu.id
 ),
+-- "Bordée" (maquette PAM) : nom du service rapportnav de la mission.
+mission_bordee AS (
+    SELECT
+        mgi.mission_id,
+        toString(coalesce(svc.name, '')) AS bordee_name
+    FROM rapportnav_proxy.mission_general_info mgi
+    LEFT JOIN rapportnav_proxy.service svc ON svc.id = mgi.service_id
+),
 resource_dim AS (
     SELECT
         id AS resource_id,
@@ -190,19 +198,32 @@ action_control_policy AS (
 -- Mouillage/Présence à quai/Indisponibilité) via action_subtype/
 -- action_subsubtype plutôt que des colonnes dédiées sur
 -- fact_mission_pam_ulam.
-status_action_durations AS (
+status_leads AS (
     SELECT
         ma.id AS action_id,
-        dateDiff('second', ma.start_datetime_utc, leadInFrame(
+        ma.start_datetime_utc AS start_datetime_utc,
+        leadInFrame(
             ma.start_datetime_utc,
             1,
             ifNull(envm.end_datetime_utc, ma.start_datetime_utc)
         ) OVER (
             PARTITION BY ma.mission_id ORDER BY ma.start_datetime_utc
-        )) / 3600.0 AS duration_h
+        ) AS lead_end_datetime_utc
     FROM rapportnav_proxy.mission_action ma
     INNER JOIN monitorenv_proxy.missions envm ON envm.id = ma.mission_id
     WHERE ma.action_type = 'STATUS'
+),
+status_action_durations AS (
+    SELECT
+        action_id,
+        -- Garde-fou anti durée négative/vide.
+        if(lead_end_datetime_utc >= start_datetime_utc, lead_end_datetime_utc, start_datetime_utc)
+            AS corrected_end_datetime_utc,
+        if(lead_end_datetime_utc >= start_datetime_utc,
+           dateDiff('second', start_datetime_utc, lead_end_datetime_utc) / 3600.0,
+           0
+        ) AS duration_h
+    FROM status_leads
 ),
 -- Chronologie des statuts navire par mission (NAVIGATING/ANCHORED/DOCKED/
 -- UNAVAILABLE), utilisée pour enrichir CHAQUE action NAV (contrôles ET
@@ -211,13 +232,14 @@ status_action_durations AS (
 -- l'action). Utile pour croiser n'importe quelle activité avec le statut
 -- du navire (ex : "contrôles réalisés à quai"), pas seulement les
 -- contrôles.
+-- assumeNotNull : ASOF JOIN sur clé Nullable ne matche pas de façon fiable.
 status_timeline AS (
     SELECT
         mission_id,
-        start_datetime_utc,
+        assumeNotNull(start_datetime_utc) AS start_datetime_utc,
         status
     FROM rapportnav_proxy.mission_action
-    WHERE action_type = 'STATUS'
+    WHERE action_type = 'STATUS' AND start_datetime_utc IS NOT NULL
 ),
 -- "Focus BAAEM -- nb assistance/sauvetage dans le cadre d'une opération
 -- BAAEM" (maquette PAM) : BAAEM_PERMANENCE est une action à intervalle
@@ -355,7 +377,11 @@ nav_rows AS (
         mup.facade AS facade,
         mup.unit_type AS unit_type,
         toDateTime64(ma.start_datetime_utc, 6) AS start_datetime_utc,
-        toDateTime64(ma.end_datetime_utc, 6) AS end_datetime_utc,
+        -- STATUS : fin reconstituée via status_action_durations (leadInFrame).
+        toDateTime64(multiIf(
+            ma.action_type = 'STATUS', coalesce(sad.corrected_end_datetime_utc, ma.start_datetime_utc),
+            ma.end_datetime_utc
+        ), 6) AS end_datetime_utc,
         -- STATUS n'a pas de end_datetime_utc propre -- durée reconstituée
         -- via status_action_durations (leadInFrame sur le prochain STATUS
         -- de la mission), cf. commentaire sur cette CTE plus haut.
@@ -499,7 +525,7 @@ nav_rows AS (
     LEFT JOIN status_action_durations sad ON sad.action_id = ma.id
     -- ASOF : pour chaque action, le STATUS le plus récent démarré à ou
     -- avant le début de l'action (dans la même mission).
-    ASOF LEFT JOIN status_timeline st ON st.mission_id = ma.mission_id AND st.start_datetime_utc <= ma.start_datetime_utc
+    ASOF LEFT JOIN status_timeline st ON st.mission_id = ma.mission_id AND st.start_datetime_utc <= assumeNotNull(ma.start_datetime_utc)
     LEFT JOIN baaem_permanence_by_mission bpm ON bpm.mission_id = ma.mission_id
     -- action_type déjà unifié (CONTROL) : atm.action_type = 'CONTROL'
     -- matche toute la famille. action_subtype_key ne différencie que
@@ -661,6 +687,18 @@ env_infractions_by_action AS (
     FROM monitorenv.actions_infractions
     GROUP BY env_action_id
 ),
+-- Dédup à la lecture (fanout monitorenv.analytics_actions, table externe non modifiée) : 1 ligne par action id.
+env_actions_dedup AS (
+    SELECT *
+    FROM monitorenv.analytics_actions
+    WHERE (
+            startsWith(upper(control_unit), 'ULAM')
+            OR (administration = 'DIRM / DM' AND startsWith(upper(control_unit), 'PAM'))
+          )
+      AND action_start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+    ORDER BY id, (theme_level_2 = 'Aucun sous-thème') ASC
+    LIMIT 1 BY id
+),
 env_rows AS (
     SELECT
         'ENV' AS source,
@@ -708,7 +746,8 @@ env_rows AS (
         -- surveillance.
         toUInt16(if(a.action_type = 'CONTROL', 1, 0)) AS nb_targets,
         toUInt16(if(a.action_type = 'CONTROL', 1, 0)) AS nb_control_types,
-        toUInt16(coalesce(a.number_of_controls, 0)) AS nb_controls,
+        -- Défaut à 1 (pas 0) si actionNumberOfControls absent sur un CONTROL. Pas de défaut pour SURVEILLANCE (pas de champ équivalent côté monitorenv).
+        toUInt16(if(a.action_type = 'CONTROL', coalesce(a.number_of_controls, 1), 0)) AS nb_controls,
         toUInt16(coalesce(ei.nb_infractions_avec_pv, 0)) AS nb_infractions_avec_pv,
         toUInt16(coalesce(ei.nb_infractions_sans_pv, 0)) AS nb_infractions_sans_pv,
         toUInt16(coalesce(ei.nb_infractions_en_attente, 0)) AS nb_infractions_en_attente,
@@ -735,18 +774,23 @@ env_rows AS (
         -- Pas de notion de permanence BAAEM côté MonitorEnv (concept
         -- RapportNav uniquement, cf. baaem_permanence_by_mission).
         toUInt8(0) AS is_during_baaem_permanence
-    FROM monitorenv.analytics_actions a
+    FROM env_actions_dedup a
     LEFT JOIN env_infractions_by_action ei ON ei.env_action_id = a.id
     WHERE a.action_type IN ('CONTROL', 'SURVEILLANCE')
-      AND (
-        startsWith(upper(a.control_unit), 'ULAM')
-        OR (a.administration = 'DIRM / DM' AND startsWith(upper(a.control_unit), 'PAM'))
-      )
-      AND a.action_start_datetime_utc >= toDateTime('2025-01-01 00:00:00')
+),
+
+all_rows AS (
+    SELECT * FROM nav_rows
+    UNION ALL
+    SELECT * FROM fish_rows
+    UNION ALL
+    SELECT * FROM env_rows
 )
 
-SELECT *, now() AS updated_at FROM nav_rows
-UNION ALL
-SELECT *, now() AS updated_at FROM fish_rows
-UNION ALL
-SELECT *, now() AS updated_at FROM env_rows;
+-- Bordée jointe UNE SEULE fois après le UNION ALL (CTE non matérialisée -- éviter 3x les connexions Postgres).
+SELECT
+    r.*,
+    toString(if(r.unit_type = 'PAM', coalesce(mb.bordee_name, ''), '')) AS bordee,
+    now() AS updated_at
+FROM all_rows r
+LEFT JOIN mission_bordee mb ON mb.mission_id = r.mission_id;
